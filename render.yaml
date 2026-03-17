@@ -4,7 +4,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     region: oregon
-    plan: starter
+    plan: hobby
     envVars:
       - key: VIDEOSDK_AUTH_TOKEN
         sync: false
