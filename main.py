@@ -76,7 +76,8 @@ if __name__ == "__main__":
         options = Options(
             agent_id="MyTelephonyAgent",  # CRITICAL: Unique identifier for routing
             register=True,               # REQUIRED: Register with VideoSDK for telephony
-            max_processes=10,            # Concurrent calls to handle
+            max_processes=1,             # Free tier: limited CPU/RAM, only 1 process
+            num_idle_processes=1,        # Keep the process warm and ready
             host="0.0.0.0",
             port=int(os.getenv("AGENT_PORT", 8082)),
             )
