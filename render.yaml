@@ -1,0 +1,14 @@
+services:
+  - type: worker
+    name: ai-telephony-agent
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: oregon
+    plan: starter
+    envVars:
+      - key: VIDEOSDK_AUTH_TOKEN
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: PYTHON_UNBUFFERED
+        value: "1"
