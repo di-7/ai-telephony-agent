@@ -1,10 +1,10 @@
 services:
-  - type: worker
+  - type: web
     name: ai-telephony-agent
     runtime: docker
     dockerfilePath: ./Dockerfile
     region: oregon
-    plan: hobby
+    plan: free
     envVars:
       - key: VIDEOSDK_AUTH_TOKEN
         sync: false

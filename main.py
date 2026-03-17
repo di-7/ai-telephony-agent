@@ -1,5 +1,7 @@
 import asyncio
 import traceback
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from videosdk.agents import Agent, AgentSession, RealTimePipeline, JobContext, RoomOptions, WorkerJob, Options
 from videosdk.plugins.google import GeminiRealtime, GeminiLiveConfig
 from dotenv import load_dotenv
@@ -9,7 +11,24 @@ logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 
-# Define the agent's behavior and personality
+# --- Health check server (keeps Render free tier alive) ---
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"AI Telephony Agent is running")
+
+    def log_message(self, format, *args):
+        pass  # Suppress request logs
+
+def start_health_server():
+    port = int(os.getenv("PORT", 8081))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    logging.info(f"Health check server running on port {port}")
+    server.serve_forever()
+
+# --- Agent definition ---
 class MyVoiceAgent(Agent):
     def __init__(self):
         super().__init__(
@@ -49,13 +68,17 @@ def make_context() -> JobContext:
 
 if __name__ == "__main__":
     try:
+        # Start health check server in background thread
+        health_thread = threading.Thread(target=start_health_server, daemon=True)
+        health_thread.start()
+
         # Register the agent with a unique ID
         options = Options(
             agent_id="MyTelephonyAgent",  # CRITICAL: Unique identifier for routing
             register=True,               # REQUIRED: Register with VideoSDK for telephony
             max_processes=10,            # Concurrent calls to handle
             host="0.0.0.0",
-            port=int(os.getenv("PORT", 8081)),
+            port=int(os.getenv("AGENT_PORT", 8082)),
             )
         job = WorkerJob(entrypoint=start_session, jobctx=make_context, options=options)
         job.start()
