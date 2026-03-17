@@ -78,6 +78,7 @@ if __name__ == "__main__":
             register=True,               # REQUIRED: Register with VideoSDK for telephony
             max_processes=1,             # Free tier: limited CPU/RAM, only 1 process
             num_idle_processes=1,        # Keep the process warm and ready
+            initialize_timeout=120.0,    # Give Render's free tier plenty of time to initialize
             host="0.0.0.0",
             port=int(os.getenv("AGENT_PORT", 8082)),
             )
