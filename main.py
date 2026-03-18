@@ -155,6 +155,35 @@ class MyVoiceAgent(Agent):
         # Avoid saying goodbye twice if we already said it in the timeout block
         pass
 
+def send_demo_alert_email():
+    """Send an email alert to the company using Resend API"""
+    import urllib.request
+    import json
+    import os
+    
+    resend_key = os.getenv("RESEND_API_KEY")
+    if not resend_key:
+        logging.warning("RESEND_API_KEY not found. Skipping company email alert.")
+        return
+
+    url = "https://api.resend.com/emails"
+    payload = json.dumps({
+        "from": "Mixup Demo <onboarding@resend.dev>",
+        "to": os.getenv("TEAM_EMAIL", "dukeindustries7@gmail.com"),
+        "subject": "New AI Demo Call Finished",
+        "html": "<p>A 1-minute AI demo call has just been completed. Please check your call transcripts and follow up with the prospect if they replied to the automated email.</p>"
+    }).encode('utf-8')
+
+    req = urllib.request.Request(url, data=payload, method="POST")
+    req.add_header("Authorization", f"Bearer {resend_key}")
+    req.add_header("Content-Type", "application/json")
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            logging.info(f"Company Resend email sent: {response.read()}")
+    except Exception as e:
+        logging.error(f"Failed to send company email via Resend: {e}")
+
 async def start_session(context: JobContext):
     # Configure the Gemini model for real-time voice
     model = GeminiRealtime(
@@ -183,6 +212,9 @@ async def start_session(context: JobContext):
     finally:
         await session.close()
         await context.shutdown()
+        
+        # Trigger follow-up email alert to the company team
+        send_demo_alert_email()
 
 def make_context() -> JobContext:
     room_options = RoomOptions()
