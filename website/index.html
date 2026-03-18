@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mixup — AI-Powered Agentic Calls That Build Real Relationships</title>
+    <meta name="description"
+        content="Mixup transforms your business growth with AI-powered agentic calls. Move beyond short-term ROAS and build lasting customer relationships at scale.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- Ambient Background -->
+    <div class="ambient-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-logo">
+                <img src="logo.jpeg" alt="Mixup" class="logo-img">
+            </a>
+            <div class="nav-links" id="navLinks">
+                <a href="#services" class="nav-link">Services</a>
+                <a href="#how-it-works" class="nav-link">How It Works</a>
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#results" class="nav-link">Results</a>
+                <button class="nav-link nav-link-cta" onclick="openInstantCallModal()">Book a Demo</button>
+            </div>
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="hero">
+        <div class="hero-container">
+            <div class="hero-badge reveal">
+                <span class="badge-dot"></span>
+                AI-Powered Agentic Calls
+            </div>
+            <h1 class="hero-title reveal">
+                Stop Chasing ROAS.<br>
+                <span class="gradient-text">Start Building Relationships.</span>
+            </h1>
+            <p class="hero-subtitle reveal">
+                Mixup deploys intelligent AI agents that have real conversations with your customers —
+                qualifying leads, nurturing relationships, and driving sustainable growth.
+                24/7, at infinite scale.
+            </p>
+            <div class="hero-actions reveal">
+                <button onclick="openInstantCallModal()" class="btn btn-primary">
+                    <span>Get Started</span>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </a>
+                <a href="#how-it-works" class="btn btn-ghost">
+                    <span>See How It Works</span>
+                </a>
+            </div>
+            <div class="hero-visual reveal">
+                <div class="waveform-container">
+                    <div class="waveform">
+                        <div class="wave-bar" style="--delay: 0"></div>
+                        <div class="wave-bar" style="--delay: 1"></div>
+                        <div class="wave-bar" style="--delay: 2"></div>
+                        <div class="wave-bar" style="--delay: 3"></div>
+                        <div class="wave-bar" style="--delay: 4"></div>
+                        <div class="wave-bar" style="--delay: 5"></div>
+                        <div class="wave-bar" style="--delay: 6"></div>
+                        <div class="wave-bar" style="--delay: 7"></div>
+                        <div class="wave-bar" style="--delay: 8"></div>
+                        <div class="wave-bar" style="--delay: 9"></div>
+                        <div class="wave-bar" style="--delay: 10"></div>
+                        <div class="wave-bar" style="--delay: 11"></div>
+                        <div class="wave-bar" style="--delay: 12"></div>
+                        <div class="wave-bar" style="--delay: 13"></div>
+                        <div class="wave-bar" style="--delay: 14"></div>
+                        <div class="wave-bar" style="--delay: 15"></div>
+                        <div class="wave-bar" style="--delay: 16"></div>
+                        <div class="wave-bar" style="--delay: 17"></div>
+                        <div class="wave-bar" style="--delay: 18"></div>
+                        <div class="wave-bar" style="--delay: 19"></div>
+                        <div class="wave-bar" style="--delay: 20"></div>
+                        <div class="wave-bar" style="--delay: 21"></div>
+                        <div class="wave-bar" style="--delay: 22"></div>
+                        <div class="wave-bar" style="--delay: 23"></div>
+                        <div class="wave-bar" style="--delay: 24"></div>
+                    </div>
+                    <div class="waveform-label">
+                        <span class="pulse-dot"></span>
+                        AI Agent Active — Handling 24/7 concurrent calls
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats" id="stats">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-item reveal">
+                    <span class="stat-number" data-target="10">0</span><span class="stat-suffix">M+</span>
+                    <span class="stat-label">Calls Handled</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item reveal">
+                    <span class="stat-number" data-target="340">0</span><span class="stat-suffix">%</span>
+                    <span class="stat-label">Avg. LTV Increase</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item reveal">
+                    <span class="stat-number" data-target="99">0</span><span class="stat-suffix">.7%</span>
+                    <span class="stat-label">Uptime</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item reveal">
+                    <span class="stat-number" data-target="24">0</span><span class="stat-suffix">/7</span>
+                    <span class="stat-label">Always On</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="problem" id="problem">
+        <div class="container">
+            <div class="problem-grid">
+                <div class="problem-content reveal">
+                    <span class="section-tag">The Problem</span>
+                    <h2 class="section-title">Short-Term ROAS Is a <span class="gradient-text">Leaky Bucket</span></h2>
+                    <p class="section-text">
+                        You're spending ₹1L+ on ads every month. Clicks come in. Some convert. Most don't.
+                        You're optimizing for immediate returns while ignoring the 97% of leads that need
+                        a conversation, not another retargeting ad.
+                    </p>
+                    <div class="problem-list">
+                        <div class="problem-item">
+                            <span class="problem-icon problem-icon-bad">✕</span>
+                            <span>Ad fatigue kills your CAC over time</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon problem-icon-bad">✕</span>
+                            <span>Cold leads stay cold without personal outreach</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon problem-icon-bad">✕</span>
+                            <span>Human sales teams can't scale conversations</span>
+                        </div>
+                        <div class="problem-item">
+                            <span class="problem-icon problem-icon-bad">✕</span>
+                            <span>ROAS obsession ignores lifetime customer value</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="problem-visual reveal">
+                    <div class="comparison-card">
+                        <div class="comparison-side comparison-old">
+                            <span class="comparison-label">Traditional</span>
+                            <div class="comparison-metric">
+                                <span class="metric-label">Avg. Lead Response</span>
+                                <span class="metric-value metric-bad">47 hours</span>
+                            </div>
+                            <div class="comparison-metric">
+                                <span class="metric-label">Follow-up Rate</span>
+                                <span class="metric-value metric-bad">12%</span>
+                            </div>
+                            <div class="comparison-metric">
+                                <span class="metric-label">Conversion Rate</span>
+                                <span class="metric-value metric-bad">2.1%</span>
+                            </div>
+                        </div>
+                        <div class="comparison-divider">
+                            <span>vs</span>
+                        </div>
+                        <div class="comparison-side comparison-new">
+                            <span class="comparison-label comparison-label-good">With Mixup</span>
+                            <div class="comparison-metric">
+                                <span class="metric-label">Avg. Lead Response</span>
+                                <span class="metric-value metric-good">&lt; 30 sec</span>
+                            </div>
+                            <div class="comparison-metric">
+                                <span class="metric-label">Follow-up Rate</span>
+                                <span class="metric-value metric-good">100%</span>
+                            </div>
+                            <div class="comparison-metric">
+                                <span class="metric-label">Conversion Rate</span>
+                                <span class="metric-value metric-good">8.4%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section class="services" id="services">
+        <div class="container">
+            <div class="section-header reveal">
+                <span class="section-tag">What We Do</span>
+                <h2 class="section-title">AI Agents That Actually <span class="gradient-text">Talk to People</span></h2>
+                <p class="section-subtitle">Not chatbots. Not IVR menus. Real AI voices having real conversations that
+                    convert.</p>
+            </div>
+            <div class="services-grid">
+                <div class="service-card reveal" id="service-outbound">
+                    <div class="service-icon">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                            <path
+                                d="M26 20.67v3.33a2.22 2.22 0 01-2.42 2.22A22 22 0 013.78 6.42 2.22 2.22 0 016 4h3.33a2.22 2.22 0 012.22 1.91c.14 1.05.4 2.08.76 3.08a2.22 2.22 0 01-.5 2.34L10.09 13.05a17.78 17.78 0 008.86 8.86l1.72-1.72a2.22 2.22 0 012.34-.5c1 .36 2.03.62 3.08.76A2.22 2.22 0 0126 22.67z"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M18 4l8 0 0 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <path d="M26 4L18 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                    </div>
+                    <h3 class="service-title">Outbound AI Calls</h3>
+                    <p class="service-desc">Reach thousands of prospects with personalized, natural conversations. Each
+                        call adapts to the person, asking the right questions and handling objections in real time.</p>
+                    <div class="service-tags">
+                        <span class="service-tag">Lead Outreach</span>
+                        <span class="service-tag">Re-engagement</span>
+                        <span class="service-tag">Upselling</span>
+                    </div>
+                </div>
+                <div class="service-card reveal" id="service-inbound">
+                    <div class="service-icon">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                            <path
+                                d="M26 20.67v3.33a2.22 2.22 0 01-2.42 2.22A22 22 0 013.78 6.42 2.22 2.22 0 016 4h3.33a2.22 2.22 0 012.22 1.91c.14 1.05.4 2.08.76 3.08a2.22 2.22 0 01-.5 2.34L10.09 13.05a17.78 17.78 0 008.86 8.86l1.72-1.72a2.22 2.22 0 012.34-.5c1 .36 2.03.62 3.08.76A2.22 2.22 0 0126 22.67z"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M26 4l-8 0 0 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <path d="M18 4l8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                    </div>
+                    <h3 class="service-title">Inbound AI Reception</h3>
+                    <p class="service-desc">Never miss a lead again. Your AI agent answers every call instantly —
+                        qualifying inquiries, booking appointments, and routing hot leads to your sales team.</p>
+                    <div class="service-tags">
+                        <span class="service-tag">24/7 Coverage</span>
+                        <span class="service-tag">Instant Response</span>
+                        <span class="service-tag">Lead Routing</span>
+                    </div>
+                </div>
+                <div class="service-card reveal" id="service-qualify">
+                    <div class="service-icon">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                            <circle cx="16" cy="16" r="12" stroke="currentColor" stroke-width="2" />
+                            <path d="M12 16l3 3 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                    </div>
+                    <h3 class="service-title">Smart Lead Qualification</h3>
+                    <p class="service-desc">Your AI agent scores and qualifies every lead through natural conversation.
+                        Budget, timeline, decision authority — all captured without feeling like an interrogation.</p>
+                    <div class="service-tags">
+                        <span class="service-tag">BANT Scoring</span>
+                        <span class="service-tag">CRM Sync</span>
+                        <span class="service-tag">Hot Alerts</span>
+                    </div>
+                </div>
+                <div class="service-card reveal" id="service-followup">
+                    <div class="service-icon">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                            <path d="M4 12a12 12 0 0120.49-8.49" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" />
+                            <path d="M28 4v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <path d="M28 20a12 12 0 01-20.49 8.49" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" />
+                            <path d="M4 28v-6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                    </div>
+                    <h3 class="service-title">Automated Follow-Ups</h3>
+                    <p class="service-desc">80% of sales need 5+ follow-ups. Mixup handles every single one — perfectly
+                        timed, personalized callbacks that keep your pipeline warm and moving.</p>
+                    <div class="service-tags">
+                        <span class="service-tag">Drip Sequences</span>
+                        <span class="service-tag">Smart Timing</span>
+                        <span class="service-tag">Persistence</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="container">
+            <div class="section-header reveal">
+                <span class="section-tag">How It Works</span>
+                <h2 class="section-title">Live in <span class="gradient-text">Under 48 Hours</span></h2>
+                <p class="section-subtitle">No complex integrations. No months of setup. We get your AI agents calling
+                    in days, not quarters.</p>
+            </div>
+            <div class="steps-grid">
+                <div class="step-card reveal" id="step-1">
+                    <div class="step-number">01</div>
+                    <div class="step-line"></div>
+                    <h3 class="step-title">Discovery Call</h3>
+                    <p class="step-desc">We understand your business, your ideal customer, and your sales process. This
+                        shapes your AI agent's personality and conversation strategy.</p>
+                </div>
+                <div class="step-card reveal" id="step-2">
+                    <div class="step-number">02</div>
+                    <div class="step-line"></div>
+                    <h3 class="step-title">Agent Training</h3>
+                    <p class="step-desc">We configure your AI agent with your brand voice, objection handling playbook,
+                        and qualification criteria. It learns to sell like your best rep.</p>
+                </div>
+                <div class="step-card reveal" id="step-3">
+                    <div class="step-number">03</div>
+                    <div class="step-line"></div>
+                    <h3 class="step-title">Phone Setup</h3>
+                    <p class="step-desc">We assign dedicated phone numbers and connect them to your AI agent. Calls
+                        start flowing through real telephone lines — no app downloads needed.</p>
+                </div>
+                <div class="step-card reveal" id="step-4">
+                    <div class="step-number">04</div>
+                    <div class="step-line"></div>
+                    <h3 class="step-title">Scale & Optimize</h3>
+                    <p class="step-desc">Launch with a test batch, analyze conversation outcomes, fine-tune scripts,
+                        then scale to thousands of daily calls. Continuous improvement, zero downtime.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header reveal">
+                <span class="section-tag">Platform</span>
+                <h2 class="section-title">Built for <span class="gradient-text">Serious Growth</span></h2>
+                <p class="section-subtitle">Enterprise-grade infrastructure powering conversations that feel genuinely
+                    human.</p>
+            </div>
+            <div class="features-bento">
+                <div class="feature-card feature-large reveal" id="feature-voice">
+                    <div class="feature-card-inner">
+                        <div class="feature-icon-lg">
+                            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                                <rect x="14" y="4" width="12" height="20" rx="6" stroke="currentColor"
+                                    stroke-width="2" />
+                                <path d="M8 18a12 12 0 0024 0" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" />
+                                <path d="M20 30v6m-4 0h8" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <h3>Human-Grade Voice AI</h3>
+                        <p>Powered by the latest large language models with native audio understanding. Your AI agent
+                            doesn't just read scripts — it listens, understands context, and responds naturally.</p>
+                    </div>
+                </div>
+                <div class="feature-card reveal" id="feature-multi">
+                    <div class="feature-card-inner">
+                        <div class="feature-icon-lg">
+                            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                                <path d="M20 20L8 8m12 12l12-12m-12 12l-12 12m12-12l12 12" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" />
+                                <circle cx="8" cy="8" r="4" stroke="currentColor" stroke-width="2" />
+                                <circle cx="32" cy="8" r="4" stroke="currentColor" stroke-width="2" />
+                                <circle cx="8" cy="32" r="4" stroke="currentColor" stroke-width="2" />
+                                <circle cx="32" cy="32" r="4" stroke="currentColor" stroke-width="2" />
+                            </svg>
+                        </div>
+                        <h3>Concurrent Calling</h3>
+                        <p>Handle hundreds of calls simultaneously. Each conversation is independent, personalized, and
+                            fully tracked.</p>
+                    </div>
+                </div>
+                <div class="feature-card reveal" id="feature-analytics">
+                    <div class="feature-card-inner">
+                        <div class="feature-icon-lg">
+                            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                                <path d="M6 34V20l8-6 8 10 8-14 4 4" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                                <circle cx="6" cy="34" r="2" fill="currentColor" />
+                                <circle cx="14" cy="14" r="2" fill="currentColor" />
+                                <circle cx="22" cy="24" r="2" fill="currentColor" />
+                                <circle cx="30" cy="10" r="2" fill="currentColor" />
+                            </svg>
+                        </div>
+                        <h3>Deep Analytics</h3>
+                        <p>Every call transcribed, scored, and analyzed. Know exactly what's working and what's not — in
+                            real time.</p>
+                    </div>
+                </div>
+                <div class="feature-card reveal" id="feature-lang">
+                    <div class="feature-card-inner">
+                        <div class="feature-icon-lg">
+                            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                                <circle cx="20" cy="20" r="16" stroke="currentColor" stroke-width="2" />
+                                <ellipse cx="20" cy="20" rx="8" ry="16" stroke="currentColor" stroke-width="2" />
+                                <path d="M4 20h32M6 12h28M6 28h28" stroke="currentColor" stroke-width="1.5" />
+                            </svg>
+                        </div>
+                        <h3>Multi-Language</h3>
+                        <p>Your AI speaks your customer's language. Hindi, English, and regional languages with
+                            native-level fluency.</p>
+                    </div>
+                </div>
+                <div class="feature-card feature-large reveal" id="feature-integration">
+                    <div class="feature-card-inner">
+                        <div class="feature-icon-lg">
+                            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                                <path d="M12 8h-2a4 4 0 00-4 4v16a4 4 0 004 4h20a4 4 0 004-4V12a4 4 0 00-4-4h-2"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                <rect x="14" y="4" width="12" height="8" rx="2" stroke="currentColor"
+                                    stroke-width="2" />
+                                <path d="M14 22l4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" />
+                            </svg>
+                        </div>
+                        <h3>CRM & Tool Integration</h3>
+                        <p>Seamlessly connects with your existing CRM, calendar, and business tools. Call outcomes, lead
+                            scores, and transcripts sync automatically — keeping your team in the loop without any
+                            manual work.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Results / Testimonials Section -->
+    <!-- <section class="results" id="results">
+        <div class="container">
+            <div class="section-header reveal">
+                <span class="section-tag">Results</span>
+                <h2 class="section-title">What Happens When You <span class="gradient-text">Switch to Mixup</span></h2>
+            </div>
+            <div class="testimonials-grid">
+                <div class="testimonial-card reveal" id="testimonial-1">
+                    <div class="testimonial-quote">
+                        "We were spending ₹3L/month on Google Ads with 1.8% conversion. Mixup's AI agents now call every lead within 30 seconds. Our conversion rate jumped to 7.2% and our CAC dropped by 60%."
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">RK</div>
+                        <div class="author-info">
+                            <span class="author-name">Rajesh Kumar</span>
+                            <span class="author-role">CEO, FinServe Solutions</span>
+                        </div>
+                    </div>
+                    <div class="testimonial-metric">
+                        <span class="testimonial-metric-value">4x</span>
+                        <span class="testimonial-metric-label">More Conversions</span>
+                    </div>
+                </div>
+                <div class="testimonial-card reveal" id="testimonial-2">
+                    <div class="testimonial-quote">
+                        "Our support team was drowning in calls. Now our AI agent handles 80% of inbound calls, qualifies leads, and books demos directly. Our human team focuses only on closing."
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">PS</div>
+                        <div class="author-info">
+                            <span class="author-name">Priya Sharma</span>
+                            <span class="author-role">Head of Sales, EduTech Pro</span>
+                        </div>
+                    </div>
+                    <div class="testimonial-metric">
+                        <span class="testimonial-metric-value">80%</span>
+                        <span class="testimonial-metric-label">Calls Automated</span>
+                    </div>
+                </div>
+                <div class="testimonial-card reveal" id="testimonial-3">
+                    <div class="testimonial-quote">
+                        "The follow-up persistence is insane. Our AI agent handles 5-touch sequences that our sales team never had time for. Pipeline velocity increased 3x in the first month."
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">AV</div>
+                        <div class="author-info">
+                            <span class="author-name">Arjun Verma</span>
+                            <span class="author-role">Founder, PropDeal</span>
+                        </div>
+                    </div>
+                    <div class="testimonial-metric">
+                        <span class="testimonial-metric-value">3x</span>
+                        <span class="testimonial-metric-label">Pipeline Velocity</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section> -->
+
+    <!-- CTA Section -->
+    <section class="cta-section" id="contact">
+        <div class="container">
+            <div class="cta-card reveal">
+                <div class="cta-content">
+                    <h2 class="cta-title">Ready to Transform Your <span class="gradient-text">Customer
+                            Conversations?</span></h2>
+                    <p class="cta-subtitle">Book a 15-minute demo and see Mixup's AI agent call you live. No
+                        commitments, no fluff — just a conversation about how we can grow your business.</p>
+                    <form class="cta-form" id="contactForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <input type="text" id="nameInput" placeholder="Your Name" required>
+                            </div>
+                            <div class="form-group">
+                                <input type="tel" id="phoneInput" placeholder="Phone Number" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <input type="email" id="emailInput" placeholder="Work Email" required>
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="companyInput" placeholder="Company Name">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                            <span>Book Your Demo</span>
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </button>
+                    </form>
+                    <p class="cta-note">Free demo • No credit card • Setup in 48 hours</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="#" class="nav-logo">
+                        <img src="logo.jpeg" alt="Mixup" class="logo-img logo-img-footer">
+                    </a>
+                    <p class="footer-desc">AI-powered agentic calls that build real customer relationships at scale.</p>
+                </div>
+                <div class="footer-links-group">
+                    <h4>Platform</h4>
+                    <a href="#services">Outbound Calls</a>
+                    <a href="#services">Inbound Reception</a>
+                    <a href="#services">Lead Qualification</a>
+                    <a href="#features">Analytics</a>
+                </div>
+                <div class="footer-links-group">
+                    <h4>Company</h4>
+                    <a href="#about">About Us</a>
+                    <a href="#contact">Contact</a>
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                </div>
+                <div class="footer-links-group">
+                    <h4>Connect</h4>
+                    <a href="#">LinkedIn</a>
+                    <a href="#">Twitter</a>
+                    <a href="mailto:hello@mixup.ai">hello@mixup.ai</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Mixup. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Instant Call Modal -->
+    <div id="instantCallModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeInstantCallModal()">&times;</button>
+            <div class="modal-header">
+                <h3>Experience the AI Live</h3>
+                <p>Enter your phone number and our AI agent will call you instantly. No humans involved.</p>
+            </div>
+            <div class="modal-body">
+                <div class="input-wrapper">
+                    <span class="country-code">+</span>
+                    <input type="tel" id="modalPhoneInput" placeholder="1 234 567 8900" class="modal-input">
+                </div>
+                <button class="btn btn-primary btn-full" id="callMeBtn" onclick="initiateCall()">
+                    <span>Call Me Now</span>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="margin-left: 8px;">
+                        <path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </button>
+                <div id="callStatus" class="call-status" style="display: none;">
+                    <div class="waveform-small">
+                        <div class="wave-bar-sm" style="--delay: 0"></div>
+                        <div class="wave-bar-sm" style="--delay: 1"></div>
+                        <div class="wave-bar-sm" style="--delay: 2"></div>
+                    </div>
+                    <span>Calling you now... Make sure your phone is not on silent!</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
