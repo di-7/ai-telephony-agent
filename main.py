@@ -118,14 +118,44 @@ def start_health_server():
 class MyVoiceAgent(Agent):
     def __init__(self):
         super().__init__(
-            instructions="You are an expert AI sales representative for Mixup, a company that provides AI-powered agentic calls for businesses. Keep your responses concise, friendly, and under 2 sentences. Your goal is to show off how natural an AI voice can sound and answer basic questions about Mixup's outbound calling and inbound reception services.",
+            instructions="You are an AI assistant for Mixup. You are doing a 1-minute live demo. Your goal is to briefly take their general info (name, company) so our human team can revert back with a full demo. Keep responses extremely short and conversational.",
         )
 
     async def on_enter(self) -> None:
-        await self.session.say("Hello! I'm your real-time assistant. How can I help you today?")
+        await self.session.say("Hi! Thanks for checking out our site. I'm an AI assistant. Should I have my human team reach out to schedule a full demo?")
 
     async def on_exit(self) -> None:
-        await self.session.say("Goodbye! It was great talking with you!")
+        # Avoid saying goodbye twice if we already said it in the timeout block
+        pass
+
+def send_demo_alert_email():
+    """Send an email alert using Resend API (no external deps)"""
+    import urllib.request
+    import json
+    import os
+    
+    resend_key = os.getenv("RESEND_API_KEY")
+    if not resend_key:
+        logging.warning("RESEND_API_KEY not found. Skipping email alert.")
+        return
+
+    url = "https://api.resend.com/emails"
+    payload = json.dumps({
+        "from": "onboarding@resend.dev",
+        "to": os.getenv("TEAM_EMAIL", "hello@mixup.ai"),
+        "subject": "New AI Demo Call Finished",
+        "html": "<p>A 1-minute AI demo call has just been completed. Please check your call logs and reach out to the prospect with the general info collected.</p>"
+    }).encode('utf-8')
+
+    req = urllib.request.Request(url, data=payload, method="POST")
+    req.add_header("Authorization", f"Bearer {resend_key}")
+    req.add_header("Content-Type", "application/json")
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            logging.info(f"Resend email sent: {response.read()}")
+    except Exception as e:
+        logging.error(f"Failed to send email via Resend: {e}")
 
 async def start_session(context: JobContext):
     # Configure the Gemini model for real-time voice
@@ -143,10 +173,21 @@ async def start_session(context: JobContext):
     try:
         await context.connect()
         await session.start()
-        await asyncio.Event().wait()
+        
+        # Restrict demo to exactly 1 minute
+        try:
+            await asyncio.wait_for(asyncio.Event().wait(), timeout=60.0)
+        except asyncio.TimeoutError:
+            logging.info("1 minute demo time limit reached.")
+            await session.say("That concludes our 1 minute demo! I'll have the team email you with those details. Have a great day!")
+            await asyncio.sleep(4) # Let the audio finish playing
+            
     finally:
         await session.close()
         await context.shutdown()
+        
+        # Trigger follow-up email alert to the team
+        send_demo_alert_email()
 
 def make_context() -> JobContext:
     room_options = RoomOptions()
