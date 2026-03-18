@@ -13,22 +13,27 @@ load_dotenv()
 
 # --- Health check server (keeps Render free tier alive) ---
 class HealthHandler(BaseHTTPRequestHandler):
+    def _send_cors_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+
     def do_GET(self):
         if self.path == '/' or self.path == '/health':
             self.send_response(200)
+            self._send_cors_headers()
             self.send_header("Content-Type", "text/plain")
             self.end_headers()
             self.wfile.write(b"AI Telephony Agent is running")
         else:
             self.send_response(404)
+            self._send_cors_headers()
             self.end_headers()
 
     def do_OPTIONS(self):
         # Handle CORS preflight for browser fetch()
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self._send_cors_headers()
         self.end_headers()
 
     def do_POST(self):
@@ -49,7 +54,6 @@ class HealthHandler(BaseHTTPRequestHandler):
                 
                 import urllib.request
                 import urllib.error
-                import json
                 import os
 
                 videosdk_token = os.getenv("VIDEOSDK_AUTH_TOKEN")
@@ -58,6 +62,7 @@ class HealthHandler(BaseHTTPRequestHandler):
                 if not videosdk_token or not gateway_id:
                     logging.error("Missing VIDEOSDK_AUTH_TOKEN or SIP_GATEWAY_ID in .env")
                     self.send_response(500)
+                    self._send_cors_headers()
                     self.end_headers()
                     self.wfile.write(b'{"error": "Server misconfiguration. Missing API keys or Gateway ID."}')
                     return
@@ -67,7 +72,6 @@ class HealthHandler(BaseHTTPRequestHandler):
                 payload = json.dumps({
                     "gatewayId": gateway_id,
                     "sipCallTo": phone_number
-                    # If you need a specific room, you can pass "destinationRoomId" as well.
                 }).encode('utf-8')
 
                 req = urllib.request.Request(url, data=payload, method="POST")
@@ -81,21 +85,23 @@ class HealthHandler(BaseHTTPRequestHandler):
                 except urllib.error.URLError as e:
                     logging.error(f"VideoSDK API failed: {e}")
                     self.send_response(500)
+                    self._send_cors_headers()
                     self.end_headers()
                     self.wfile.write(b'{"error": "Failed to trigger outbound call via VideoSDK."}')
                     return
                 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
+                self._send_cors_headers()
                 self.end_headers()
                 
-                response = {"status": "success", "message": f"Calling {phone_number}..."}
-                self.wfile.write(json.dumps(response).encode())
+                response_data = {"status": "success", "message": f"Calling {phone_number}..."}
+                self.wfile.write(json.dumps(response_data).encode())
 
             except Exception as e:
                 logging.error(f"Failed to parse request: {e}")
                 self.send_response(400)
+                self._send_cors_headers()
                 self.end_headers()
                 self.wfile.write(b"Bad Request")
 
