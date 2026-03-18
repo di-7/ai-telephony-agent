@@ -142,7 +142,7 @@ def send_demo_alert_email():
     url = "https://api.resend.com/emails"
     payload = json.dumps({
         "from": "onboarding@resend.dev",
-        "to": os.getenv("TEAM_EMAIL", "hello@mixup.ai"),
+        "to": os.getenv("TEAM_EMAIL", "dukeindustries7@gmail.com"),
         "subject": "New AI Demo Call Finished",
         "html": "<p>A 1-minute AI demo call has just been completed. Please check your call logs and reach out to the prospect with the general info collected.</p>"
     }).encode('utf-8')
