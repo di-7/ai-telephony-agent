@@ -171,6 +171,8 @@ img {
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 24px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* --- Reveal Animation --- */
@@ -1267,6 +1269,18 @@ img {
 }
 
 @media (max-width: 768px) {
+    .container {
+        padding: 0 16px;
+    }
+
+    .nav-container {
+        padding: 0 16px;
+    }
+
+    .logo-img {
+        height: 50px;
+    }
+
     .nav-links {
         display: none;
         position: fixed;
@@ -1274,13 +1288,15 @@ img {
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(8, 8, 12, 0.98);
+        background: rgba(255, 255, 255, 0.98);
         backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
         flex-direction: column;
         justify-content: center;
         align-items: center;
         gap: 28px;
         z-index: 999;
+        padding: 80px 24px 40px;
     }
 
     .nav-links.active {
@@ -1289,6 +1305,7 @@ img {
 
     .nav-links .nav-link {
         font-size: 1.2rem;
+        color: var(--text-primary);
     }
 
     .nav-toggle {
@@ -1308,13 +1325,31 @@ img {
         transform: rotate(-45deg) translate(5px, -5px);
     }
 
+    .hero {
+        padding: 100px 0 60px;
+    }
+
+    .hero-container {
+        flex-direction: column;
+        gap: 40px;
+    }
+
     .hero-title {
-        font-size: clamp(2rem, 8vw, 3rem);
+        font-size: clamp(1.8rem, 7vw, 2.8rem);
+    }
+
+    .hero-subtitle {
+        font-size: 1rem;
     }
 
     .hero-actions {
         flex-direction: column;
-        align-items: center;
+        align-items: stretch;
+    }
+
+    .hero-actions .btn {
+        width: 100%;
+        justify-content: center;
     }
 
     .problem-grid {
@@ -1327,7 +1362,7 @@ img {
     }
 
     .steps-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: 1fr;
     }
 
     .features-bento {
@@ -1351,34 +1386,72 @@ img {
     }
 
     .stat-number {
-        font-size: 2.2rem;
+        font-size: 2rem;
     }
 
     .cta-card {
-        padding: 40px 24px;
+        padding: 32px 16px;
+    }
+
+    .cta-title {
+        font-size: clamp(1.5rem, 5vw, 2rem);
     }
 
     .form-row {
         grid-template-columns: 1fr;
     }
 
+    .phone-group {
+        flex-direction: row;
+    }
+
+    .phone-group .country-select {
+        min-width: 90px;
+    }
+
     .footer-grid {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr;
         gap: 32px;
     }
 
     .footer-brand {
-        grid-column: span 2;
+        grid-column: span 1;
     }
 
     .waveform-container {
-        padding: 28px 24px 20px;
+        padding: 28px 16px 20px;
+    }
+
+    .section-title {
+        font-size: clamp(1.6rem, 5vw, 2.5rem);
+    }
+
+    .section-subtitle {
+        font-size: 1rem;
+    }
+
+    .section-header {
+        margin-bottom: 40px;
+    }
+
+    .modal-content {
+        padding: 28px 20px;
+        width: 94%;
+        max-width: 100%;
+    }
+
+    .modal-header h3 {
+        font-size: 1.4rem;
     }
 }
 
 @media (max-width: 480px) {
-    .steps-grid {
-        grid-template-columns: 1fr;
+    .container {
+        padding: 0 12px;
+    }
+
+    .nav-container {
+        padding: 0 12px;
     }
 
     .stats-grid {
@@ -1386,12 +1459,17 @@ img {
         grid-template-columns: 1fr 1fr;
     }
 
-    .footer-grid {
-        grid-template-columns: 1fr;
+    .hero-title {
+        font-size: 1.6rem;
     }
 
-    .footer-brand {
-        grid-column: span 1;
+    .btn {
+        padding: 12px 20px;
+        font-size: 0.9rem;
+    }
+
+    .btn-lg {
+        padding: 14px 24px;
     }
 }
 /* ==========================================
