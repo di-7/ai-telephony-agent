@@ -39,7 +39,11 @@ class HealthHandler(BaseHTTPRequestHandler):
             import json
             try:
                 data = json.loads(post_data)
-                phone_number = data.get("to_number")
+                phone_number = data.get("to_number", "").strip()
+                
+                # Ensure E.164 format (must start with +)
+                if phone_number and not phone_number.startswith('+'):
+                    phone_number = '+' + phone_number
                 
                 logging.info(f"Received request to call: {phone_number}")
                 
