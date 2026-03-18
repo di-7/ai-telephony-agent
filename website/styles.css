@@ -168,7 +168,7 @@ img {
 
 /* --- Container --- */
 .container {
-    max-width: 1400px;
+    max-width: 98%;
     margin: 0 auto;
     padding: 0 40px;
     width: 100%;
@@ -305,7 +305,7 @@ img {
 }
 
 .nav-container {
-    max-width: 1400px;
+    max-width: 98%;
     margin: 0 auto;
     padding: 0 40px;
     display: flex;
@@ -1472,6 +1472,7 @@ img {
         padding: 14px 24px;
     }
 }
+
 /* ==========================================
    INSTANT CALL MODAL
    ========================================== */
