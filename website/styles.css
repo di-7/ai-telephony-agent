@@ -168,9 +168,9 @@ img {
 
 /* --- Container --- */
 .container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
-    padding: 0 24px;
+    padding: 0 40px;
     width: 100%;
     box-sizing: border-box;
 }
@@ -305,9 +305,9 @@ img {
 }
 
 .nav-container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
-    padding: 0 24px;
+    padding: 0 40px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -415,9 +415,9 @@ img {
 }
 
 .hero-container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
-    padding: 0 24px;
+    padding: 0 40px;
     text-align: center;
 }
 
