@@ -134,15 +134,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const email = document.getElementById('emailInput').value;
             const company = document.getElementById('companyInput').value;
 
-            // Show success state
+            // Show success state and simulate ring
             submitBtn.innerHTML = `
-                <span>✓ Demo Booked!</span>
+                <span>📞 Calling you now...</span>
             `;
             submitBtn.style.background = 'linear-gradient(135deg, #22c55e, #14b8a6)';
             submitBtn.style.boxShadow = '0 4px 20px rgba(34, 197, 94, 0.3)';
             submitBtn.disabled = true;
 
-            // Reset after 3 seconds
+            // Trigger actual call
+            fetch('https://ai-telephony-agent.onrender.com/api/make-call', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    to_number: phone, 
+                    name: name,
+                    email: email,
+                    company: company
+                })
+            }).catch(err => console.error("CTA call trigger failed:", err));
+
+            // Reset after 10 seconds
             setTimeout(() => {
                 submitBtn.innerHTML = `
                     <span>Book Your Demo</span>
@@ -154,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 submitBtn.style.boxShadow = '';
                 submitBtn.disabled = false;
                 contactForm.reset();
-            }, 3000);
+            }, 10000);
         });
     }
 
