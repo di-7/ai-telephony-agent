@@ -45,12 +45,15 @@ class HealthHandler(BaseHTTPRequestHandler):
             try:
                 data = json.loads(post_data)
                 phone_number = data.get("to_number", "").strip()
+                name = data.get("name", "there")
+                visitor_email = data.get("email", "")
+                company = data.get("company", "")
                 
                 # Ensure E.164 format (must start with +)
                 if phone_number and not phone_number.startswith('+'):
                     phone_number = '+' + phone_number
                 
-                logging.info(f"Received request to call: {phone_number}")
+                logging.info(f"Received request to call: {phone_number} from {name} ({visitor_email})")
                 
                 import urllib.request
                 import urllib.error
@@ -58,6 +61,7 @@ class HealthHandler(BaseHTTPRequestHandler):
 
                 videosdk_token = os.getenv("VIDEOSDK_AUTH_TOKEN")
                 gateway_id = os.getenv("SIP_GATEWAY_ID")
+                resend_key = os.getenv("RESEND_API_KEY")
 
                 if not videosdk_token or not gateway_id:
                     logging.error("Missing VIDEOSDK_AUTH_TOKEN or SIP_GATEWAY_ID in .env")
@@ -67,14 +71,14 @@ class HealthHandler(BaseHTTPRequestHandler):
                     self.wfile.write(b'{"error": "Server misconfiguration. Missing API keys or Gateway ID."}')
                     return
 
-                # --- VideoSDK Outbound SIP Call API ---
-                url = "https://api.videosdk.live/v2/sip/call"
-                payload = json.dumps({
+                # --- 1. VideoSDK Outbound SIP Call API ---
+                call_url = "https://api.videosdk.live/v2/sip/call"
+                call_payload = json.dumps({
                     "gatewayId": gateway_id,
                     "sipCallTo": phone_number
                 }).encode('utf-8')
 
-                req = urllib.request.Request(url, data=payload, method="POST")
+                req = urllib.request.Request(call_url, data=call_payload, method="POST")
                 req.add_header("Authorization", str(videosdk_token))
                 req.add_header("Content-Type", "application/json")
 
@@ -84,12 +88,35 @@ class HealthHandler(BaseHTTPRequestHandler):
                         logging.info(f"VideoSDK call triggered successfully: {api_response}")
                 except urllib.error.URLError as e:
                     logging.error(f"VideoSDK API failed: {e}")
-                    self.send_response(500)
-                    self._send_cors_headers()
-                    self.end_headers()
-                    self.wfile.write(b'{"error": "Failed to trigger outbound call via VideoSDK."}')
-                    return
+                    # We will continue to try and send the email even if the call failed
                 
+                # --- 2. Resend API Email (cta section) ---
+                if visitor_email and resend_key:
+                    email_url = "https://api.resend.com/emails"
+                    email_html = f"""
+                    <p>Hi {name},</p>
+                    <p>Thanks for trying out the Mixup AI Demo! The AI should have just dialed your number.</p>
+                    <p>Could you reply to this email with some general details about {company or 'your business'} requirements? Our human team will review it and revert back to schedule a full strategy session.</p>
+                    <p>Best,<br>The Mixup Team</p>
+                    """
+                    
+                    email_payload = json.dumps({
+                        "from": "Mixup Demo <onboarding@resend.dev>",
+                        "to": visitor_email,
+                        "subject": "Following up on your Mixup AI Demo",
+                        "html": email_html
+                    }).encode('utf-8')
+                    
+                    email_req = urllib.request.Request(email_url, data=email_payload, method="POST")
+                    email_req.add_header("Authorization", f"Bearer {resend_key}")
+                    email_req.add_header("Content-Type", "application/json")
+                    
+                    try:
+                        with urllib.request.urlopen(email_req) as response:
+                            logging.info(f"Resend email sent to visitor: {response.read()}")
+                    except Exception as email_err:
+                        logging.error(f"Failed to send visitor email via Resend: {email_err}")
+
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self._send_cors_headers()
@@ -128,35 +155,6 @@ class MyVoiceAgent(Agent):
         # Avoid saying goodbye twice if we already said it in the timeout block
         pass
 
-def send_demo_alert_email():
-    """Send an email alert using Resend API (no external deps)"""
-    import urllib.request
-    import json
-    import os
-    
-    resend_key = os.getenv("RESEND_API_KEY")
-    if not resend_key:
-        logging.warning("RESEND_API_KEY not found. Skipping email alert.")
-        return
-
-    url = "https://api.resend.com/emails"
-    payload = json.dumps({
-        "from": "onboarding@resend.dev",
-        "to": os.getenv("TEAM_EMAIL", "dukeindustries7@gmail.com"),
-        "subject": "New AI Demo Call Finished",
-        "html": "<p>A 1-minute AI demo call has just been completed. Please check your call logs and reach out to the prospect with the general info collected.</p>"
-    }).encode('utf-8')
-
-    req = urllib.request.Request(url, data=payload, method="POST")
-    req.add_header("Authorization", f"Bearer {resend_key}")
-    req.add_header("Content-Type", "application/json")
-
-    try:
-        with urllib.request.urlopen(req) as response:
-            logging.info(f"Resend email sent: {response.read()}")
-    except Exception as e:
-        logging.error(f"Failed to send email via Resend: {e}")
-
 async def start_session(context: JobContext):
     # Configure the Gemini model for real-time voice
     model = GeminiRealtime(
@@ -185,9 +183,6 @@ async def start_session(context: JobContext):
     finally:
         await session.close()
         await context.shutdown()
-        
-        # Trigger follow-up email alert to the team
-        send_demo_alert_email()
 
 def make_context() -> JobContext:
     room_options = RoomOptions()
