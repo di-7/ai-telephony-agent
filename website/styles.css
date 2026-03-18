@@ -1489,6 +1489,48 @@ img {
     font-weight: 500;
 }
 
+.country-select {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    padding: 10px 8px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.country-select:focus {
+    border-color: var(--accent-purple);
+}
+
+/* CTA form phone group */
+.phone-group {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.phone-group .country-select {
+    min-width: 100px;
+    flex-shrink: 0;
+}
+
+.phone-group input {
+    flex: 1;
+}
+
+/* Modal country select */
+.modal-country-select {
+    margin-right: 8px;
+    border: none;
+    background: transparent;
+    padding: 8px 4px;
+}
+
 .modal-input {
     flex: 1;
     border: none;

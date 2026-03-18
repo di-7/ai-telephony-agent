@@ -130,9 +130,13 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
 
             const name = document.getElementById('nameInput').value;
-            const phone = document.getElementById('phoneInput').value;
+            const rawPhone = document.getElementById('phoneInput').value.trim();
+            const countryCode = document.getElementById('ctaCountryCode').value;
             const email = document.getElementById('emailInput').value;
             const company = document.getElementById('companyInput').value;
+            
+            // Combine country code + phone number
+            const phone = countryCode + rawPhone.replace(/^\+/, '').replace(/^0+/, '');
 
             // Show success state and simulate ring
             submitBtn.innerHTML = `
@@ -259,11 +263,16 @@ document.addEventListener('click', (e) => {
 });
 
 function initiateCall() {
-    const phoneInput = document.getElementById('modalPhoneInput').value;
-    if (!phoneInput || phoneInput.length < 5) {
+    const rawPhone = document.getElementById('modalPhoneInput').value.trim();
+    const countryCode = document.getElementById('modalCountryCode').value;
+    
+    if (!rawPhone || rawPhone.length < 5) {
         alert("Please enter a valid phone number.");
         return;
     }
+    
+    // Combine country code + phone number (strip leading + or 0 from raw input)
+    const phoneInput = countryCode + rawPhone.replace(/^\+/, '').replace(/^0+/, '');
 
     const callStatus = document.getElementById('callStatus');
     const callMeBtn = document.getElementById('callMeBtn');
