@@ -11,33 +11,30 @@ logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 
-def delayed_team_alert(phone_number, name, email, company, resend_key):
-    import time
+def send_team_alert(phone_number, name, email, company, resend_key):
+    """Send email to team immediately. Runs in a separate thread for non-blocking."""
     import urllib.request
     import json
     import os
-    import logging
-
-    logging.info(f"Starting 65s timer for post-demo email alert for {phone_number}")
-    time.sleep(65)
 
     if not resend_key:
+        logging.warning("RESEND_API_KEY not set. Skipping team email.")
         return
 
     url = "https://api.resend.com/emails"
     
-    html = f"<p>A 1-minute AI demo call has just been completed for <strong>{phone_number}</strong>.</p>"
+    html = f"<p>An AI demo call has just been triggered for <strong>{phone_number}</strong>.</p>"
     if email:
         html += f"<h3>CTA Form Details:</h3><ul><li>Name: {name}</li><li>Email: {email}</li><li>Company: {company}</li></ul>"
     else:
-        html += "<p>They used the Instant Call Modal (No CTA form details provided).</p>"
+        html += "<p>They used the Instant Call Modal (no CTA form details provided).</p>"
         
-    html += "<p>Please check your call transcripts and follow up with the prospect.</p>"
+    html += "<p>The call is limited to 1 minute. Please check your call transcripts and follow up with the prospect.</p>"
     
     payload = json.dumps({
         "from": "Mixup Demo <onboarding@resend.dev>",
         "to": os.getenv("TEAM_EMAIL", "dukeindustries7@gmail.com"),
-        "subject": f"AI Demo Finished - {phone_number}",
+        "subject": f"AI Demo Call Started - {phone_number}",
         "html": html
     }).encode('utf-8')
 
@@ -47,9 +44,9 @@ def delayed_team_alert(phone_number, name, email, company, resend_key):
 
     try:
         with urllib.request.urlopen(req) as response:
-            logging.info(f"Team target email sent after delay: {response.read()}")
+            logging.info(f"Team alert email sent: {response.read()}")
     except Exception as e:
-        logging.error(f"Failed to send delayed team email via Resend: {e}")
+        logging.error(f"Failed to send team email via Resend: {e}")
 
 # --- Health check server (keeps Render free tier alive) ---
 class HealthHandler(BaseHTTPRequestHandler):
@@ -129,8 +126,9 @@ class HealthHandler(BaseHTTPRequestHandler):
                 except urllib.error.URLError as e:
                     logging.error(f"VideoSDK API failed: {e}")
                     
-                import threading
-                threading.Thread(target=delayed_team_alert, args=(phone_number, name, visitor_email, company, resend_key), daemon=True).start()
+                # Send team alert email immediately (non-daemon so it completes)
+                email_thread = threading.Thread(target=send_team_alert, args=(phone_number, name, visitor_email, company, resend_key))
+                email_thread.start()
 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
@@ -160,14 +158,13 @@ def start_health_server():
 class MyVoiceAgent(Agent):
     def __init__(self):
         super().__init__(
-            instructions="You are an AI assistant for Mixup. You are doing a 1-minute live demo. Your goal is to briefly take their general info (name, company) so our human team can revert back with a full demo. Keep responses extremely short and conversational.",
+            instructions="You are an AI assistant for Mixup. You are doing a 1-minute live demo. Your goal is to briefly take their general info (name, company) so our human team can revert back with a full demo. Keep responses extremely short and conversational. After about 50 seconds or when you have their info, wrap up by saying: That wraps up our quick demo! Our team will reach out to you soon. Thanks for your time!",
         )
 
     async def on_enter(self) -> None:
         await self.session.say("Hi! Thanks for checking out our site. I'm an AI assistant. Should I have my human team reach out to schedule a full demo?")
 
     async def on_exit(self) -> None:
-        # Avoid saying goodbye twice if we already said it in the timeout block
         pass
 
 async def start_session(context: JobContext):
@@ -187,13 +184,9 @@ async def start_session(context: JobContext):
         await context.connect()
         await session.start()
         
-        # Restrict demo to exactly 1 minute
-        try:
-            await asyncio.wait_for(asyncio.Event().wait(), timeout=60.0)
-        except asyncio.TimeoutError:
-            logging.info("1 minute demo time limit reached.")
-            await session.say("That concludes our 1 minute demo! I'll have the team email you with those details. Have a great day!")
-            await asyncio.sleep(4) # Let the audio finish playing
+        # Hard limit: disconnect after 60 seconds
+        await asyncio.sleep(60)
+        logging.info("1 minute demo time limit reached. Closing session.")
             
     finally:
         await session.close()
