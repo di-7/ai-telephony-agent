@@ -12,17 +12,16 @@ logging.basicConfig(level=logging.INFO)
 load_dotenv()
 
 def send_team_alert(phone_number, name, email, company, resend_key):
-    """Send email to team immediately. Runs in a separate thread for non-blocking."""
-    import urllib.request
-    import json
+    """Send email to team immediately using Resend SDK."""
+    import resend
     import os
 
     if not resend_key:
         logging.warning("RESEND_API_KEY not set. Skipping team email.")
         return
 
-    url = "https://api.resend.com/emails"
-    
+    resend.api_key = resend_key
+
     html = f"<p>An AI demo call has just been triggered for <strong>{phone_number}</strong>.</p>"
     if email:
         html += f"<h3>CTA Form Details:</h3><ul><li>Name: {name}</li><li>Email: {email}</li><li>Company: {company}</li></ul>"
@@ -30,24 +29,15 @@ def send_team_alert(phone_number, name, email, company, resend_key):
         html += "<p>They used the Instant Call Modal (no CTA form details provided).</p>"
         
     html += "<p>The call is limited to 1 minute. Please check your call transcripts and follow up with the prospect.</p>"
-    
-    payload = json.dumps({
-        "from": "onboarding@resend.dev",
-        "to": [os.getenv("TEAM_EMAIL", "dukeindustries7@gmail.com")],
-        "subject": f"AI Demo Call Started - {phone_number}",
-        "html": html
-    }).encode('utf-8')
-
-    req = urllib.request.Request(url, data=payload, method="POST")
-    req.add_header("Authorization", f"Bearer {resend_key}")
-    req.add_header("Content-Type", "application/json")
 
     try:
-        with urllib.request.urlopen(req) as response:
-            logging.info(f"Team alert email sent: {response.read()}")
-    except urllib.request.HTTPError as e:
-        error_body = e.read().decode() if hasattr(e, 'read') else str(e)
-        logging.error(f"Resend API error {e.code}: {error_body}")
+        r = resend.Emails.send({
+            "from": "onboarding@resend.dev",
+            "to": [os.getenv("TEAM_EMAIL", "dukeindustries7@gmail.com")],
+            "subject": f"AI Demo Call Started - {phone_number}",
+            "html": html
+        })
+        logging.info(f"Team alert email sent: {r}")
     except Exception as e:
         logging.error(f"Failed to send team email via Resend: {e}")
 
