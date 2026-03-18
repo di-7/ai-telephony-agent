@@ -32,8 +32,8 @@ def send_team_alert(phone_number, name, email, company, resend_key):
     html += "<p>The call is limited to 1 minute. Please check your call transcripts and follow up with the prospect.</p>"
     
     payload = json.dumps({
-        "from": "Mixup Demo <onboarding@resend.dev>",
-        "to": os.getenv("TEAM_EMAIL", "dukeindustries7@gmail.com"),
+        "from": "onboarding@resend.dev",
+        "to": [os.getenv("TEAM_EMAIL", "dukeindustries7@gmail.com")],
         "subject": f"AI Demo Call Started - {phone_number}",
         "html": html
     }).encode('utf-8')
@@ -45,6 +45,9 @@ def send_team_alert(phone_number, name, email, company, resend_key):
     try:
         with urllib.request.urlopen(req) as response:
             logging.info(f"Team alert email sent: {response.read()}")
+    except urllib.request.HTTPError as e:
+        error_body = e.read().decode() if hasattr(e, 'read') else str(e)
+        logging.error(f"Resend API error {e.code}: {error_body}")
     except Exception as e:
         logging.error(f"Failed to send team email via Resend: {e}")
 
