@@ -11,6 +11,46 @@ logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 
+def delayed_team_alert(phone_number, name, email, company, resend_key):
+    import time
+    import urllib.request
+    import json
+    import os
+    import logging
+
+    logging.info(f"Starting 65s timer for post-demo email alert for {phone_number}")
+    time.sleep(65)
+
+    if not resend_key:
+        return
+
+    url = "https://api.resend.com/emails"
+    
+    html = f"<p>A 1-minute AI demo call has just been completed for <strong>{phone_number}</strong>.</p>"
+    if email:
+        html += f"<h3>CTA Form Details:</h3><ul><li>Name: {name}</li><li>Email: {email}</li><li>Company: {company}</li></ul>"
+    else:
+        html += "<p>They used the Instant Call Modal (No CTA form details provided).</p>"
+        
+    html += "<p>Please check your call transcripts and follow up with the prospect.</p>"
+    
+    payload = json.dumps({
+        "from": "Mixup Demo <onboarding@resend.dev>",
+        "to": os.getenv("TEAM_EMAIL", "dukeindustries7@gmail.com"),
+        "subject": f"AI Demo Finished - {phone_number}",
+        "html": html
+    }).encode('utf-8')
+
+    req = urllib.request.Request(url, data=payload, method="POST")
+    req.add_header("Authorization", f"Bearer {resend_key}")
+    req.add_header("Content-Type", "application/json")
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            logging.info(f"Team target email sent after delay: {response.read()}")
+    except Exception as e:
+        logging.error(f"Failed to send delayed team email via Resend: {e}")
+
 # --- Health check server (keeps Render free tier alive) ---
 class HealthHandler(BaseHTTPRequestHandler):
     def _send_cors_headers(self):
@@ -88,34 +128,9 @@ class HealthHandler(BaseHTTPRequestHandler):
                         logging.info(f"VideoSDK call triggered successfully: {api_response}")
                 except urllib.error.URLError as e:
                     logging.error(f"VideoSDK API failed: {e}")
-                    # We will continue to try and send the email even if the call failed
-                
-                # --- 2. Resend API Email (cta section) ---
-                if visitor_email and resend_key:
-                    email_url = "https://api.resend.com/emails"
-                    email_html = f"""
-                    <p>Hi {name},</p>
-                    <p>Thanks for trying out the Mixup AI Demo! The AI should have just dialed your number.</p>
-                    <p>Could you reply to this email with some general details about {company or 'your business'} requirements? Our human team will review it and revert back to schedule a full strategy session.</p>
-                    <p>Best,<br>The Mixup Team</p>
-                    """
                     
-                    email_payload = json.dumps({
-                        "from": "Mixup Demo <onboarding@resend.dev>",
-                        "to": visitor_email,
-                        "subject": "Following up on your Mixup AI Demo",
-                        "html": email_html
-                    }).encode('utf-8')
-                    
-                    email_req = urllib.request.Request(email_url, data=email_payload, method="POST")
-                    email_req.add_header("Authorization", f"Bearer {resend_key}")
-                    email_req.add_header("Content-Type", "application/json")
-                    
-                    try:
-                        with urllib.request.urlopen(email_req) as response:
-                            logging.info(f"Resend email sent to visitor: {response.read()}")
-                    except Exception as email_err:
-                        logging.error(f"Failed to send visitor email via Resend: {email_err}")
+                import threading
+                threading.Thread(target=delayed_team_alert, args=(phone_number, name, visitor_email, company, resend_key), daemon=True).start()
 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
@@ -155,35 +170,6 @@ class MyVoiceAgent(Agent):
         # Avoid saying goodbye twice if we already said it in the timeout block
         pass
 
-def send_demo_alert_email():
-    """Send an email alert to the company using Resend API"""
-    import urllib.request
-    import json
-    import os
-    
-    resend_key = os.getenv("RESEND_API_KEY")
-    if not resend_key:
-        logging.warning("RESEND_API_KEY not found. Skipping company email alert.")
-        return
-
-    url = "https://api.resend.com/emails"
-    payload = json.dumps({
-        "from": "Mixup Demo <onboarding@resend.dev>",
-        "to": os.getenv("TEAM_EMAIL", "dukeindustries7@gmail.com"),
-        "subject": "New AI Demo Call Finished",
-        "html": "<p>A 1-minute AI demo call has just been completed. Please check your call transcripts and follow up with the prospect if they replied to the automated email.</p>"
-    }).encode('utf-8')
-
-    req = urllib.request.Request(url, data=payload, method="POST")
-    req.add_header("Authorization", f"Bearer {resend_key}")
-    req.add_header("Content-Type", "application/json")
-
-    try:
-        with urllib.request.urlopen(req) as response:
-            logging.info(f"Company Resend email sent: {response.read()}")
-    except Exception as e:
-        logging.error(f"Failed to send company email via Resend: {e}")
-
 async def start_session(context: JobContext):
     # Configure the Gemini model for real-time voice
     model = GeminiRealtime(
@@ -212,9 +198,6 @@ async def start_session(context: JobContext):
     finally:
         await session.close()
         await context.shutdown()
-        
-        # Trigger follow-up email alert to the company team
-        send_demo_alert_email()
 
 def make_context() -> JobContext:
     room_options = RoomOptions()
