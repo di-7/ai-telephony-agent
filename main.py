@@ -182,6 +182,14 @@ async def start_session(context: JobContext):
         logging.info("1 minute demo time limit reached. Closing session.")
             
     finally:
+        # End the meeting for ALL participants (including SIP caller)
+        try:
+            if context.room:
+                await context.room.end()
+                logging.info("Room ended for all participants.")
+        except Exception as e:
+            logging.warning(f"Could not end room: {e}")
+        
         await session.close()
         await context.shutdown()
 
