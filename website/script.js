@@ -261,7 +261,7 @@ function initiateCall() {
     callStatus.style.display = 'flex';
 
     // INTERGRATION POINT - Call the backend endpoint
-    fetch('https://call-f3c5.onrender.com/api/make-call', {
+    fetch('https://ai-telephony-agent.onrender.com/api/make-call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to_number: phoneInput })
