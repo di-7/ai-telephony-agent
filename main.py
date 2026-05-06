@@ -116,8 +116,31 @@ class HealthHandler(BaseHTTPRequestHandler):
                     with urllib.request.urlopen(req) as response:
                         api_response = response.read()
                         logging.info(f"VideoSDK call triggered successfully: {api_response}")
+                except urllib.error.HTTPError as e:
+                    error_body = e.read().decode('utf-8')
+                    logging.error(f"VideoSDK API failed with status {e.code}: {error_body}")
+                    
+                    # Return error to user
+                    self.send_response(400)
+                    self._send_cors_headers()
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    
+                    if e.code == 400 and "unverified" in error_body.lower():
+                        error_msg = {"error": "This number is unverified. Please verify it in your VideoSDK dashboard or upgrade your account."}
+                    else:
+                        error_msg = {"error": f"Call failed: {error_body}"}
+                    
+                    self.wfile.write(json.dumps(error_msg).encode())
+                    return
                 except urllib.error.URLError as e:
                     logging.error(f"VideoSDK API failed: {e}")
+                    self.send_response(500)
+                    self._send_cors_headers()
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Network error occurred"}).encode())
+                    return
                     
                 # Send team alert email immediately (non-daemon so it completes)
                 email_thread = threading.Thread(target=send_team_alert, args=(phone_number, name, visitor_email, company, resend_key))

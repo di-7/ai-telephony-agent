@@ -304,3 +304,24 @@ function initiateCall() {
         }, 12000);
     }, 2000);
 }
+
+                    <span style="color: #ef4444;">Call failed. Please try again.</span>
+                `;
+            });
+        } else {
+            callStatus.innerHTML = `
+                <div style="font-size: 2rem;">❌</div>
+                <span style="color: #ef4444;">Invalid code. Please try again.</span>
+            `;
+            setTimeout(() => initiateCall(), 2000);
+        }
+    })
+    .catch(err => {
+        console.error("Verification check failed:", err);
+        callStatus.innerHTML = `
+            <div style="font-size: 2rem;">❌</div>
+            <span style="color: #ef4444;">Verification failed. Please try again.</span>
+        `;
+    });
+}
+
