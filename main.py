@@ -2,7 +2,7 @@ import asyncio
 import traceback
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from videosdk.agents import Agent, AgentSession, RealTimePipeline, JobContext, RoomOptions, WorkerJob, Options
+from videosdk.agents import Agent, AgentSession, Pipeline, JobContext, RoomOptions, WorkerJob, Options
 from videosdk.plugins.google import GeminiRealtime, GeminiLiveConfig
 from dotenv import load_dotenv
 import os
@@ -193,7 +193,7 @@ async def start_session(context: JobContext):
             response_modalities=["AUDIO"]
         )
     )
-    pipeline = RealTimePipeline(model=model)
+    pipeline = Pipeline(llm=model)
     session = AgentSession(agent=MyVoiceAgent(), pipeline=pipeline)
 
     try:
