@@ -443,7 +443,7 @@ img {
 
 .hero-title {
   font-size: clamp(2.5rem, 6vw, var(--text-display));
-  line-height: 0.95;
+  line-height: 1.15;
   font-weight: var(--font-weight-bold);
   letter-spacing: -0.04em;
   margin-bottom: var(--spacing-24);
