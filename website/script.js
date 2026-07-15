@@ -4,6 +4,15 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
+    // --- Create Animated Particles ---
+    createParticles();
+
+    // --- Scroll Progress Indicator ---
+    initScrollProgress();
+
+    // --- Floating CTA ---
+    initFloatingCta();
+
     // --- Scroll Reveal Animation ---
     const revealElements = document.querySelectorAll('.reveal');
 
@@ -304,4 +313,113 @@ function initiateCall() {
         }, 12000);
     }, 2000);
 }
+
+// --- Create Animated Particles ---
+function createParticles() {
+    const container = document.getElementById('particlesContainer');
+    if (!container) return;
+
+    const particleCount = 30;
+    
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        
+        // Random position
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.top = Math.random() * 100 + '%';
+        
+        // Random animation delay and duration
+        particle.style.animationDelay = Math.random() * 20 + 's';
+        particle.style.animationDuration = (15 + Math.random() * 15) + 's';
+        
+        // Random size
+        const size = 2 + Math.random() * 4;
+        particle.style.width = size + 'px';
+        particle.style.height = size + 'px';
+        
+        container.appendChild(particle);
+    }
+}
+
+// --- Scroll Progress Indicator ---
+function initScrollProgress() {
+    const progressBar = document.getElementById('scrollProgress');
+    if (!progressBar) return;
+
+    window.addEventListener('scroll', () => {
+        const windowHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const scrolled = (window.scrollY / windowHeight) * 100;
+        progressBar.style.width = scrolled + '%';
+    }, { passive: true });
+}
+
+// --- Floating CTA ---
+function initFloatingCta() {
+    const floatingCta = document.getElementById('floatingCta');
+    if (!floatingCta) return;
+
+    let lastScrollY = 0;
+    
+    window.addEventListener('scroll', () => {
+        const currentScrollY = window.scrollY;
+        
+        // Show after scrolling 500px
+        if (currentScrollY > 500) {
+            floatingCta.classList.add('visible');
+        } else {
+            floatingCta.classList.remove('visible');
+        }
+        
+        lastScrollY = currentScrollY;
+    }, { passive: true });
+}
+
+// --- Smooth Scroll with Easing ---
+function smoothScrollTo(targetY, duration = 800) {
+    const startY = window.pageYOffset;
+    const distance = targetY - startY;
+    const startTime = performance.now();
+    
+    function easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+    }
+    
+    function step(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easedProgress = easeInOutCubic(progress);
+        
+        window.scrollTo(0, startY + distance * easedProgress);
+        
+        if (progress < 1) {
+            requestAnimationFrame(step);
+        }
+    }
+    
+    requestAnimationFrame(step);
+}
+
+// --- Add Morphing Shapes to Hero ---
+function addMorphingShapes() {
+    const hero = document.querySelector('.hero');
+    if (!hero) return;
+
+    const shapes = [
+        { width: '400px', height: '400px', background: 'var(--color-signal-coral)', top: '10%', left: '5%' },
+        { width: '300px', height: '300px', background: 'var(--color-ember-wash)', top: '60%', right: '10%' },
+        { width: '250px', height: '250px', background: 'var(--color-persimmon)', bottom: '20%', left: '60%' }
+    ];
+
+    shapes.forEach((shapeConfig, index) => {
+        const shape = document.createElement('div');
+        shape.className = 'morph-shape';
+        Object.assign(shape.style, shapeConfig);
+        shape.style.animationDelay = (index * 3) + 's';
+        hero.appendChild(shape);
+    });
+}
+
+// Initialize morphing shapes
+addMorphingShapes();
 
