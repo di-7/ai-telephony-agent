@@ -399,7 +399,7 @@ img {
    ========================================== */
 .hero {
   position: relative;
-  padding: 320px 0 100px;
+  padding: 360px 0 100px;
   background: var(--surface-canvas);
   text-align: center;
 }
@@ -1509,7 +1509,7 @@ img {
   }
 
   .hero {
-    padding: 220px 0 var(--spacing-60);
+    padding: 260px 0 var(--spacing-60);
   }
 
   .hero-title {
