@@ -379,7 +379,7 @@ img {
    ========================================== */
 .hero {
   position: relative;
-  padding: 180px 0 100px;
+  padding: 240px 0 100px;
   background: var(--surface-canvas);
   text-align: center;
 }
@@ -1561,7 +1561,7 @@ img {
   }
 
   .hero {
-    padding: 140px 0 var(--spacing-60);
+    padding: 180px 0 var(--spacing-60);
   }
 
   .hero-title {
