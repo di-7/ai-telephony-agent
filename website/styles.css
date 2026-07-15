@@ -1263,89 +1263,7 @@ img {
   color: var(--color-slate);
 }
 
-/* ==========================================
-   FLOATING WEBINAR WIDGET (Bottom-Left)
-   ========================================== */
-.webinar-widget {
-  position: fixed;
-  bottom: var(--spacing-24);
-  left: var(--spacing-24);
-  z-index: 999;
-  width: 320px;
-  background: var(--surface-canvas);
-  border: 1px solid var(--color-fog);
-  border-radius: var(--radius-smallcards);
-  box-shadow: var(--shadow-xl);
-  padding: var(--spacing-16);
-  display: flex;
-  flex-direction: column;
-  transition: transform var(--transition-smooth), opacity var(--transition-smooth);
-}
 
-.webinar-widget.hidden {
-  transform: translateY(100px);
-  opacity: 0;
-  pointer-events: none;
-}
-
-.webinar-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: none;
-  border: none;
-  font-size: 18px;
-  color: var(--color-slate);
-  cursor: pointer;
-}
-
-.webinar-close:hover {
-  color: var(--color-signal-coral);
-}
-
-.webinar-badge {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: var(--font-weight-bold);
-  color: var(--color-signal-coral);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: var(--spacing-12);
-}
-
-.webinar-body {
-  display: flex;
-  gap: var(--spacing-12);
-  align-items: center;
-  margin-bottom: var(--spacing-16);
-}
-
-.webinar-thumbnail-container {
-  width: 60px;
-  height: 60px;
-  border-radius: var(--radius-images);
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.webinar-thumbnail {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.webinar-title {
-  font-size: var(--text-caption);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-carbon-ink);
-  line-height: var(--leading-caption);
-}
-
-.webinar-widget .btn {
-  font-size: 12px;
-  padding: 10px;
-  font-weight: var(--font-weight-semibold);
-}
 
 /* ==========================================
    INSTANT CALL MODAL
@@ -1629,9 +1547,4 @@ img {
     gap: var(--spacing-32);
   }
 
-  .webinar-widget {
-    left: var(--spacing-16);
-    bottom: var(--spacing-16);
-    width: calc(100% - 32px);
-  }
 }

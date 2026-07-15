@@ -305,10 +305,3 @@ function initiateCall() {
     }, 2000);
 }
 
-function closeWebinarWidget() {
-    const webinar = document.getElementById('webinarWidget');
-    if (webinar) {
-        webinar.classList.add('hidden');
-    }
-}
-
