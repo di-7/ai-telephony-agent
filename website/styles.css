@@ -114,6 +114,7 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 100px;
   font-size: 16px;
 }
 
@@ -379,7 +380,7 @@ img {
    ========================================== */
 .hero {
   position: relative;
-  padding: 240px 0 100px;
+  padding: 280px 0 100px;
   background: var(--surface-canvas);
   text-align: center;
 }
@@ -1426,13 +1427,8 @@ img {
   .testimonials-grid .testimonial-card:last-child {
     grid-column: span 2;
   }
-}
 
-@media (max-width: 768px) {
-  :root {
-    --section-gap: 60px;
-  }
-
+  /* Nav triggers at 1024px to prevent tablet wrap */
   .logo-img {
     height: 40px;
   }
@@ -1494,6 +1490,12 @@ img {
   .hero-actions .btn {
     width: 100%;
   }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --section-gap: 60px;
+  }
 
   .problem-grid {
     grid-template-columns: 1fr;
@@ -1546,5 +1548,4 @@ img {
     grid-template-columns: 1fr;
     gap: var(--spacing-32);
   }
-
 }
