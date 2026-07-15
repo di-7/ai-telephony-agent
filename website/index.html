@@ -10,20 +10,11 @@
     <link rel="icon" type="image/jpeg" href="favicon.jpeg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-    <!-- Ambient Background -->
-    <div class="ambient-bg">
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="orb orb-3"></div>
-    </div>
-
     <!-- Navigation -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
@@ -34,7 +25,11 @@
                 <a href="#services" class="nav-link">Services</a>
                 <a href="#how-it-works" class="nav-link">How It Works</a>
                 <a href="#features" class="nav-link">Features</a>
-                <button class="nav-link nav-link-cta" onclick="openInstantCallModal()">Book a Demo</button>
+                <a href="#contact" class="nav-link">Partners <span class="new-badge">new</span></a>
+            </div>
+            <div class="nav-actions">
+                <button class="btn btn-dark" onclick="openInstantCallModal()">Log in</button>
+                <button class="btn btn-primary" onclick="openInstantCallModal()">Start for free</button>
             </div>
             <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
                 <span></span>
@@ -46,14 +41,14 @@
 
     <!-- Hero Section -->
     <section class="hero" id="hero">
-        <div class="hero-container">
+        <div class="container hero-container">
             <div class="hero-badge reveal">
                 <span class="badge-dot"></span>
                 AI-Powered Agentic Calls
             </div>
             <h1 class="hero-title reveal">
                 Stop Chasing ROAS.<br>
-                <span class="gradient-text">Start Building Relationships.</span>
+                <span class="accent">Start Building Relationships.</span>
             </h1>
             <p class="hero-subtitle reveal">
                 Mixup deploys intelligent AI agents that have real conversations with your customers —
@@ -61,17 +56,38 @@
                 24/7, at infinite scale.
             </p>
             <div class="hero-actions reveal">
-                <button onclick="openInstantCallModal()" class="btn btn-primary">
+                <button onclick="openInstantCallModal()" class="btn btn-primary btn-lg">
                     <span>Get Started</span>
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                         <path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                             stroke-linejoin="round" />
                     </svg>
-                    </a>
-                    <a href="#how-it-works" class="btn btn-ghost">
-                        <span>See How It Works</span>
-                    </a>
+                </button>
+                <button onclick="document.getElementById('how-it-works').scrollIntoView({behavior: 'smooth'})" class="btn btn-ghost btn-lg">
+                    <span>See How It Works</span>
+                </button>
             </div>
+
+            <!-- Rating Badge Row -->
+            <div class="rating-badge-row reveal">
+                <div class="rating-badge-item">
+                    <span>G2 Rating</span>
+                    <span class="rating-stars">★★★★★</span>
+                    <span>4.9/5</span>
+                </div>
+                <div class="rating-badge-item">
+                    <span>Capterra</span>
+                    <span class="rating-stars">★★★★★</span>
+                    <span>4.8/5</span>
+                </div>
+                <div class="rating-badge-item">
+                    <span>HubSpot Provider</span>
+                    <span class="rating-stars">★★★★★</span>
+                    <span>5.0/5</span>
+                </div>
+            </div>
+
+            <!-- Waveform Visual -->
             <div class="hero-visual reveal">
                 <div class="waveform-container">
                     <div class="waveform">
@@ -110,6 +126,63 @@
         </div>
     </section>
 
+    <!-- Logo Marquee Strip -->
+    <section class="logo-marquee-section">
+        <div class="logo-marquee-container">
+            <div class="logo-marquee-track">
+                <div class="logo-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    <span>TechCorp</span>
+                </div>
+                <div class="logo-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+                    <span>VoiceAI</span>
+                </div>
+                <div class="logo-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    <span>TeleCom</span>
+                </div>
+                <div class="logo-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>SecureCall</span>
+                </div>
+                <div class="logo-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 22 22 22"/></svg>
+                    <span>GlobalCall</span>
+                </div>
+                <div class="logo-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+                    <span>WaveSync</span>
+                </div>
+                <!-- Duplicate for marquee effect -->
+                <div class="logo-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    <span>TechCorp</span>
+                </div>
+                <div class="logo-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+                    <span>VoiceAI</span>
+                </div>
+                <div class="logo-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    <span>TeleCom</span>
+                </div>
+                <div class="logo-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>SecureCall</span>
+                </div>
+                <div class="logo-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 22 22 22"/></svg>
+                    <span>GlobalCall</span>
+                </div>
+                <div class="logo-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+                    <span>WaveSync</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Stats Section -->
     <section class="stats" id="stats">
         <div class="container">
@@ -126,12 +199,12 @@
                 <div class="stat-divider"></div>
                 <div class="stat-item reveal">
                     <span class="stat-number" data-target="99">0</span><span class="stat-suffix">.7%</span>
-                    <span class="stat-label">Uptime</span>
+                    <span class="stat-label">Uptime Guarantee</span>
                 </div>
                 <div class="stat-divider"></div>
                 <div class="stat-item reveal">
                     <span class="stat-number" data-target="24">0</span><span class="stat-suffix">/7</span>
-                    <span class="stat-label">Always On</span>
+                    <span class="stat-label">Always Active</span>
                 </div>
             </div>
         </div>
@@ -143,9 +216,9 @@
             <div class="problem-grid">
                 <div class="problem-content reveal">
                     <span class="section-tag">The Problem</span>
-                    <h2 class="section-title">Short-Term ROAS Is a <span class="gradient-text">Leaky Bucket</span></h2>
+                    <h2 class="section-title">Short-Term ROAS Is a <span class="accent">Leaky Bucket</span></h2>
                     <p class="section-text">
-                        You're spending ₹1L+ on ads every month. Clicks come in. Some convert. Most don't.
+                        You're spending large budgets on ads every month. Clicks come in. Some convert. Most don't.
                         You're optimizing for immediate returns while ignoring the 97% of leads that need
                         a conversation, not another retargeting ad.
                     </p>
@@ -171,7 +244,7 @@
                 <div class="problem-visual reveal">
                     <div class="comparison-card">
                         <div class="comparison-side comparison-old">
-                            <span class="comparison-label">Traditional</span>
+                            <span class="comparison-label">Traditional Methods</span>
                             <div class="comparison-metric">
                                 <span class="metric-label">Avg. Lead Response</span>
                                 <span class="metric-value metric-bad">47 hours</span>
@@ -189,7 +262,7 @@
                             <span>vs</span>
                         </div>
                         <div class="comparison-side comparison-new">
-                            <span class="comparison-label comparison-label-good">With Mixup</span>
+                            <span class="comparison-label comparison-label-good">With Mixup AI</span>
                             <div class="comparison-metric">
                                 <span class="metric-label">Avg. Lead Response</span>
                                 <span class="metric-value metric-good">&lt; 30 sec</span>
@@ -209,26 +282,34 @@
         </div>
     </section>
 
+    <!-- Diagonal Marquee Band -->
+    <div class="diagonal-marquee-band">
+        <div class="diagonal-track">
+            <span>NEW WAVE OF VOICE AI</span>
+            <span>NATIVE AUDIO PROCESSING</span>
+            <span>CONCURRENT CALLING AT SCALE</span>
+            <span>INTELLIGENT LEAD QUALIFICATION</span>
+            <span>NEW WAVE OF VOICE AI</span>
+            <span>NATIVE AUDIO PROCESSING</span>
+            <span>CONCURRENT CALLING AT SCALE</span>
+            <span>INTELLIGENT LEAD QUALIFICATION</span>
+        </div>
+    </div>
+
     <!-- Services Section -->
     <section class="services" id="services">
         <div class="container">
             <div class="section-header reveal">
                 <span class="section-tag">What We Do</span>
-                <h2 class="section-title">AI Agents That Actually <span class="gradient-text">Talk to People</span></h2>
+                <h2 class="section-title">AI Agents That Actually <span class="accent">Talk to People</span></h2>
                 <p class="section-subtitle">Not chatbots. Not IVR menus. Real AI voices having real conversations that
                     convert.</p>
             </div>
             <div class="services-grid">
                 <div class="service-card reveal" id="service-outbound">
                     <div class="service-icon">
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                            <path
-                                d="M26 20.67v3.33a2.22 2.22 0 01-2.42 2.22A22 22 0 013.78 6.42 2.22 2.22 0 016 4h3.33a2.22 2.22 0 012.22 1.91c.14 1.05.4 2.08.76 3.08a2.22 2.22 0 01-.5 2.34L10.09 13.05a17.78 17.78 0 008.86 8.86l1.72-1.72a2.22 2.22 0 012.34-.5c1 .36 2.03.62 3.08.76A2.22 2.22 0 0126 22.67z"
-                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                            <path d="M18 4l8 0 0 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" />
-                            <path d="M26 4L18 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" />
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                         </svg>
                     </div>
                     <h3 class="service-title">Outbound AI Calls</h3>
@@ -242,14 +323,9 @@
                 </div>
                 <div class="service-card reveal" id="service-inbound">
                     <div class="service-icon">
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                            <path
-                                d="M26 20.67v3.33a2.22 2.22 0 01-2.42 2.22A22 22 0 013.78 6.42 2.22 2.22 0 016 4h3.33a2.22 2.22 0 012.22 1.91c.14 1.05.4 2.08.76 3.08a2.22 2.22 0 01-.5 2.34L10.09 13.05a17.78 17.78 0 008.86 8.86l1.72-1.72a2.22 2.22 0 012.34-.5c1 .36 2.03.62 3.08.76A2.22 2.22 0 0126 22.67z"
-                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                            <path d="M26 4l-8 0 0 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" />
-                            <path d="M18 4l8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" />
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                         </svg>
                     </div>
                     <h3 class="service-title">Inbound AI Reception</h3>
@@ -263,10 +339,9 @@
                 </div>
                 <div class="service-card reveal" id="service-qualify">
                     <div class="service-icon">
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                            <circle cx="16" cy="16" r="12" stroke="currentColor" stroke-width="2" />
-                            <path d="M12 16l3 3 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" />
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="m9 12 2 2 4-4" />
                         </svg>
                     </div>
                     <h3 class="service-title">Smart Lead Qualification</h3>
@@ -280,15 +355,8 @@
                 </div>
                 <div class="service-card reveal" id="service-followup">
                     <div class="service-icon">
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                            <path d="M4 12a12 12 0 0120.49-8.49" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" />
-                            <path d="M28 4v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" />
-                            <path d="M28 20a12 12 0 01-20.49 8.49" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" />
-                            <path d="M4 28v-6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" />
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
                         </svg>
                     </div>
                     <h3 class="service-title">Automated Follow-Ups</h3>
@@ -309,7 +377,7 @@
         <div class="container">
             <div class="section-header reveal">
                 <span class="section-tag">How It Works</span>
-                <h2 class="section-title">Live in <span class="gradient-text">Under 48 Hours</span></h2>
+                <h2 class="section-title">Live in <span class="accent">Under 48 Hours</span></h2>
                 <p class="section-subtitle">No complex integrations. No months of setup. We get your AI agents calling
                     in days, not quarters.</p>
             </div>
@@ -351,7 +419,7 @@
         <div class="container">
             <div class="section-header reveal">
                 <span class="section-tag">Platform</span>
-                <h2 class="section-title">Built for <span class="gradient-text">Serious Growth</span></h2>
+                <h2 class="section-title">Built for <span class="accent">Serious Growth</span></h2>
                 <p class="section-subtitle">Enterprise-grade infrastructure powering conversations that feel genuinely
                     human.</p>
             </div>
@@ -359,13 +427,9 @@
                 <div class="feature-card feature-large reveal" id="feature-voice">
                     <div class="feature-card-inner">
                         <div class="feature-icon-lg">
-                            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                                <rect x="14" y="4" width="12" height="20" rx="6" stroke="currentColor"
-                                    stroke-width="2" />
-                                <path d="M8 18a12 12 0 0024 0" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" />
-                                <path d="M20 30v6m-4 0h8" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" />
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                                <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v4M8 23h8"/>
                             </svg>
                         </div>
                         <h3>Human-Grade Voice AI</h3>
@@ -376,13 +440,8 @@
                 <div class="feature-card reveal" id="feature-multi">
                     <div class="feature-card-inner">
                         <div class="feature-icon-lg">
-                            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                                <path d="M20 20L8 8m12 12l12-12m-12 12l-12 12m12-12l12 12" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" />
-                                <circle cx="8" cy="8" r="4" stroke="currentColor" stroke-width="2" />
-                                <circle cx="32" cy="8" r="4" stroke="currentColor" stroke-width="2" />
-                                <circle cx="8" cy="32" r="4" stroke="currentColor" stroke-width="2" />
-                                <circle cx="32" cy="32" r="4" stroke="currentColor" stroke-width="2" />
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
                             </svg>
                         </div>
                         <h3>Concurrent Calling</h3>
@@ -393,13 +452,9 @@
                 <div class="feature-card reveal" id="feature-analytics">
                     <div class="feature-card-inner">
                         <div class="feature-icon-lg">
-                            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                                <path d="M6 34V20l8-6 8 10 8-14 4 4" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round" />
-                                <circle cx="6" cy="34" r="2" fill="currentColor" />
-                                <circle cx="14" cy="14" r="2" fill="currentColor" />
-                                <circle cx="22" cy="24" r="2" fill="currentColor" />
-                                <circle cx="30" cy="10" r="2" fill="currentColor" />
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 3v18h18"/>
+                                <path d="m18 17-4-4-4 4-5-5"/>
                             </svg>
                         </div>
                         <h3>Deep Analytics</h3>
@@ -410,10 +465,9 @@
                 <div class="feature-card reveal" id="feature-lang">
                     <div class="feature-card-inner">
                         <div class="feature-icon-lg">
-                            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                                <circle cx="20" cy="20" r="16" stroke="currentColor" stroke-width="2" />
-                                <ellipse cx="20" cy="20" rx="8" ry="16" stroke="currentColor" stroke-width="2" />
-                                <path d="M4 20h32M6 12h28M6 28h28" stroke="currentColor" stroke-width="1.5" />
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/>
                             </svg>
                         </div>
                         <h3>Multi-Language</h3>
@@ -424,13 +478,10 @@
                 <div class="feature-card feature-large reveal" id="feature-integration">
                     <div class="feature-card-inner">
                         <div class="feature-icon-lg">
-                            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                                <path d="M12 8h-2a4 4 0 00-4 4v16a4 4 0 004 4h20a4 4 0 004-4V12a4 4 0 00-4-4h-2"
-                                    stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                                <rect x="14" y="4" width="12" height="8" rx="2" stroke="currentColor"
-                                    stroke-width="2" />
-                                <path d="M14 22l4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round" />
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                                <path d="m9 14 2 2 4-4"/>
                             </svg>
                         </div>
                         <h3>CRM & Tool Integration</h3>
@@ -443,17 +494,19 @@
         </div>
     </section>
 
-    <!-- Results / Testimonials Section -->
-    <!-- <section class="results" id="results">
+    <!-- Testimonials Section -->
+    <section class="results" id="results">
         <div class="container">
             <div class="section-header reveal">
                 <span class="section-tag">Results</span>
-                <h2 class="section-title">What Happens When You <span class="gradient-text">Switch to Mixup</span></h2>
+                <h2 class="section-title">What Happens When You <span class="accent">Switch to Mixup</span></h2>
             </div>
             <div class="testimonials-grid">
                 <div class="testimonial-card reveal" id="testimonial-1">
+                    <div class="testimonial-stars">★★★★★</div>
+                    <div class="testimonial-headline">"Conversion jumped 4x"</div>
                     <div class="testimonial-quote">
-                        "We were spending ₹3L/month on Google Ads with 1.8% conversion. Mixup's AI agents now call every lead within 30 seconds. Our conversion rate jumped to 7.2% and our CAC dropped by 60%."
+                        We were spending ₹3L/month on Google Ads with 1.8% conversion. Mixup's AI agents now call every lead within 30 seconds. Our conversion rate jumped to 7.2% and our CAC dropped by 60%.
                     </div>
                     <div class="testimonial-author">
                         <div class="author-avatar">RK</div>
@@ -462,14 +515,12 @@
                             <span class="author-role">CEO, FinServe Solutions</span>
                         </div>
                     </div>
-                    <div class="testimonial-metric">
-                        <span class="testimonial-metric-value">4x</span>
-                        <span class="testimonial-metric-label">More Conversions</span>
-                    </div>
                 </div>
                 <div class="testimonial-card reveal" id="testimonial-2">
+                    <div class="testimonial-stars">★★★★★</div>
+                    <div class="testimonial-headline">"80% inbound calls automated"</div>
                     <div class="testimonial-quote">
-                        "Our support team was drowning in calls. Now our AI agent handles 80% of inbound calls, qualifies leads, and books demos directly. Our human team focuses only on closing."
+                        Our support team was drowning in calls. Now our AI agent handles 80% of inbound calls, qualifies leads, and books demos directly. Our human team focuses only on closing.
                     </div>
                     <div class="testimonial-author">
                         <div class="author-avatar">PS</div>
@@ -478,14 +529,12 @@
                             <span class="author-role">Head of Sales, EduTech Pro</span>
                         </div>
                     </div>
-                    <div class="testimonial-metric">
-                        <span class="testimonial-metric-value">80%</span>
-                        <span class="testimonial-metric-label">Calls Automated</span>
-                    </div>
                 </div>
                 <div class="testimonial-card reveal" id="testimonial-3">
+                    <div class="testimonial-stars">★★★★★</div>
+                    <div class="testimonial-headline">"Pipeline velocity increased 3x"</div>
                     <div class="testimonial-quote">
-                        "The follow-up persistence is insane. Our AI agent handles 5-touch sequences that our sales team never had time for. Pipeline velocity increased 3x in the first month."
+                        The follow-up persistence is insane. Our AI agent handles 5-touch sequences that our sales team never had time for. Pipeline velocity increased 3x in the first month.
                     </div>
                     <div class="testimonial-author">
                         <div class="author-avatar">AV</div>
@@ -494,21 +543,17 @@
                             <span class="author-role">Founder, PropDeal</span>
                         </div>
                     </div>
-                    <div class="testimonial-metric">
-                        <span class="testimonial-metric-value">3x</span>
-                        <span class="testimonial-metric-label">Pipeline Velocity</span>
-                    </div>
                 </div>
             </div>
         </div>
-    </section> -->
+    </section>
 
     <!-- CTA Section -->
     <section class="cta-section" id="contact">
         <div class="container">
             <div class="cta-card reveal">
                 <div class="cta-content">
-                    <h2 class="cta-title">Ready to Transform Your <span class="gradient-text">Customer
+                    <h2 class="cta-title">Ready to Transform Your <span class="accent">Customer
                             Conversations?</span></h2>
                     <p class="cta-subtitle">Book a 15-minute demo and see Mixup's AI agent call you live. No
                         commitments, no fluff — just a conversation about how we can grow your business.</p>
@@ -561,7 +606,7 @@
             <div class="footer-grid">
                 <div class="footer-brand">
                     <a href="#" class="nav-logo">
-                        <img src="logo.jpeg" alt="Mixup" class="logo-img logo-img-footer">
+                        <img src="logo.jpeg" alt="Mixup" class="logo-img">
                     </a>
                     <p class="footer-desc">AI-powered agentic calls that build real customer relationships at scale.</p>
                 </div>
@@ -624,6 +669,25 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Floating Webinar Widget -->
+    <div class="webinar-widget" id="webinarWidget">
+        <button class="webinar-close" aria-label="Close widget" onclick="closeWebinarWidget()">&times;</button>
+        <span class="webinar-badge">Upcoming Webinar</span>
+        <div class="webinar-body">
+            <div class="webinar-thumbnail-container">
+                <svg class="webinar-thumbnail" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="100" height="100" fill="var(--color-coral-mist)"/>
+                    <circle cx="50" cy="50" r="30" stroke="var(--color-signal-coral)" stroke-width="4" fill="none"/>
+                    <polygon points="45,35 70,50 45,65" fill="var(--color-signal-coral)"/>
+                </svg>
+            </div>
+            <div class="webinar-info">
+                <h4 class="webinar-title">Building High-Converting Voice Agents in 10 Minutes</h4>
+            </div>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="openInstantCallModal()">Register Now</button>
     </div>
 
     <script src="script.js"></script>

@@ -8,7 +8,7 @@
     <link rel="icon" type="image/jpeg" href="favicon.jpeg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <style>
         .legal-content {
@@ -20,27 +20,25 @@
         .legal-content h1 {
             font-size: 3rem;
             margin-bottom: 2rem;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--color-signal-coral);
         }
         
         .legal-content h2 {
             font-size: 1.5rem;
             margin: 2.5rem 0 1rem;
-            color: var(--text-primary);
+            color: var(--color-carbon-ink);
         }
         
         .legal-content p {
             margin-bottom: 1.2rem;
-            color: var(--text-secondary);
-            line-height: 1.8;
+            color: var(--color-smoke);
+            line-height: var(--leading-body);
         }
         
         .legal-content ul {
             margin-bottom: 1.5rem;
             padding-left: 20px;
-            color: var(--text-secondary);
+            color: var(--color-smoke);
         }
         
         .legal-content li {
@@ -56,14 +54,19 @@
             <a href="index.html" class="nav-logo">
                 <img src="logo.jpeg" alt="Mixup" class="logo-img">
             </a>
-            <div class="nav-links">
+            <div class="nav-links" id="navLinks">
                 <a href="index.html#services" class="nav-link">Services</a>
                 <a href="index.html#how-it-works" class="nav-link">How It Works</a>
                 <a href="index.html#features" class="nav-link">Features</a>
-                <a href="index.html#contact" class="nav-link nav-link-cta">Book a Demo</a>
+                <a href="index.html#contact" class="nav-link">Partners <span class="new-badge">new</span></a>
+            </div>
+            <div class="nav-actions">
+                <button class="btn btn-dark" onclick="window.location.href='index.html'">Log in</button>
+                <button class="btn btn-primary" onclick="window.location.href='index.html#contact'">Book a Demo</button>
             </div>
         </div>
     </nav>
+
 
     <!-- Content -->
     <main class="container legal-content">
