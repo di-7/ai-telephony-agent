@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing — Mixup AI-Powered Agentic Calls</title>
+    <meta name="description"
+        content="Simple, transparent pricing for AI-powered calling. Scale your outreach with intelligent AI agents.">
+    <link rel="icon" type="image/jpeg" href="favicon.jpeg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=1.0.3">
+</head>
+
+<body>
+    <!-- Scroll Progress Indicator -->
+    <div class="scroll-progress" id="scrollProgress"></div>
+    
+    <!-- Animated Particles Background -->
+    <div class="particles-container" id="particlesContainer"></div>
+    
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <img src="23836 (1).png" alt="Mixup" class="logo-img">
+            </a>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html#services" class="nav-link">Services</a>
+                <a href="index.html#how-it-works" class="nav-link">How It Works</a>
+                <a href="index.html#features" class="nav-link">Features</a>
+                <a href="pricing.html" class="nav-link active">Pricing</a>
+                <a href="index.html#contact" class="nav-link">Partners <span class="new-badge">new</span></a>
+            </div>
+            <div class="nav-actions">
+                <button class="btn btn-dark" onclick="openInstantCallModal()">Log in</button>
+                <button class="btn btn-primary" onclick="openInstantCallModal()">Start for free</button>
+            </div>
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Pricing Hero Section -->
+    <section class="pricing-hero" style="padding-top: 140px;">
+        <div class="container">
+            <div class="section-header reveal">
+                <span class="section-tag">Pricing</span>
+                <h1 class="section-title">Try Before You <span class="accent">Commit</span></h1>
+                <p class="section-subtitle">Start with a small setup fee, get a full month free to test our AI agents. Only pay the rest when you're 100% satisfied.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing-section">
+        <div class="container">
+            <!-- How It Works Steps -->
+            <div class="pricing-journey reveal">
+                <div class="journey-step">
+                    <div class="journey-step-number">1</div>
+                    <div class="journey-step-content">
+                        <h4>Pay Setup Fee</h4>
+                        <p>₹1,500 one-time to get started</p>
+                    </div>
+                </div>
+                <div class="journey-connector">
+                    <svg width="40" height="12" viewBox="0 0 40 12" fill="none">
+                        <path d="M0 6h32m-6-5l7 5-7 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="journey-step">
+                    <div class="journey-step-number">2</div>
+                    <div class="journey-step-content">
+                        <h4>Free Trial Month</h4>
+                        <p>Test everything for 30 days</p>
+                    </div>
+                </div>
+                <div class="journey-connector">
+                    <svg width="40" height="12" viewBox="0 0 40 12" fill="none">
+                        <path d="M0 6h32m-6-5l7 5-7 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="journey-step">
+                    <div class="journey-step-number">3</div>
+                    <div class="journey-step-content">
+                        <h4>Love It? Continue</h4>
+                        <p>Pay remaining ₹3,500 to activate</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pricing-grid">
+                <!-- Monthly Plan Card -->
+                <div class="pricing-card pricing-featured reveal">
+                    <div class="pricing-badge">Try Risk-Free</div>
+                    <div class="pricing-header">
+                        <h3 class="pricing-title">Monthly Plan</h3>
+                        <p class="pricing-subtitle">Full-service AI calling platform</p>
+                    </div>
+                    <div class="pricing-price">
+                        <span class="price-currency">₹</span>
+                        <span class="price-amount">5,000</span>
+                        <span class="price-period">/month</span>
+                    </div>
+
+                    <!-- Pricing Breakdown -->
+                    <div class="pricing-breakdown">
+                        <div class="breakdown-item breakdown-highlight">
+                            <div class="breakdown-label">
+                                <span class="breakdown-icon">🚀</span>
+                                <span>Setup fee <span class="breakdown-tag">Pay now</span></span>
+                            </div>
+                            <span class="breakdown-value">₹1,500</span>
+                        </div>
+                        <div class="breakdown-item breakdown-free">
+                            <div class="breakdown-label">
+                                <span class="breakdown-icon">🎁</span>
+                                <span>First month <span class="breakdown-tag tag-free">Free</span></span>
+                            </div>
+                            <span class="breakdown-value value-free">₹0</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">
+                                <span class="breakdown-icon">✅</span>
+                                <span>After trial <span class="breakdown-tag tag-later">If satisfied</span></span>
+                            </div>
+                            <span class="breakdown-value">₹3,500</span>
+                        </div>
+                        <div class="breakdown-divider"></div>
+                        <div class="breakdown-item breakdown-total">
+                            <div class="breakdown-label">
+                                <span>Then ongoing</span>
+                            </div>
+                            <span class="breakdown-value">₹5,000/mo</span>
+                        </div>
+                    </div>
+                    
+                    <p class="pricing-description">Pay just ₹1,500 to get set up. Use our full platform free for one month. If you're satisfied with the results, pay the remaining ₹3,500 to continue — then ₹5,000/month going forward.</p>
+                    
+                    <ul class="pricing-features">
+                        <li class="pricing-feature">
+                            <svg viewBox="0 0 20 20" fill="none" class="feature-check">
+                                <circle cx="10" cy="10" r="10" fill="currentColor" opacity="0.1"/>
+                                <path d="M6 10l3 3 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Unlimited AI-powered calls</span>
+                        </li>
+                        <li class="pricing-feature">
+                            <svg viewBox="0 0 20 20" fill="none" class="feature-check">
+                                <circle cx="10" cy="10" r="10" fill="currentColor" opacity="0.1"/>
+                                <path d="M6 10l3 3 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Concurrent calling at scale</span>
+                        </li>
+                        <li class="pricing-feature">
+                            <svg viewBox="0 0 20 20" fill="none" class="feature-check">
+                                <circle cx="10" cy="10" r="10" fill="currentColor" opacity="0.1"/>
+                                <path d="M6 10l3 3 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Smart lead qualification</span>
+                        </li>
+                        <li class="pricing-feature">
+                            <svg viewBox="0 0 20 20" fill="none" class="feature-check">
+                                <circle cx="10" cy="10" r="10" fill="currentColor" opacity="0.1"/>
+                                <path d="M6 10l3 3 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>CRM integration (HubSpot, Salesforce)</span>
+                        </li>
+                        <li class="pricing-feature">
+                            <svg viewBox="0 0 20 20" fill="none" class="feature-check">
+                                <circle cx="10" cy="10" r="10" fill="currentColor" opacity="0.1"/>
+                                <path d="M6 10l3 3 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Real-time analytics dashboard</span>
+                        </li>
+                        <li class="pricing-feature">
+                            <svg viewBox="0 0 20 20" fill="none" class="feature-check">
+                                <circle cx="10" cy="10" r="10" fill="currentColor" opacity="0.1"/>
+                                <path d="M6 10l3 3 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>24/7 support &amp; dedicated account manager</span>
+                        </li>
+                        <li class="pricing-feature">
+                            <svg viewBox="0 0 20 20" fill="none" class="feature-check">
+                                <circle cx="10" cy="10" r="10" fill="currentColor" opacity="0.1"/>
+                                <path d="M6 10l3 3 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Custom AI voice &amp; script training</span>
+                        </li>
+                        <li class="pricing-feature">
+                            <svg viewBox="0 0 20 20" fill="none" class="feature-check">
+                                <circle cx="10" cy="10" r="10" fill="currentColor" opacity="0.1"/>
+                                <path d="M6 10l3 3 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>99.9% uptime SLA guarantee</span>
+                        </li>
+                    </ul>
+                    
+                    <button class="btn btn-primary btn-lg btn-full pricing-cta" onclick="openInstantCallModal()">
+                        <span>Start with ₹1,500 Setup</span>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    
+                    <p class="pricing-footer">1 month free trial included • No risk • Cancel anytime</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section">
+        <div class="container">
+            <div class="section-header reveal">
+                <span class="section-tag">FAQ</span>
+                <h2 class="section-title">Common <span class="accent">Questions</span></h2>
+            </div>
+            
+            <div class="faq-grid">
+                <div class="faq-item reveal">
+                    <h4 class="faq-question">What does the ₹1,500 setup fee cover?</h4>
+                    <p class="faq-answer">The setup fee covers AI agent discovery, custom voice and script training, phone number provisioning, CRM integration, and full onboarding. Your AI agent will be tailored specifically to your business.</p>
+                </div>
+                
+                <div class="faq-item reveal">
+                    <h4 class="faq-question">How does the free trial month work?</h4>
+                    <p class="faq-answer">After paying the ₹1,500 setup fee, you get a full month of unlimited access to our platform at no extra cost. Use all features, make unlimited calls, and see real results before committing further.</p>
+                </div>
+                
+                <div class="faq-item reveal">
+                    <h4 class="faq-question">What happens after the free trial?</h4>
+                    <p class="faq-answer">If you're satisfied with the performance, simply pay the remaining ₹3,500 to continue your service. After that, the plan renews at ₹5,000/month. If you're not satisfied, you can walk away — no further charges.</p>
+                </div>
+                
+                <div class="faq-item reveal">
+                    <h4 class="faq-question">Is the ₹1,500 refundable if I don't continue?</h4>
+                    <p class="faq-answer">The setup fee covers real costs — AI training, custom configuration, and phone provisioning done specifically for your business — so it is non-refundable. However, you get a full month free to validate the value before paying anything more.</p>
+                </div>
+                
+                <div class="faq-item reveal">
+                    <h4 class="faq-question">How quickly can I get started?</h4>
+                    <p class="faq-answer">Most businesses are live within 48 hours of paying the setup fee. We handle discovery, AI agent training, phone number setup, and integration with your existing systems.</p>
+                </div>
+                
+                <div class="faq-item reveal">
+                    <h4 class="faq-question">Do you offer custom enterprise plans?</h4>
+                    <p class="faq-answer">Yes! For larger organizations with specific needs, we offer custom enterprise plans with additional features, dedicated infrastructure, and tailored pricing. Contact us to discuss your requirements.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content reveal">
+                <h2 class="cta-title">Ready to Transform Your Outreach?</h2>
+                <p class="cta-subtitle">Start building relationships at scale with AI-powered conversations.</p>
+                <button class="btn btn-primary btn-lg" onclick="openInstantCallModal()">
+                    <span>Get Started Today</span>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <img src="23836 (1).png" alt="Mixup" class="footer-logo">
+                    <p class="footer-tagline">AI-powered calls that build real relationships.</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-column">
+                        <h5>Product</h5>
+                        <a href="index.html#services">Services</a>
+                        <a href="index.html#features">Features</a>
+                        <a href="pricing.html">Pricing</a>
+                    </div>
+                    <div class="footer-column">
+                        <h5>Company</h5>
+                        <a href="index.html#contact">Partners</a>
+                        <a href="privacy.html">Privacy</a>
+                        <a href="terms.html">Terms</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Mixup. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Instant Call Modal -->
+    <div class="modal-overlay" id="instantCallModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeInstantCallModal()" aria-label="Close modal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <div class="modal-header">
+                <h3>Get an Instant Call</h3>
+                <p>Enter your phone number and our AI will call you in seconds.</p>
+            </div>
+            <div class="modal-body">
+                <div class="input-wrapper">
+                    <select id="modalCountryCode" class="country-select modal-country-select">
+                        <option value="+91" selected>🇮🇳 +91</option>
+                        <option value="+1">🇺🇸 +1</option>
+                        <option value="+44">🇬🇧 +44</option>
+                        <option value="+971">🇦🇪 +971</option>
+                        <option value="+61">🇦🇺 +61</option>
+                        <option value="+86">🇨🇳 +86</option>
+                        <option value="+81">🇯🇵 +81</option>
+                        <option value="+49">🇩🇪 +49</option>
+                        <option value="+33">🇫🇷 +33</option>
+                        <option value="+65">🇸🇬 +65</option>
+                    </select>
+                    <input type="tel" id="modalPhoneInput" placeholder="Phone number" class="modal-input">
+                </div>
+                <button class="btn btn-primary btn-full" id="callMeBtn" onclick="initiateCall()">
+                    <span>Call Me Now</span>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="margin-left: 8px;">
+                        <path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </button>
+                <div id="callStatus" class="call-status" style="display: none;">
+                    <div class="waveform-small">
+                        <div class="wave-bar-sm" style="--delay: 0"></div>
+                        <div class="wave-bar-sm" style="--delay: 1"></div>
+                        <div class="wave-bar-sm" style="--delay: 2"></div>
+                    </div>
+                    <span>Calling you now... Make sure your phone is not on silent!</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Floating CTA Button -->
+    <div class="floating-cta" id="floatingCta">
+        <button onclick="openInstantCallModal()" aria-label="Get a call">
+            📞
+        </button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
