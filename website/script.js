@@ -149,7 +149,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Show success state and simulate ring
             submitBtn.innerHTML = `
-                <span>📞 Calling you now...</span>
+                <span style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                    </svg>
+                    Calling you now...
+                </span>
             `;
             submitBtn.style.background = 'linear-gradient(135deg, #22c55e, #14b8a6)';
             submitBtn.style.boxShadow = '0 4px 20px rgba(34, 197, 94, 0.3)';
@@ -300,7 +305,11 @@ function initiateCall() {
     // Simulate backend processing and active call state
     setTimeout(() => {
         callStatus.innerHTML = `
-            <div style="font-size: 2rem;">📞</div>
+            <div style="margin-bottom: 12px; color: var(--color-signal-coral);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 48px; height: 48px; animation: pulse-float 1.5s ease-in-out infinite;">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+            </div>
             <span style="color: var(--text-primary); font-size: 1.1rem;">Your phone is ringing!</span>
             <span style="color: var(--text-secondary); margin-top: -8px;">Answer it to speak with the AI.</span>
         `;

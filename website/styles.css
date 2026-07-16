@@ -686,6 +686,9 @@ img {
   box-shadow: 0 8px 24px rgba(255, 80, 101, 0.3);
   transition: all 0.3s ease;
   animation: pulse-float 2s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .floating-cta button:hover {
@@ -2170,8 +2173,11 @@ img {
 }
 
 .breakdown-icon {
-    font-size: 18px;
-    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
 }
 
 .breakdown-value {
