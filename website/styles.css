@@ -2075,7 +2075,7 @@ img {
 
 /* Pricing Hero */
 .pricing-hero {
-  padding: 160px 0 60px;
+  padding: 140px 0 24px;
   text-align: center;
   position: relative;
 }
@@ -2732,10 +2732,10 @@ img {
   justify-content: space-between;
   align-items: flex-end;
   border-bottom: 1px solid var(--color-fog);
-  padding-bottom: var(--spacing-32);
-  margin-bottom: var(--spacing-32);
+  padding-bottom: 16px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
-  gap: var(--spacing-24);
+  gap: var(--spacing-16);
   width: 100%;
   min-width: 0;
 }
