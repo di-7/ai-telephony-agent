@@ -4,16 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mixup — AI Telephony & Agentic Call Analytics Dashboard</title>
+    <title>Mixup — Call Analytics & Performance Dashboard</title>
     <meta name="description"
-        content="Interactive Mock Analytics Dashboard for Mixup AI Voice Agents — Qualifying leads, handling conversations, and driving growth at scale.">
+        content="Clean, real-time analytics dashboard for Mixup AI-powered agentic calls. Track lead qualification, call volume, and customer sentiment.">
     <link rel="icon" type="image/jpeg" href="favicon.jpeg">
 
-    <!-- Google Fonts -->
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Sora:wght@400;500;600;700;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
 
     <!-- Chart.js CDN -->
@@ -21,493 +21,161 @@
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="styles.css?v=1.0.3">
-    <link rel="stylesheet" href="dashboard.css?v=1.0.0">
+    <link rel="stylesheet" href="dashboard.css?v=1.0.1">
 </head>
 
-<body class="dashboard-body">
+<body>
 
-    <div class="dashboard-wrapper">
+    <!-- Main Navigation Bar (Matches website theme) -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <img src="23836 (1).png" alt="Mixup" class="logo-img">
+            </a>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html#services" class="nav-link">Services</a>
+                <a href="index.html#how-it-works" class="nav-link">How It Works</a>
+                <a href="index.html#features" class="nav-link">Features</a>
+                <a href="pricing.html" class="nav-link">Pricing</a>
+                <a href="dashboard.html" class="nav-link active" style="color: var(--color-signal-coral); font-weight: 700;">Dashboard</a>
+                <a href="index.html#contact" class="nav-link">Contact</a>
+            </div>
+            <div class="nav-actions">
+                <button class="btn btn-dark" onclick="window.location.href='index.html'">Log in</button>
+                <button class="btn btn-primary" onclick="window.location.href='pricing.html'">Start for free</button>
+            </div>
+        </div>
+    </nav>
 
-        <!-- Top Navigation Header -->
-        <header class="dash-nav">
-            <div class="dash-logo-area">
-                <a href="index.html">
-                    <img src="23836 (1).png" alt="Mixup AI Telephony" class="dash-logo-img">
-                </a>
-                <div class="dash-badge-pill">
-                    <span class="pulse-dot"></span>
-                    <span>24 AI Voice Agents Active</span>
-                </div>
-                <div class="dash-badge-pill latency">
-                    <span>⚡ 215ms Latency Engine</span>
-                </div>
+    <!-- Clean Dashboard Layout -->
+    <main class="dash-container">
+
+        <!-- Header Row -->
+        <div class="dash-header-wrap">
+            <div>
+                <h1 class="dash-header-title">Call Analytics & Intelligence</h1>
+                <p class="dash-header-subtitle">Real-time performance metrics across your automated Mixup AI voice campaigns.</p>
             </div>
 
-            <div class="dash-nav-actions">
-                <button class="btn-dash btn-dash-pitch" id="pitchModeBtn" title="Toggle Presentation Overlay for Pitching Customers">
-                    <span>💡 Presentation Mode</span>
-                </button>
-                <button class="btn-dash" onclick="openExportModal()">
-                    <span>📄 Export Report</span>
-                </button>
-                <a href="index.html" class="btn-dash btn-dash-primary">
-                    <span>🏠 Main Site</span>
-                </a>
-            </div>
-        </header>
-
-        <!-- Customer Presentation Pitch Banner (Toggled on Pitch Mode) -->
-        <div class="pitch-banner" id="pitchBanner">
-            <div class="pitch-banner-text">
-                <strong>💡 Customer Presentation Mode Active:</strong>
-                <span>Highlighting MixUp's 210ms ultra-low voice latency, 94.2% sentiment accuracy, and automated CRM deal sync.</span>
-            </div>
-            <div class="pitch-tags">
-                <span class="pitch-tag">SOC2 Type II</span>
-                <span class="pitch-tag">HIPAA Compliant</span>
-                <span class="pitch-tag">Zero Call Drops</span>
+            <!-- Time Filter Pills -->
+            <div class="dash-filter-bar">
+                <button class="dash-filter-btn" data-range="today">Today</button>
+                <button class="dash-filter-btn" data-range="7d">7 Days</button>
+                <button class="dash-filter-btn active" data-range="30d">30 Days</button>
+                <button class="dash-filter-btn" data-range="all">All Time</button>
             </div>
         </div>
 
-        <!-- Main Dashboard Workspace -->
-        <main class="dash-content">
-
-            <!-- Toolbar Controls -->
-            <section class="dash-toolbar">
-                <div class="toolbar-left">
-                    <label for="scenarioSelect" style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Campaign Scenario:</label>
-                    <select id="scenarioSelect" class="scenario-select">
-                        <option value="all">🌐 All Campaigns Overview</option>
-                        <option value="ecommerce">🛍️ E-Commerce Reactivation</option>
-                        <option value="saas">💻 B2B SaaS Inbound Qualification</option>
-                        <option value="healthcare">🩺 Healthcare Appointment Scheduling</option>
-                    </select>
-
-                    <div class="time-tabs">
-                        <button class="time-tab active">Today (Live)</button>
-                        <button class="time-tab">Last 7 Days</button>
-                        <button class="time-tab">Last 30 Days</button>
-                        <button class="time-tab">90 Days</button>
-                    </div>
+        <!-- KPI Summary Grid (4 Cards) -->
+        <section class="dash-kpi-grid">
+            
+            <!-- KPI 1 -->
+            <div class="dash-kpi-card">
+                <div class="dash-kpi-top">
+                    <span class="dash-kpi-label">Total AI Calls</span>
+                    <div class="dash-kpi-icon-pill">📞</div>
                 </div>
-
-                <div class="toolbar-right">
-                    <button class="live-toggle-btn active" id="liveToggleBtn">
-                        <span class="pulse-dot"></span>
-                        <span>Live Stream ACTIVE</span>
-                    </button>
+                <div class="dash-kpi-val" id="kpiCalls">148,920</div>
+                <div class="dash-kpi-sub">
+                    <span class="dash-badge-green">▲ 24.5%</span>
+                    <span class="dash-sub-text">vs previous period</span>
                 </div>
-            </section>
-
-            <!-- Top Row KPI Cards -->
-            <section class="kpi-grid">
-                <!-- Card 1 -->
-                <div class="kpi-card coral">
-                    <div class="kpi-header">
-                        <span class="kpi-title">Total AI Calls</span>
-                        <div class="kpi-icon">📞</div>
-                    </div>
-                    <div class="kpi-value-row">
-                        <span class="kpi-value" id="kpi-total-calls">148,920</span>
-                        <span class="kpi-trend up" id="kpi-calls-trend">▲ 24.5%</span>
-                    </div>
-                    <div class="kpi-subtext">Dialed & Connected by Mixup AI</div>
-                    <div class="pitch-callout">⚡ 100x speed vs human call centers</div>
-                </div>
-
-                <!-- Card 2 -->
-                <div class="kpi-card emerald">
-                    <div class="kpi-header">
-                        <span class="kpi-title">Lead Qualification Rate</span>
-                        <div class="kpi-icon">🎯</div>
-                    </div>
-                    <div class="kpi-value-row">
-                        <span class="kpi-value" id="kpi-qual-rate">71.8%</span>
-                        <span class="kpi-trend up" id="kpi-qual-trend">▲ 12.4%</span>
-                    </div>
-                    <div class="kpi-subtext">106,920 Leads Qualified & Synced</div>
-                    <div class="pitch-callout">🎯 Strict BANT framework qualification</div>
-                </div>
-
-                <!-- Card 3 -->
-                <div class="kpi-card cyan">
-                    <div class="kpi-header">
-                        <span class="kpi-title">Avg Call Duration</span>
-                        <div class="kpi-icon">⏱️</div>
-                    </div>
-                    <div class="kpi-value-row">
-                        <span class="kpi-value" id="kpi-duration">3m 48s</span>
-                        <span class="kpi-trend up">Optimal</span>
-                    </div>
-                    <div class="kpi-subtext">High engagement & natural turn-taking</div>
-                    <div class="pitch-callout">🗣️ Zero unnatural pauses or robotic delays</div>
-                </div>
-
-                <!-- Card 4 -->
-                <div class="kpi-card violet">
-                    <div class="kpi-header">
-                        <span class="kpi-title">Customer Sentiment Score</span>
-                        <div class="kpi-icon">😊</div>
-                    </div>
-                    <div class="kpi-value-row">
-                        <span class="kpi-value" id="kpi-sentiment">94.2%</span>
-                        <span class="kpi-trend up">NPS +74</span>
-                    </div>
-                    <div class="kpi-subtext">Positive customer delight index</div>
-                    <div class="pitch-callout">🧠 Real-time empathetic emotion tuning</div>
-                </div>
-
-                <!-- Card 5 -->
-                <div class="kpi-card amber">
-                    <div class="kpi-header">
-                        <span class="kpi-title">Cost Savings vs Human</span>
-                        <div class="kpi-icon">💰</div>
-                    </div>
-                    <div class="kpi-value-row">
-                        <span class="kpi-value" id="kpi-cost-saved">$64,250</span>
-                        <span class="kpi-trend up">86.5% Saved</span>
-                    </div>
-                    <div class="kpi-subtext">Estimated monthly OPEX reduction</div>
-                    <div class="pitch-callout">💵 Replaces 12 full-time SDR salaries</div>
-                </div>
-
-                <!-- Card 6 -->
-                <div class="kpi-card cyan">
-                    <div class="kpi-header">
-                        <span class="kpi-title">Voice Latency & Realism</span>
-                        <div class="kpi-icon">⚡</div>
-                    </div>
-                    <div class="kpi-value-row">
-                        <span class="kpi-value" id="kpi-latency">210ms</span>
-                        <span class="kpi-trend up">99.4% Human</span>
-                    </div>
-                    <div class="kpi-subtext">Streaming STT + Gemini Realtime</div>
-                    <div class="pitch-callout">🚀 Industry-leading response speed</div>
-                </div>
-            </section>
-
-            <!-- Main Layout Grid -->
-            <div class="dash-main-grid">
-
-                <!-- Left Column: Primary Analytics & ROI -->
-                <div class="dash-col-left" style="display: flex; flex-direction: column; gap: 24px;">
-
-                    <!-- Primary Chart: Call Volume & Qualification Trend -->
-                    <div class="glass-panel">
-                        <div class="panel-header">
-                            <div>
-                                <div class="panel-title">
-                                    <span class="panel-title-icon">📈</span>
-                                    <span>Call Volume & Qualification Velocity</span>
-                                </div>
-                                <div class="panel-subtitle">Real-time breakdown of total AI calls vs qualified pipeline generated</div>
-                            </div>
-                            <div class="badge-tag badge-purple">Live Feed Synchronized</div>
-                        </div>
-
-                        <div class="chart-container">
-                            <canvas id="volumeChart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Secondary Dual Charts: Sentiment & Conversion Funnel -->
-                    <div class="dual-charts-grid">
-
-                        <!-- Sentiment Distribution -->
-                        <div class="glass-panel">
-                            <div class="panel-header">
-                                <div class="panel-title">
-                                    <span class="panel-title-icon">🎭</span>
-                                    <span>Customer Sentiment Matrix</span>
-                                </div>
-                            </div>
-                            <div class="chart-container" style="height: 240px;">
-                                <canvas id="sentimentChart"></canvas>
-                            </div>
-                        </div>
-
-                        <!-- Funnel Breakdown -->
-                        <div class="glass-panel">
-                            <div class="panel-header">
-                                <div class="panel-title">
-                                    <span class="panel-title-icon">🔻</span>
-                                    <span>Call Conversion Funnel</span>
-                                </div>
-                            </div>
-                            <div class="funnel-container">
-                                <div class="funnel-step">
-                                    <span class="funnel-label">Dialed</span>
-                                    <div class="funnel-bar-bg">
-                                        <div class="funnel-bar-fill" style="width: 100%;">100%</div>
-                                    </div>
-                                </div>
-                                <div class="funnel-step">
-                                    <span class="funnel-label">Connected</span>
-                                    <div class="funnel-bar-bg">
-                                        <div class="funnel-bar-fill" style="width: 84%;">84%</div>
-                                    </div>
-                                </div>
-                                <div class="funnel-step">
-                                    <span class="funnel-label">Deep Engagement</span>
-                                    <div class="funnel-bar-bg">
-                                        <div class="funnel-bar-fill" style="width: 76%;">76%</div>
-                                    </div>
-                                </div>
-                                <div class="funnel-step">
-                                    <span class="funnel-label">AI Qualified</span>
-                                    <div class="funnel-bar-bg">
-                                        <div class="funnel-bar-fill" style="width: 71.8%;">71.8%</div>
-                                    </div>
-                                </div>
-                                <div class="funnel-step">
-                                    <span class="funnel-label">Meeting Booked</span>
-                                    <div class="funnel-bar-bg">
-                                        <div class="funnel-bar-fill" style="width: 48.2%;">48.2%</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-
-                    <!-- Interactive Customer ROI Calculator Widget -->
-                    <div class="roi-calculator-box">
-                        <div class="panel-header">
-                            <div>
-                                <div class="panel-title">
-                                    <span class="panel-title-icon">🧮</span>
-                                    <span>Interactive Customer ROI & Cost Calculator</span>
-                                </div>
-                                <div class="panel-subtitle">Drag sliders to calculate your exact savings with MixUp AI Voice Agents</div>
-                            </div>
-                            <span class="badge-tag badge-emerald">Instant ROI</span>
-                        </div>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                            <div class="roi-slider-group">
-                                <div class="roi-label-row">
-                                    <span>Monthly Calls Needed</span>
-                                    <span class="roi-val-badge" id="roiCallsVal">25,000</span>
-                                </div>
-                                <input type="range" id="roiCallsSlider" class="roi-slider" min="2000" max="100000" step="1000" value="25000">
-                            </div>
-
-                            <div class="roi-slider-group">
-                                <div class="roi-label-row">
-                                    <span>Human Rep Cost per Hour</span>
-                                    <span class="roi-val-badge" id="roiRateVal">$28/hr</span>
-                                </div>
-                                <input type="range" id="roiRateSlider" class="roi-slider" min="15" max="50" step="1" value="28">
-                            </div>
-                        </div>
-
-                        <div class="roi-output-grid">
-                            <div class="roi-out-item">
-                                <span class="roi-out-val" id="roiNetSavings">$53,833</span>
-                                <span class="roi-out-lbl">Est. Monthly Savings</span>
-                            </div>
-                            <div class="roi-out-item">
-                                <span class="roi-out-val" id="roiHoursSaved">2,083 hrs</span>
-                                <span class="roi-out-lbl">Human SDR Hours Saved</span>
-                            </div>
-                            <div class="roi-out-item">
-                                <span class="roi-out-val" id="roiPercentage">+1,196%</span>
-                                <span class="roi-out-lbl">Net Return on Investment</span>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-                <!-- Right Column: Live Call Stream & Agent Matrix -->
-                <div class="dash-col-right" style="display: flex; flex-direction: column; gap: 24px;">
-
-                    <!-- Live Active Call Audio Equalizer & Stream -->
-                    <div class="glass-panel">
-                        <div class="live-visualizer-card">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div class="pulse-dot"></div>
-                                <div>
-                                    <div style="font-size: 13px; font-weight: 700; color: #fff;">Simulated Call Feed</div>
-                                    <div style="font-size: 11px; color: var(--text-muted)">Click call row to inspect live audio</div>
-                                </div>
-                            </div>
-                            <div class="audio-wave-bars">
-                                <div class="wave-bar"></div>
-                                <div class="wave-bar"></div>
-                                <div class="wave-bar"></div>
-                                <div class="wave-bar"></div>
-                                <div class="wave-bar"></div>
-                                <div class="wave-bar"></div>
-                            </div>
-                        </div>
-
-                        <!-- Scrollable Feed List -->
-                        <div class="call-feed-list" id="callFeedList">
-                            <!-- Populated dynamically via dashboard.js -->
-                        </div>
-                    </div>
-
-                    <!-- Top AI Voice Agents Matrix -->
-                    <div class="glass-panel">
-                        <div class="panel-header">
-                            <div class="panel-title">
-                                <span class="panel-title-icon">🤖</span>
-                                <span>AI Agent Deployment Roster</span>
-                            </div>
-                        </div>
-
-                        <div class="agent-matrix-list">
-                            <div class="agent-row">
-                                <div class="agent-row-top">
-                                    <div class="agent-name-title">
-                                        <span class="agent-status-indicator"></span>
-                                        <span>Sarah AI — Enterprise Inbound</span>
-                                    </div>
-                                    <span class="agent-stat-pill">78.5% Qual</span>
-                                </div>
-                                <div class="agent-progress-bg">
-                                    <div class="agent-progress-fill" style="width: 78.5%;"></div>
-                                </div>
-                            </div>
-
-                            <div class="agent-row">
-                                <div class="agent-row-top">
-                                    <div class="agent-name-title">
-                                        <span class="agent-status-indicator"></span>
-                                        <span>Alex AI — E-Commerce Winback</span>
-                                    </div>
-                                    <span class="agent-stat-pill">68.4% Qual</span>
-                                </div>
-                                <div class="agent-progress-bg">
-                                    <div class="agent-progress-fill" style="width: 68.4%;"></div>
-                                </div>
-                            </div>
-
-                            <div class="agent-row">
-                                <div class="agent-row-top">
-                                    <div class="agent-name-title">
-                                        <span class="agent-status-indicator"></span>
-                                        <span>Maya AI — Healthcare Scheduler</span>
-                                    </div>
-                                    <span class="agent-stat-pill">84.2% Qual</span>
-                                </div>
-                                <div class="agent-progress-bg">
-                                    <div class="agent-progress-fill" style="width: 84.2%;"></div>
-                                </div>
-                            </div>
-
-                            <div class="agent-row">
-                                <div class="agent-row-top">
-                                    <div class="agent-name-title">
-                                        <span class="agent-status-indicator"></span>
-                                        <span>David AI — Real Estate Qualifier</span>
-                                    </div>
-                                    <span class="agent-stat-pill">72.1% Qual</span>
-                                </div>
-                                <div class="agent-progress-bg">
-                                    <div class="agent-progress-fill" style="width: 72.1%;"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Integration Sync Status Box -->
-                    <div class="glass-panel" style="background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2);">
-                        <div style="font-size: 13px; font-weight: 700; color: #34d399; margin-bottom: 6px;">⚡ Automated Ecosystem Integration</div>
-                        <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
-                            All completed calls are automatically transcribed, analyzed for sentiment, and synced to 
-                            <strong>Salesforce, HubSpot, Zapier & Custom Webhooks</strong> with 0ms delay.
-                        </div>
-                    </div>
-
-                </div>
-
             </div>
 
-        </main>
-    </div>
+            <!-- KPI 2 -->
+            <div class="dash-kpi-card">
+                <div class="dash-kpi-top">
+                    <span class="dash-kpi-label">Lead Qualification Rate</span>
+                    <div class="dash-kpi-icon-pill">🎯</div>
+                </div>
+                <div class="dash-kpi-val" id="kpiQualRate">71.8%</div>
+                <div class="dash-kpi-sub">
+                    <span class="dash-badge-green">106,920</span>
+                    <span class="dash-sub-text">leads qualified</span>
+                </div>
+            </div>
 
-    <!-- Toast Notification Container for Live Calls -->
-    <div class="toast-container" id="toastContainer"></div>
+            <!-- KPI 3 -->
+            <div class="dash-kpi-card">
+                <div class="dash-kpi-top">
+                    <span class="dash-kpi-label">Avg Call Duration</span>
+                    <div class="dash-kpi-icon-pill">⏱️</div>
+                </div>
+                <div class="dash-kpi-val" id="kpiAvgTime">3m 48s</div>
+                <div class="dash-kpi-sub">
+                    <span class="dash-badge-green">Zero Delay</span>
+                    <span class="dash-sub-text">natural conversation</span>
+                </div>
+            </div>
 
-    <!-- Call Detail Modal Drawer -->
-    <div class="modal-overlay" id="callDetailModal">
-        <div class="modal-box">
-            <div class="modal-header">
-                <div class="modal-title-wrap">
-                    <div class="caller-avatar" style="width:42px; height:42px; font-size:16px;">AI</div>
+            <!-- KPI 4 -->
+            <div class="dash-kpi-card">
+                <div class="dash-kpi-top">
+                    <span class="dash-kpi-label">Customer Delight Index</span>
+                    <div class="dash-kpi-icon-pill">😊</div>
+                </div>
+                <div class="dash-kpi-val" id="kpiSentiment">94.2%</div>
+                <div class="dash-kpi-sub">
+                    <span class="dash-badge-green">NPS +74</span>
+                    <span class="dash-sub-text">positive sentiment</span>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Main Visualizations Grid (Chart + Call Activity Stream) -->
+        <section class="dash-main-row">
+
+            <!-- Chart Card -->
+            <div class="dash-card">
+                <div class="dash-card-header">
                     <div>
-                        <div style="font-size: 16px; font-weight: 700; color: #fff;" id="modalCallerName">David Miller</div>
-                        <div style="font-size: 12px; color: var(--text-muted);" id="modalCallerMeta">+1 (555) 234-8901 • Enterprise SaaS Lead</div>
+                        <div class="dash-card-title">Call Performance Velocity</div>
+                        <div class="dash-card-sub">Total calls dialed vs qualified leads generated</div>
                     </div>
                 </div>
-                <button class="modal-close-btn" onclick="closeCallModal()">✕</button>
+                <div class="dash-chart-wrap">
+                    <canvas id="simpleChart"></canvas>
+                </div>
             </div>
 
-            <div class="modal-body">
-                <!-- Playable Audio Simulator Card -->
-                <div class="audio-player-card">
-                    <div class="player-controls-row">
-                        <button class="play-pause-btn" id="modalPlayBtn" onclick="toggleModalAudio()">▶</button>
-                        <div class="scrubber-wrap">
-                            <div class="scrubber-bar">
-                                <div class="scrubber-progress"></div>
-                            </div>
-                            <div class="time-display">
-                                <span>01:18</span>
-                                <span>04:12</span>
-                            </div>
-                        </div>
+            <!-- Recent Calls Feed Card -->
+            <div class="dash-card">
+                <div class="dash-card-header">
+                    <div>
+                        <div class="dash-card-title">Recent AI Calls</div>
+                        <div class="dash-card-sub">Click any call to view transcript</div>
                     </div>
                 </div>
 
-                <!-- AI Extracted Insights -->
-                <div class="insights-box" id="modalInsights">
-                    <!-- Populated dynamically -->
+                <div class="dash-feed-list" id="callFeed">
+                    <!-- Populated dynamically by dashboard.js -->
                 </div>
+            </div>
 
-                <!-- Synchronized Transcript Timeline -->
-                <div style="font-size: 13px; font-weight: 700; color: #fff; margin-top: 6px;">💬 Real-Time Audio Transcript & Sentiment Stream</div>
-                <div class="transcript-timeline" id="modalTranscriptTimeline">
-                    <!-- Populated dynamically -->
-                </div>
+        </section>
+
+    </main>
+
+    <!-- Clean Call Detail Modal -->
+    <div class="dash-modal-overlay" id="callModal">
+        <div class="dash-modal-box">
+            <button class="dash-modal-close" onclick="closeModal()">✕</button>
+            <div style="font-size: 20px; font-weight: 700; color: var(--color-carbon-ink);" id="modalName">David Miller</div>
+            <div style="font-size: 13px; color: var(--color-slate); margin-top: 2px;" id="modalMeta">+1 (555) 234-8901 • SaaS Lead Gen</div>
+
+            <div style="margin-top: 24px; font-size: 14px; font-weight: 700; color: var(--color-carbon-ink);">
+                💬 Call Transcript & AI Summary
+            </div>
+
+            <div class="dash-chat-list" id="modalChatList">
+                <!-- Chat bubbles rendered dynamically -->
             </div>
         </div>
     </div>
 
-    <!-- Export Summary Modal -->
-    <div class="modal-overlay" id="exportModal">
-        <div class="modal-box" style="max-width: 600px;">
-            <div class="modal-header">
-                <div style="font-size: 16px; font-weight: 700; color: #fff;">📄 Export MixUp Performance Summary</div>
-                <button class="modal-close-btn" onclick="closeExportModal()">✕</button>
-            </div>
-            <div class="modal-body">
-                <p style="font-size: 13px; color: var(--text-muted);">
-                    Generate a client-ready PDF or CSV export of current call performance metrics, sentiment distribution, and cost reduction analytics.
-                </p>
-
-                <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--bg-glass-border); padding: 16px; border-radius: 8px;">
-                    <div style="font-size: 14px; font-weight: 700; color: var(--color-coral); margin-bottom: 6px;">Executive Summary Overview</div>
-                    <ul style="font-size: 12px; color: #cbd5e1; display: flex; flex-direction: column; gap: 6px; padding-left: 18px;">
-                        <li>148,920 Total AI Calls dialed across all campaigns</li>
-                        <li>71.8% Qualified Lead Conversion Rate</li>
-                        <li>94.2% Positive Customer Sentiment Index</li>
-                        <li>$64,250 Estimated Monthly Cost Reduction</li>
-                    </ul>
-                </div>
-
-                <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px;">
-                    <button class="btn-dash" onclick="closeExportModal()">Cancel</button>
-                    <button class="btn-dash btn-dash-primary" onclick="triggerDownloadReport()">📥 Download PDF Summary</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Dashboard JavaScript Engine -->
-    <script src="dashboard.js?v=1.0.0"></script>
+    <!-- Dashboard JS Engine -->
+    <script src="dashboard.js?v=1.0.1"></script>
 </body>
 
 </html>
