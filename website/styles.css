@@ -44,8 +44,11 @@
 
   /* Spacing */
   --spacing-8: 8px;
+  --spacing-12: 12px;
   --spacing-16: 16px;
+  --spacing-20: 20px;
   --spacing-24: 24px;
+  --spacing-28: 28px;
   --spacing-32: 32px;
   --spacing-40: 40px;
   --spacing-48: 48px;
@@ -2583,10 +2586,11 @@ img {
   background: var(--surface-card);
   border: 1px solid var(--color-fog);
   border-radius: var(--radius-2xl);
-  padding: var(--spacing-28) var(--spacing-24);
+  padding: 32px 28px;
   box-shadow: var(--shadow-xl);
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   position: relative;
   transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
   box-sizing: border-box;
@@ -2617,7 +2621,7 @@ img {
   background: var(--surface-accent-wash);
   width: max-content;
   max-width: 100%;
-  padding: 4px 12px;
+  padding: 6px 14px;
   border-radius: var(--radius-full);
 }
 
@@ -2637,6 +2641,7 @@ img {
   color: var(--color-carbon-ink);
   margin-bottom: var(--spacing-8);
   line-height: 1.3;
+  width: 100%;
   word-break: break-word;
   overflow-wrap: break-word;
 }
@@ -2647,6 +2652,7 @@ img {
   line-height: var(--leading-caption);
   margin-bottom: var(--spacing-20);
   flex-grow: 1;
+  width: 100%;
   word-break: break-word;
   overflow-wrap: break-word;
 }
