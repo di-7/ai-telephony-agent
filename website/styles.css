@@ -2730,19 +2730,19 @@ img {
 .pricing-single-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   border-bottom: 1px solid var(--color-fog);
   padding-bottom: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   flex-wrap: wrap;
-  gap: var(--spacing-16);
+  gap: 16px;
   width: 100%;
   min-width: 0;
 }
 
 .pricing-main-price-box {
   min-width: 0;
-  flex: 1 1 300px;
+  flex: 1 1 auto;
 }
 
 .pricing-plan-name {
@@ -2752,20 +2752,22 @@ img {
   text-transform: uppercase;
   letter-spacing: 1px;
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   word-break: break-word;
 }
 
 .pricing-price-wrap {
   display: flex;
   align-items: baseline;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   flex-wrap: wrap;
 }
 
 .price-subtitle-note {
   font-size: var(--text-body-sm);
   color: var(--color-smoke);
+  margin: 0;
+  padding: 0;
   word-break: break-word;
   overflow-wrap: break-word;
 }
@@ -2776,9 +2778,11 @@ img {
 
 .pricing-guarantee-badges {
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-8);
-  align-items: flex-end;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
   min-width: 0;
   max-width: 100%;
 }
