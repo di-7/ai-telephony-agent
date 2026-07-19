@@ -2598,17 +2598,20 @@ img {
 }
 
 .step-num {
-  position: absolute;
-  top: 16px;
-  right: 20px;
   font-family: var(--font-mono);
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: var(--font-weight-bold);
-  color: rgba(14, 15, 16, 0.15);
+  color: var(--color-signal-coral);
+  margin-bottom: var(--spacing-16);
+  background: var(--surface-accent-wash);
+  width: max-content;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
 }
 
 .journey-card-final .step-num {
-  color: rgba(255, 80, 101, 0.25);
+  background: var(--color-signal-coral);
+  color: var(--color-pure-white);
 }
 
 .step-icon {
