@@ -23,7 +23,7 @@
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="styles.css?v=1.0.3">
-    <link rel="stylesheet" href="dashboard.css?v=3.0.0">
+    <link rel="stylesheet" href="dashboard.css?v=3.1.0">
 </head>
 
 <body>
@@ -31,15 +31,9 @@
     <!-- Main Navigation Bar -->
     <nav class="navbar scrolled" id="navbar">
         <div class="nav-container">
-            <div style="display: flex; align-items: center;">
-                <button class="dash-menu-toggle" id="sidebarToggleBtn" onclick="toggleSidebarDrawer()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                    <span>Business Menu</span>
-                </button>
-                <a href="index.html" class="nav-logo">
-                    <img src="23836 (1).png" alt="Mixup" class="logo-img">
-                </a>
-            </div>
+            <a href="index.html" class="nav-logo">
+                <img src="23836 (1).png" alt="Mixup" class="logo-img">
+            </a>
 
             <div class="nav-links" id="navLinks">
                 <a href="index.html#services" class="nav-link">Services</a>
@@ -50,8 +44,11 @@
                 <a href="index.html#contact" class="nav-link">Contact</a>
             </div>
 
-            <div class="nav-actions">
+            <div class="nav-actions" style="display: flex; align-items: center; gap: 12px;">
                 <span id="navBusinessName" style="font-size: 13px; font-weight: 600; color: var(--color-carbon-ink); display: none;"></span>
+                <button class="dash-menu-toggle-icon" id="sidebarToggleBtn" onclick="toggleSidebarDrawer()" aria-label="Toggle Business Menu" title="Business Menu & Profile">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
                 <button class="btn btn-dark" id="authNavBtn" onclick="logoutBusiness()">Log out</button>
             </div>
         </div>

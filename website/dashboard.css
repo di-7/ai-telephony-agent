@@ -13,31 +13,32 @@ body {
   padding: 0;
 }
 
-/* Header Toggle Button */
-.dash-menu-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+/* Header Toggle Icon Button (Top Right Corner) */
+.dash-menu-toggle-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   background: var(--color-fog, #f4f4f8);
   border: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 8px 14px;
-  border-radius: 100px;
-  font-family: 'Sora', sans-serif;
-  font-size: 13px;
-  font-weight: 700;
   color: var(--color-carbon-ink, #0e0f10);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-right: 12px;
+  flex-shrink: 0;
 }
 
-.dash-menu-toggle:hover {
+.dash-menu-toggle-icon:hover {
   background: var(--color-signal-coral, #ff5065);
   color: #ffffff;
   border-color: transparent;
+  transform: scale(1.05);
 }
 
-.dash-menu-toggle svg {
+.dash-menu-toggle-icon svg {
+  flex-shrink: 0;
+}
   flex-shrink: 0;
 }
 
