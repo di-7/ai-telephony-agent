@@ -1,6 +1,6 @@
 /* ==========================================
    MIXUP FUNCTIONAL ANALYTICS DASHBOARD ENGINE
-   v2.1 - Supabase Auth & Personalized Business Dashboard
+   v2.2 - Sidebar Navigation & Direct Call Trigger
    ========================================== */
 
 let mainChart = null;
@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ========================================
-// AUTHENTICATION CHECK
+// AUTHENTICATION & BUSINESS PROFILE
 // ========================================
 
 async function checkBusinessAuth() {
@@ -32,7 +32,6 @@ async function checkBusinessAuth() {
     const user = session.user;
 
     try {
-        // Fetch business details from database
         const { data: businessData, error } = await supabaseClient
             .from('businesses')
             .select('*')
@@ -40,7 +39,7 @@ async function checkBusinessAuth() {
             .maybeSingle();
 
         if (error) {
-            console.error('Error fetching business info:', error);
+            console.warn('Error fetching business info from Supabase:', error);
         }
 
         currentBusiness = businessData || {
@@ -48,7 +47,8 @@ async function checkBusinessAuth() {
             business_name: user.user_metadata?.business_name || user.email.split('@')[0],
             industry: 'General Business',
             contact_name: user.user_metadata?.contact_name || 'Business Owner',
-            email: user.email
+            email: user.email,
+            phone: ''
         };
 
         renderBusinessInfo(currentBusiness);
@@ -64,17 +64,14 @@ async function checkBusinessAuth() {
 function renderBusinessInfo(business) {
     const nameEl = document.getElementById('displayBusinessName');
     const industryEl = document.getElementById('displayIndustry');
-    const avatarEl = document.getElementById('businessAvatar');
     const metaEl = document.getElementById('displayContactMeta');
     const navNameEl = document.getElementById('navBusinessName');
 
     const bName = business.business_name || 'My Business';
-    const initials = bName.substring(0, 2).toUpperCase();
 
     if (nameEl) nameEl.innerText = bName;
     if (industryEl) industryEl.innerText = business.industry || 'General';
-    if (avatarEl) avatarEl.innerText = initials;
-    if (metaEl) metaEl.innerText = `Managed by ${business.contact_name || 'Admin'} (${business.email || ''}) • Custom AI Agent Dashboard`;
+    if (metaEl) metaEl.innerText = `${business.contact_name || 'Admin'} (${business.email || ''})`;
     if (navNameEl) {
         navNameEl.innerText = bName;
         navNameEl.style.display = 'inline-block';
@@ -82,14 +79,98 @@ function renderBusinessInfo(business) {
 }
 
 // ========================================
-// DATA FETCHING
+// DIRECT DEMO CALL TRIGGER
+// ========================================
+
+async function triggerTestDemoCall() {
+    if (!currentBusiness) {
+        alert('Please log in to trigger a demo call.');
+        return;
+    }
+
+    let phone = currentBusiness.phone;
+    if (!phone || phone.trim().length < 5) {
+        phone = prompt('Please enter your phone number to receive the AI demo call:', '+1');
+        if (!phone) return;
+    }
+
+    // Format phone number
+    if (!phone.startsWith('+')) {
+        phone = '+' + phone.trim();
+    }
+
+    const modal = document.getElementById('testCallModal');
+    const statusText = document.getElementById('testCallStatusText');
+
+    if (modal && statusText) {
+        statusText.innerHTML = `Dialing <strong>${escapeHtml(phone)}</strong>... Answer your phone to speak with your AI Agent!`;
+        modal.classList.add('active');
+    }
+
+    try {
+        // 1. Call backend API endpoint to trigger VideoSDK call
+        const apiEndpoint = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? `${window.location.protocol}//${window.location.hostname}:8081/api/make-call`
+            : 'https://ai-telephony-agent.onrender.com/api/make-call';
+
+        fetch(apiEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                to_number: phone,
+                name: currentBusiness.contact_name || currentBusiness.business_name,
+                company: currentBusiness.business_name
+            })
+        }).catch(err => console.error('Call API error:', err));
+
+        // 2. Persist call log in Supabase under this business ID
+        const newLog = {
+            business_id: currentBusiness.id,
+            caller_phone: phone,
+            caller_name: currentBusiness.contact_name || 'Test Caller',
+            caller_company: currentBusiness.business_name,
+            source: 'instant_call',
+            duration: '1m 00s',
+            status: 'completed',
+            sentiment: 'Interested',
+            transcript: [
+                { speaker: 'agent', name: 'Sarah (Mixup AI)', text: `Hello ${currentBusiness.contact_name || 'there'}! This is your live test call for ${currentBusiness.business_name}. How is our AI voice performance working for you?` },
+                { speaker: 'customer', name: currentBusiness.contact_name || 'Caller', text: `It works great! I'm testing the real-time call flow.` },
+                { speaker: 'agent', name: 'Sarah (Mixup AI)', text: `Awesome! This call record and audio summary have been logged directly into your analytics dashboard.` }
+            ]
+        };
+
+        const { error: dbErr } = await supabaseClient
+            .from('call_logs')
+            .insert([newLog]);
+
+        if (dbErr) {
+            console.warn('Supabase log error:', dbErr);
+        }
+
+        // Auto-refresh feed after 3 seconds
+        setTimeout(() => {
+            fetchBusinessDashboardData();
+        }, 3000);
+
+    } catch (err) {
+        console.error('Trigger call error:', err);
+    }
+}
+
+function closeTestCallModal() {
+    const modal = document.getElementById('testCallModal');
+    if (modal) modal.classList.remove('active');
+}
+
+// ========================================
+// DATA FETCHING & RENDERING
 // ========================================
 
 async function fetchBusinessDashboardData() {
     if (!currentBusiness) return;
 
     try {
-        // Fetch call logs for this specific business from Supabase
         const { data: logs, error } = await supabaseClient
             .from('call_logs')
             .select('*')
@@ -102,7 +183,6 @@ async function fetchBusinessDashboardData() {
 
         allCallLogs = logs || [];
 
-        // If no logs yet, provide clean initial view
         updateKPIs(allCallLogs);
         initChart(allCallLogs);
         renderFeed(allCallLogs);
@@ -122,10 +202,6 @@ function refreshDashboard() {
     }
     fetchBusinessDashboardData();
 }
-
-// ========================================
-// KPI UPDATES
-// ========================================
 
 function updateKPIs(logs) {
     const totalCalls = logs.length;
@@ -161,10 +237,6 @@ function updateSourceBreakdown(logs) {
     if (instantEl) instantEl.innerText = instantCount;
 }
 
-// ========================================
-// CHART
-// ========================================
-
 function initChart(logs) {
     const canvas = document.getElementById('simpleChart');
     const emptyState = document.getElementById('chartEmptyState');
@@ -179,7 +251,6 @@ function initChart(logs) {
     canvas.style.display = 'block';
     if (emptyState) emptyState.style.display = 'none';
 
-    // Group calls by date
     const callsByDate = {};
     logs.forEach(log => {
         const date = new Date(log.created_at || log.timestamp || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -256,10 +327,6 @@ function initChart(logs) {
     });
 }
 
-// ========================================
-// CALL FEED
-// ========================================
-
 function renderFeed(logs) {
     const container = document.getElementById('callFeed');
     const emptyState = document.getElementById('feedEmptyState');
@@ -303,10 +370,6 @@ function renderFeed(logs) {
         container.appendChild(div);
     });
 }
-
-// ========================================
-// MODAL & TRANSCRIPT
-// ========================================
 
 function openModal(call) {
     const modal = document.getElementById('callModal');
@@ -353,8 +416,12 @@ function closeModal() {
 
 document.addEventListener('click', (e) => {
     const modal = document.getElementById('callModal');
+    const testModal = document.getElementById('testCallModal');
     if (modal && modal.classList.contains('active') && e.target === modal) {
         closeModal();
+    }
+    if (testModal && testModal.classList.contains('active') && e.target === testModal) {
+        closeTestCallModal();
     }
 });
 

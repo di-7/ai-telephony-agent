@@ -12,9 +12,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -25,12 +23,12 @@
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="styles.css?v=1.0.3">
-    <link rel="stylesheet" href="dashboard.css?v=2.0.0">
+    <link rel="stylesheet" href="dashboard.css?v=2.2.0">
 </head>
 
 <body>
 
-    <!-- Main Navigation Bar (Matches website theme) -->
+    <!-- Main Navigation Bar -->
     <nav class="navbar scrolled" id="navbar">
         <div class="nav-container">
             <a href="index.html" class="nav-logo">
@@ -51,197 +49,214 @@
         </div>
     </nav>
 
-    <!-- Dashboard Layout -->
-    <main class="dash-container">
+    <!-- Sidebar + Main Dashboard Layout -->
+    <div class="dash-wrapper">
 
-        <!-- Business Profile Header Banner -->
-        <div class="dash-card" style="margin-bottom: 28px; background: linear-gradient(135deg, #ffffff, #fff5f6); border: 1px solid rgba(255, 80, 101, 0.15);">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
-                <div style="display: flex; align-items: center; gap: 16px;">
-                    <div style="width: 52px; height: 52px; border-radius: 16px; background: linear-gradient(135deg, #ff5065, #ff7a59); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px;" id="businessAvatar">
-                        B
-                    </div>
-                    <div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <h2 style="font-size: 22px; font-weight: 800; margin: 0; color: var(--color-carbon-ink);" id="displayBusinessName">Loading Business...</h2>
-                            <span class="dash-tag-interested" id="displayIndustry">General</span>
-                        </div>
-                        <p style="font-size: 13px; color: var(--color-slate); margin: 4px 0 0 0;" id="displayContactMeta">Customized AI Telephony & Real-time Call Analytics</p>
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <button class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;" onclick="window.location.href='index.html#contact'">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                        Test Demo Call
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Header Row -->
-        <div class="dash-header-wrap">
+        <!-- Sidebar Navigation -->
+        <aside class="dash-sidebar">
             <div>
-                <h1 class="dash-header-title">Call Analytics & Intelligence</h1>
-                <p class="dash-header-subtitle">Real-time performance metrics across your automated AI voice agent sessions.</p>
-            </div>
-
-            <!-- Time Filter Pills -->
-            <div class="dash-filter-bar">
-                <button class="dash-filter-btn" data-range="today">Today</button>
-                <button class="dash-filter-btn" data-range="7d">7 Days</button>
-                <button class="dash-filter-btn active" data-range="30d">30 Days</button>
-                <button class="dash-filter-btn" data-range="all">All Time</button>
-            </div>
-        </div>
-
-        <!-- KPI Summary Grid (4 Cards) -->
-        <section class="dash-kpi-grid">
-
-            <!-- KPI 1: Total Calls -->
-            <div class="dash-kpi-card">
-                <div class="dash-kpi-top">
-                    <span class="dash-kpi-label">Total AI Calls</span>
-                    <div class="dash-kpi-icon-pill">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                    </div>
-                </div>
-                <div class="dash-kpi-val" id="kpiCalls">0</div>
-                <div class="dash-kpi-sub">
-                    <span class="dash-badge-green" id="kpiCallsBadge">--</span>
-                    <span class="dash-sub-text">total calls logged</span>
-                </div>
-            </div>
-
-            <!-- KPI 2: Success Rate -->
-            <div class="dash-kpi-card">
-                <div class="dash-kpi-top">
-                    <span class="dash-kpi-label">Qualification Rate</span>
-                    <div class="dash-kpi-icon-pill">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-                    </div>
-                </div>
-                <div class="dash-kpi-val" id="kpiSuccessRate">0%</div>
-                <div class="dash-kpi-sub">
-                    <span class="dash-badge-green" id="kpiSuccessBadge">--</span>
-                    <span class="dash-sub-text">leads qualified</span>
-                </div>
-            </div>
-
-            <!-- KPI 3: Avg Call Duration -->
-            <div class="dash-kpi-card">
-                <div class="dash-kpi-top">
-                    <span class="dash-kpi-label">Avg Call Duration</span>
-                    <div class="dash-kpi-icon-pill">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    </div>
-                </div>
-                <div class="dash-kpi-val" id="kpiAvgTime">--</div>
-                <div class="dash-kpi-sub">
-                    <span class="dash-badge-green">Per Call</span>
-                    <span class="dash-sub-text">natural conversation</span>
-                </div>
-            </div>
-
-            <!-- KPI 4: Sentiment Score -->
-            <div class="dash-kpi-card">
-                <div class="dash-kpi-top">
-                    <span class="dash-kpi-label">Customer Delight Index</span>
-                    <div class="dash-kpi-icon-pill">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-                    </div>
-                </div>
-                <div class="dash-kpi-val" id="kpiSentiment">0%</div>
-                <div class="dash-kpi-sub">
-                    <span class="dash-badge-green" id="kpiSentimentBadge">--</span>
-                    <span class="dash-sub-text">positive sentiment</span>
-                </div>
-            </div>
-
-        </section>
-
-        <!-- Main Visualizations Grid (Chart + Call Activity Stream) -->
-        <section class="dash-main-row">
-
-            <!-- Chart Card -->
-            <div class="dash-card">
-                <div class="dash-card-header">
-                    <div>
-                        <div class="dash-card-title">Call Performance Velocity</div>
-                        <div class="dash-card-sub">Calls recorded from your AI agent sessions</div>
-                    </div>
-                </div>
-                <div class="dash-chart-wrap">
-                    <canvas id="simpleChart"></canvas>
-                </div>
-                <!-- Empty state for chart -->
-                <div class="dash-empty-state" id="chartEmptyState" style="display: none;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-slate, #7a7b7c)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-                    <p>No call data logged yet for your business. Make a demo call to start tracking!</p>
-                </div>
-            </div>
-
-            <!-- Recent Calls Feed Card -->
-            <div class="dash-card">
-                <div class="dash-card-header">
-                    <div>
-                        <div class="dash-card-title">Recent AI Calls</div>
-                        <div class="dash-card-sub">Click any call to view full audio transcript</div>
-                    </div>
-                    <button class="dash-refresh-btn" onclick="refreshDashboard()" title="Refresh data">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                    </button>
+                <!-- Business Info Header -->
+                <div class="sidebar-header">
+                    <h2 class="sidebar-business-title" id="displayBusinessName">Loading...</h2>
+                    <span class="sidebar-industry-tag" id="displayIndustry">General</span>
+                    <p class="sidebar-contact-meta" id="displayContactMeta">Customized AI Telephony Dashboard</p>
                 </div>
 
-                <div class="dash-feed-list" id="callFeed">
-                    <!-- Populated dynamically by dashboard.js -->
-                </div>
-
-                <!-- Empty state for feed -->
-                <div class="dash-empty-state" id="feedEmptyState" style="display: none;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-slate, #7a7b7c)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                    <p>No calls recorded yet for your business account.</p>
-                    <a href="index.html" class="dash-empty-cta">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                        Test Demo Call
+                <!-- Navigation Menu Links -->
+                <nav class="sidebar-menu">
+                    <a href="#" class="sidebar-item active" onclick="return false;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                        <span>Analytics Overview</span>
                     </a>
+
+                    <button class="sidebar-call-btn" onclick="triggerTestDemoCall()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        <span>Test Demo Call</span>
+                    </button>
+
+                    <a href="index.html" class="sidebar-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        <span>Home Website</span>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Sidebar Footer & Logout -->
+            <div class="sidebar-footer">
+                <button class="sidebar-logout-btn" onclick="logoutBusiness()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    <span>Log Out</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Dashboard Content -->
+        <main class="dash-main-content">
+
+            <!-- Header Row -->
+            <div class="dash-header-wrap">
+                <div>
+                    <h1 class="dash-header-title">Call Analytics & Intelligence</h1>
+                    <p class="dash-header-subtitle">Real-time performance metrics across your automated AI voice agent sessions.</p>
+                </div>
+
+                <!-- Time Filter Pills -->
+                <div class="dash-filter-bar">
+                    <button class="dash-filter-btn" data-range="today">Today</button>
+                    <button class="dash-filter-btn" data-range="7d">7 Days</button>
+                    <button class="dash-filter-btn active" data-range="30d">30 Days</button>
+                    <button class="dash-filter-btn" data-range="all">All Time</button>
                 </div>
             </div>
 
-        </section>
+            <!-- KPI Summary Grid (4 Cards) -->
+            <section class="dash-kpi-grid">
 
-        <!-- Call Source Breakdown -->
-        <section class="dash-source-row">
-            <div class="dash-card dash-source-card">
-                <div class="dash-card-header">
-                    <div>
-                        <div class="dash-card-title">Call Acquisition Channels</div>
-                        <div class="dash-card-sub">Lead entry points for your AI Voice Agent</div>
+                <!-- KPI 1: Total Calls -->
+                <div class="dash-kpi-card">
+                    <div class="dash-kpi-top">
+                        <span class="dash-kpi-label">Total AI Calls</span>
+                        <div class="dash-kpi-icon-pill">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        </div>
+                    </div>
+                    <div class="dash-kpi-val" id="kpiCalls">0</div>
+                    <div class="dash-kpi-sub">
+                        <span class="dash-badge-green" id="kpiCallsBadge">--</span>
+                        <span class="dash-sub-text">total calls logged</span>
                     </div>
                 </div>
-                <div class="dash-source-grid">
-                    <div class="dash-source-item">
-                        <div class="dash-source-icon cta">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-                        </div>
-                        <div class="dash-source-info">
-                            <span class="dash-source-label">CTA Form Submission</span>
-                            <span class="dash-source-val" id="ctaCallCount">0</span>
+
+                <!-- KPI 2: Qualification Rate -->
+                <div class="dash-kpi-card">
+                    <div class="dash-kpi-top">
+                        <span class="dash-kpi-label">Qualification Rate</span>
+                        <div class="dash-kpi-icon-pill">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
                         </div>
                     </div>
-                    <div class="dash-source-item">
-                        <div class="dash-source-icon instant">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <div class="dash-kpi-val" id="kpiSuccessRate">0%</div>
+                    <div class="dash-kpi-sub">
+                        <span class="dash-badge-green" id="kpiSuccessBadge">--</span>
+                        <span class="dash-sub-text">leads qualified</span>
+                    </div>
+                </div>
+
+                <!-- KPI 3: Avg Call Duration -->
+                <div class="dash-kpi-card">
+                    <div class="dash-kpi-top">
+                        <span class="dash-kpi-label">Avg Call Duration</span>
+                        <div class="dash-kpi-icon-pill">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                         </div>
-                        <div class="dash-source-info">
-                            <span class="dash-source-label">Instant Call Trigger</span>
-                            <span class="dash-source-val" id="instantCallCount">0</span>
+                    </div>
+                    <div class="dash-kpi-val" id="kpiAvgTime">--</div>
+                    <div class="dash-kpi-sub">
+                        <span class="dash-badge-green">Per Call</span>
+                        <span class="dash-sub-text">natural conversation</span>
+                    </div>
+                </div>
+
+                <!-- KPI 4: Sentiment Score -->
+                <div class="dash-kpi-card">
+                    <div class="dash-kpi-top">
+                        <span class="dash-kpi-label">Customer Delight Index</span>
+                        <div class="dash-kpi-icon-pill">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                        </div>
+                    </div>
+                    <div class="dash-kpi-val" id="kpiSentiment">0%</div>
+                    <div class="dash-kpi-sub">
+                        <span class="dash-badge-green" id="kpiSentimentBadge">--</span>
+                        <span class="dash-sub-text">positive sentiment</span>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Main Visualizations Grid (Chart + Call Activity Stream) -->
+            <section class="dash-main-row">
+
+                <!-- Chart Card -->
+                <div class="dash-card">
+                    <div class="dash-card-header">
+                        <div>
+                            <div class="dash-card-title">Call Performance Velocity</div>
+                            <div class="dash-card-sub">Calls recorded from your AI agent sessions</div>
+                        </div>
+                    </div>
+                    <div class="dash-chart-wrap">
+                        <canvas id="simpleChart"></canvas>
+                    </div>
+                    <!-- Empty state for chart -->
+                    <div class="dash-empty-state" id="chartEmptyState" style="display: none;">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-slate, #7a7b7c)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                        <p>No call data logged yet. Click <strong>Test Demo Call</strong> in the sidebar to test your AI agent!</p>
+                    </div>
+                </div>
+
+                <!-- Recent Calls Feed Card -->
+                <div class="dash-card">
+                    <div class="dash-card-header">
+                        <div>
+                            <div class="dash-card-title">Recent AI Calls</div>
+                            <div class="dash-card-sub">Click any call to view full audio transcript</div>
+                        </div>
+                        <button class="dash-refresh-btn" onclick="refreshDashboard()" title="Refresh data">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="dash-feed-list" id="callFeed">
+                        <!-- Populated dynamically by dashboard.js -->
+                    </div>
+
+                    <!-- Empty state for feed -->
+                    <div class="dash-empty-state" id="feedEmptyState" style="display: none;">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-slate, #7a7b7c)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        <p>No calls recorded yet for your business account.</p>
+                        <button class="sidebar-call-btn" style="margin-top: 8px; width: auto;" onclick="triggerTestDemoCall()">
+                            <span>Test Demo Call</span>
+                        </button>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Call Source Breakdown -->
+            <section class="dash-source-row">
+                <div class="dash-card dash-source-card">
+                    <div class="dash-card-header">
+                        <div>
+                            <div class="dash-card-title">Call Acquisition Channels</div>
+                            <div class="dash-card-sub">Lead entry points for your AI Voice Agent</div>
+                        </div>
+                    </div>
+                    <div class="dash-source-grid">
+                        <div class="dash-source-item">
+                            <div class="dash-source-icon cta">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                            </div>
+                            <div class="dash-source-info">
+                                <span class="dash-source-label">CTA Form Submission</span>
+                                <span class="dash-source-val" id="ctaCallCount">0</span>
+                            </div>
+                        </div>
+                        <div class="dash-source-item">
+                            <div class="dash-source-icon instant">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            </div>
+                            <div class="dash-source-info">
+                                <span class="dash-source-label">Instant Call Trigger</span>
+                                <span class="dash-source-val" id="instantCallCount">0</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-    </main>
+        </main>
+    </div>
 
     <!-- Call Detail Modal -->
     <div class="dash-modal-overlay" id="callModal">
@@ -268,8 +283,32 @@
         </div>
     </div>
 
+    <!-- Test Demo Call Ringing Modal -->
+    <div class="dash-modal-overlay" id="testCallModal">
+        <div class="dash-modal-box" style="max-width: 440px; text-align: center; padding: 40px 32px;">
+            <button class="dash-modal-close" onclick="closeTestCallModal()" aria-label="Close modal">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            
+            <div class="ring-icon-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 32px; height: 32px;">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+            </div>
+
+            <h3 style="font-size: 20px; font-weight: 800; color: var(--color-carbon-ink); margin: 0 0 8px 0;">Your phone is ringing!</h3>
+            <p style="font-size: 14px; color: var(--color-slate); margin: 0 0 20px 0; line-height: 1.5;" id="testCallStatusText">
+                Initiating AI demo call to your registered phone number...
+            </p>
+
+            <button class="btn btn-dark" onclick="closeTestCallModal()" style="padding: 10px 24px; font-size: 13px;">
+                Dismiss
+            </button>
+        </div>
+    </div>
+
     <!-- Dashboard JS Engine -->
-    <script src="dashboard.js?v=2.1.0"></script>
+    <script src="dashboard.js?v=2.2.0"></script>
 
     <!-- Navbar scroll behavior -->
     <script>
