@@ -323,12 +323,15 @@
                     }
 
                     alertBox.className = 'alert-box alert-success';
-                    alertBox.innerText = 'Business registered successfully! Redirecting to your dashboard...';
+                    alertBox.innerHTML = `
+                        <div style="font-weight: 700; margin-bottom: 4px;">Business Registered Successfully!</div>
+                        <div>Please check your inbox to verify your email address. Redirecting to login page...</div>
+                    `;
                     alertBox.style.display = 'block';
 
                     setTimeout(() => {
-                        window.location.href = 'dashboard.html';
-                    }, 1200);
+                        window.location.href = `login.html?registered=true&email=${encodeURIComponent(email)}`;
+                    }, 1800);
 
                 } catch (err) {
                     console.error('Registration error:', err);
