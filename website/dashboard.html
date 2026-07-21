@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mixup — Call Analytics & Performance Dashboard</title>
+    <title>Mixup — Business AI Analytics Dashboard</title>
     <meta name="description"
         content="Real-time analytics dashboard for Mixup AI-powered agentic calls. Track call volume, lead qualification, and customer sentiment.">
     <link rel="icon" type="image/jpeg" href="favicon.jpeg">
@@ -18,6 +18,10 @@
 
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-client.js"></script>
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="styles.css?v=1.0.3">
@@ -41,8 +45,8 @@
                 <a href="index.html#contact" class="nav-link">Contact</a>
             </div>
             <div class="nav-actions">
-                <button class="btn btn-dark" onclick="window.location.href='index.html'">Log in</button>
-                <button class="btn btn-primary" onclick="window.location.href='pricing.html'">Start for free</button>
+                <span id="navBusinessName" style="font-size: 13px; font-weight: 600; color: var(--color-carbon-ink); display: none;"></span>
+                <button class="btn btn-dark" id="authNavBtn" onclick="logoutBusiness()">Log out</button>
             </div>
         </div>
     </nav>
@@ -50,11 +54,35 @@
     <!-- Dashboard Layout -->
     <main class="dash-container">
 
+        <!-- Business Profile Header Banner -->
+        <div class="dash-card" style="margin-bottom: 28px; background: linear-gradient(135deg, #ffffff, #fff5f6); border: 1px solid rgba(255, 80, 101, 0.15);">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 52px; height: 52px; border-radius: 16px; background: linear-gradient(135deg, #ff5065, #ff7a59); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px;" id="businessAvatar">
+                        B
+                    </div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <h2 style="font-size: 22px; font-weight: 800; margin: 0; color: var(--color-carbon-ink);" id="displayBusinessName">Loading Business...</h2>
+                            <span class="dash-tag-interested" id="displayIndustry">General</span>
+                        </div>
+                        <p style="font-size: 13px; color: var(--color-slate); margin: 4px 0 0 0;" id="displayContactMeta">Customized AI Telephony & Real-time Call Analytics</p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;" onclick="window.location.href='index.html#contact'">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        Test Demo Call
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Header Row -->
         <div class="dash-header-wrap">
             <div>
                 <h1 class="dash-header-title">Call Analytics & Intelligence</h1>
-                <p class="dash-header-subtitle">Real-time performance metrics across your Mixup AI voice campaigns.</p>
+                <p class="dash-header-subtitle">Real-time performance metrics across your automated AI voice agent sessions.</p>
             </div>
 
             <!-- Time Filter Pills -->
@@ -80,14 +108,14 @@
                 <div class="dash-kpi-val" id="kpiCalls">0</div>
                 <div class="dash-kpi-sub">
                     <span class="dash-badge-green" id="kpiCallsBadge">--</span>
-                    <span class="dash-sub-text">total calls made</span>
+                    <span class="dash-sub-text">total calls logged</span>
                 </div>
             </div>
 
             <!-- KPI 2: Success Rate -->
             <div class="dash-kpi-card">
                 <div class="dash-kpi-top">
-                    <span class="dash-kpi-label">Success Rate</span>
+                    <span class="dash-kpi-label">Qualification Rate</span>
                     <div class="dash-kpi-icon-pill">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
                     </div>
@@ -95,7 +123,7 @@
                 <div class="dash-kpi-val" id="kpiSuccessRate">0%</div>
                 <div class="dash-kpi-sub">
                     <span class="dash-badge-green" id="kpiSuccessBadge">--</span>
-                    <span class="dash-sub-text">calls completed</span>
+                    <span class="dash-sub-text">leads qualified</span>
                 </div>
             </div>
 
@@ -117,7 +145,7 @@
             <!-- KPI 4: Sentiment Score -->
             <div class="dash-kpi-card">
                 <div class="dash-kpi-top">
-                    <span class="dash-kpi-label">Sentiment Score</span>
+                    <span class="dash-kpi-label">Customer Delight Index</span>
                     <div class="dash-kpi-icon-pill">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
                     </div>
@@ -138,7 +166,7 @@
             <div class="dash-card">
                 <div class="dash-card-header">
                     <div>
-                        <div class="dash-card-title">Call Activity Over Time</div>
+                        <div class="dash-card-title">Call Performance Velocity</div>
                         <div class="dash-card-sub">Calls recorded from your AI agent sessions</div>
                     </div>
                 </div>
@@ -148,7 +176,7 @@
                 <!-- Empty state for chart -->
                 <div class="dash-empty-state" id="chartEmptyState" style="display: none;">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-slate, #7a7b7c)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-                    <p>No call data yet. Make your first call to see analytics.</p>
+                    <p>No call data logged yet for your business. Make a demo call to start tracking!</p>
                 </div>
             </div>
 
@@ -157,7 +185,7 @@
                 <div class="dash-card-header">
                     <div>
                         <div class="dash-card-title">Recent AI Calls</div>
-                        <div class="dash-card-sub">Click any call to view transcript</div>
+                        <div class="dash-card-sub">Click any call to view full audio transcript</div>
                     </div>
                     <button class="dash-refresh-btn" onclick="refreshDashboard()" title="Refresh data">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -171,10 +199,10 @@
                 <!-- Empty state for feed -->
                 <div class="dash-empty-state" id="feedEmptyState" style="display: none;">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-slate, #7a7b7c)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                    <p>No calls recorded yet. Contact an agent from the homepage to get started!</p>
+                    <p>No calls recorded yet for your business account.</p>
                     <a href="index.html" class="dash-empty-cta">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                        Go to Homepage
+                        Test Demo Call
                     </a>
                 </div>
             </div>
@@ -186,8 +214,8 @@
             <div class="dash-card dash-source-card">
                 <div class="dash-card-header">
                     <div>
-                        <div class="dash-card-title">Call Source Breakdown</div>
-                        <div class="dash-card-sub">How users are reaching your AI agents</div>
+                        <div class="dash-card-title">Call Acquisition Channels</div>
+                        <div class="dash-card-sub">Lead entry points for your AI Voice Agent</div>
                     </div>
                 </div>
                 <div class="dash-source-grid">
@@ -196,7 +224,7 @@
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
                         </div>
                         <div class="dash-source-info">
-                            <span class="dash-source-label">CTA Form</span>
+                            <span class="dash-source-label">CTA Form Submission</span>
                             <span class="dash-source-val" id="ctaCallCount">0</span>
                         </div>
                     </div>
@@ -205,7 +233,7 @@
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                         </div>
                         <div class="dash-source-info">
-                            <span class="dash-source-label">Instant Call</span>
+                            <span class="dash-source-label">Instant Call Trigger</span>
                             <span class="dash-source-val" id="instantCallCount">0</span>
                         </div>
                     </div>
@@ -231,7 +259,7 @@
 
             <div class="dash-modal-section-title">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                Call Transcript
+                Call Transcript & Audio Summary
             </div>
 
             <div class="dash-chat-list" id="modalChatList">
@@ -241,18 +269,14 @@
     </div>
 
     <!-- Dashboard JS Engine -->
-    <script src="dashboard.js?v=2.0.0"></script>
+    <script src="dashboard.js?v=2.1.0"></script>
 
-    <!-- Navbar scroll behavior (matches homepage) -->
+    <!-- Navbar scroll behavior -->
     <script>
         (function() {
             const navbar = document.getElementById('navbar');
             if (!navbar) return;
-            // Always keep scrolled class on dashboard for white background
             navbar.classList.add('scrolled');
-            window.addEventListener('scroll', function() {
-                navbar.classList.add('scrolled');
-            }, { passive: true });
         })();
     </script>
 </body>

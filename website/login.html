@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log In — Mixup Business Dashboard</title>
+    <meta name="description" content="Log in to access your business's AI Telephony Analytics Dashboard.">
+    <link rel="icon" type="image/jpeg" href="favicon.jpeg">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-client.js"></script>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="styles.css?v=1.0.3">
+    <style>
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 120px 24px 60px 24px;
+            background-color: var(--surface-fog, #f4f4f8);
+        }
+
+        .auth-card {
+            background: #ffffff;
+            border-radius: 28px;
+            padding: 40px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .auth-logo {
+            height: 42px;
+            margin-bottom: 16px;
+        }
+
+        .auth-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--color-carbon-ink, #0e0f10);
+            margin-bottom: 8px;
+        }
+
+        .auth-subtitle {
+            font-size: 14px;
+            color: var(--color-smoke, #666666);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--color-carbon-ink, #0e0f10);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            font-family: 'Sora', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+            background: #fdfdfd;
+        }
+
+        .form-input:focus {
+            border-color: var(--color-signal-coral, #ff5065);
+            box-shadow: 0 0 0 3px rgba(255, 80, 101, 0.15);
+            background: #ffffff;
+        }
+
+        .auth-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 100px;
+            background: linear-gradient(135deg, #ff5065, #ff7a59);
+            color: #ffffff;
+            border: none;
+            font-family: 'Sora', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 20px rgba(255, 80, 101, 0.3);
+            margin-top: 10px;
+        }
+
+        .auth-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(255, 80, 101, 0.4);
+        }
+
+        .auth-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 14px;
+            color: var(--color-smoke, #666666);
+        }
+
+        .auth-footer a {
+            color: var(--color-signal-coral, #ff5065);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .alert-box {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header Navigation -->
+    <nav class="navbar scrolled" id="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <img src="23836 (1).png" alt="Mixup" class="logo-img">
+            </a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="register.html" class="nav-link">Register Business</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <img src="23836 (1).png" alt="Mixup" class="auth-logo">
+                <h1 class="auth-title">Log In to Your Business</h1>
+                <p class="auth-subtitle">Enter your credentials to access your custom AI dashboard</p>
+            </div>
+
+            <div id="alertBox" class="alert-box alert-error"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label" for="email">Work Email</label>
+                    <input type="email" id="email" class="form-input" placeholder="john@company.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input type="password" id="password" class="form-input" placeholder="Your password" required>
+                </div>
+
+                <button type="submit" id="submitBtn" class="auth-btn">Log In to Dashboard</button>
+            </form>
+
+            <div class="auth-footer">
+                Don't have a business dashboard yet? <a href="register.html">Register Business</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Redirect if already logged in
+            const session = await getSupabaseSession();
+            if (session) {
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            const form = document.getElementById('loginForm');
+            const alertBox = document.getElementById('alertBox');
+            const submitBtn = document.getElementById('submitBtn');
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                alertBox.style.display = 'none';
+
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value;
+
+                submitBtn.disabled = true;
+                submitBtn.innerText = 'Logging in...';
+
+                try {
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({
+                        email: email,
+                        password: password
+                    });
+
+                    if (error) throw error;
+
+                    window.location.href = 'dashboard.html';
+
+                } catch (err) {
+                    console.error('Login error:', err);
+                    alertBox.innerText = err.message || 'Invalid email or password.';
+                    alertBox.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = 'Log In to Dashboard';
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

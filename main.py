@@ -36,8 +36,43 @@ def save_call_logs(logs):
     except Exception as e:
         logging.error(f"Failed to save call logs: {e}")
 
+# --- Supabase Configuration ---
+SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://zuxjdbrgfwpphswgxkiw.supabase.co')
+SUPABASE_SERVICE_ROLE_KEY = os.getenv(
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1eGpkYnJnZndwcGhzd2d4a2l3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDQ4MjU1NCwiZXhwIjoyMTAwMDU4NTU0fQ.JfvwYSf8S8L5TCjYc7i2jdkNKVA-SrZsYGviiA5yt7A'
+)
+
+def add_call_log_to_supabase(entry):
+    """Post new call log to Supabase via REST API."""
+    import urllib.request
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/call_logs"
+        payload = json_module.dumps({
+            'caller_phone': entry['phone'],
+            'caller_name': entry['name'],
+            'caller_email': entry['email'],
+            'caller_company': entry['company'],
+            'source': entry['source'],
+            'duration': entry['duration'],
+            'status': entry['status'],
+            'sentiment': entry['sentiment'],
+            'transcript': entry['transcript']
+        }).encode('utf-8')
+
+        req = urllib.request.Request(url, data=payload, method='POST')
+        req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
+        req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
+        req.add_header('Content-Type', 'application/json')
+        req.add_header('Prefer', 'return=minimal')
+
+        with urllib.request.urlopen(req) as resp:
+            logging.info(f"Call log persisted to Supabase: status {resp.status}")
+    except Exception as e:
+        logging.error(f"Failed to post call log to Supabase: {e}")
+
 def add_call_log(phone_number, name='', email='', company='', source='instant_call'):
-    """Add a new call log entry."""
+    """Add a new call log entry to local backup and Supabase."""
     logs = load_call_logs()
     entry = {
         'id': str(int(time.time() * 1000)),
@@ -57,9 +92,11 @@ def add_call_log(phone_number, name='', email='', company='', source='instant_ca
         ]
     }
     logs.insert(0, entry)
-    # Keep only last 100 logs
     logs = logs[:100]
     save_call_logs(logs)
+
+    # Persist to Supabase asynchronously
+    threading.Thread(target=add_call_log_to_supabase, args=(entry,)).start()
     return entry
 
 def send_team_alert(phone_number, name, email, company, resend_key):

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Your Business — Mixup AI Telephony</title>
+    <meta name="description" content="Register your business on Mixup to create your customized AI Telephony Agent & Analytics Dashboard.">
+    <link rel="icon" type="image/jpeg" href="favicon.jpeg">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-client.js"></script>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="styles.css?v=1.0.3">
+    <style>
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 120px 24px 60px 24px;
+            background-color: var(--surface-fog, #f4f4f8);
+        }
+
+        .auth-card {
+            background: #ffffff;
+            border-radius: 28px;
+            padding: 40px;
+            width: 100%;
+            max-width: 520px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .auth-logo {
+            height: 42px;
+            margin-bottom: 16px;
+        }
+
+        .auth-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--color-carbon-ink, #0e0f10);
+            margin-bottom: 8px;
+        }
+
+        .auth-subtitle {
+            font-size: 14px;
+            color: var(--color-smoke, #666666);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--color-carbon-ink, #0e0f10);
+            margin-bottom: 8px;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            font-family: 'Sora', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+            background: #fdfdfd;
+        }
+
+        .form-input:focus, .form-select:focus {
+            border-color: var(--color-signal-coral, #ff5065);
+            box-shadow: 0 0 0 3px rgba(255, 80, 101, 0.15);
+            background: #ffffff;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .auth-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 100px;
+            background: linear-gradient(135deg, #ff5065, #ff7a59);
+            color: #ffffff;
+            border: none;
+            font-family: 'Sora', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 20px rgba(255, 80, 101, 0.3);
+            margin-top: 10px;
+        }
+
+        .auth-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(255, 80, 101, 0.4);
+        }
+
+        .auth-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 14px;
+            color: var(--color-smoke, #666666);
+        }
+
+        .auth-footer a {
+            color: var(--color-signal-coral, #ff5065);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .alert-box {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: #059669;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header Navigation -->
+    <nav class="navbar scrolled" id="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <img src="23836 (1).png" alt="Mixup" class="logo-img">
+            </a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="login.html" class="nav-link">Log In</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <img src="23836 (1).png" alt="Mixup" class="auth-logo">
+                <h1 class="auth-title">Register Your Business</h1>
+                <p class="auth-subtitle">Create an account to build your custom AI Telephony Agent & Analytical Dashboard</p>
+            </div>
+
+            <div id="alertBox" class="alert-box"></div>
+
+            <form id="registerForm">
+                <div class="form-group">
+                    <label class="form-label" for="businessName">Business Name *</label>
+                    <input type="text" id="businessName" class="form-input" placeholder="e.g. Apex Health Corp" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="industry">Industry *</label>
+                        <select id="industry" class="form-select" required>
+                            <option value="Healthcare">Healthcare</option>
+                            <option value="Banking & Finance">Banking & Finance</option>
+                            <option value="E-Commerce">E-Commerce</option>
+                            <option value="Tech Support">Tech Support</option>
+                            <option value="Real Estate">Real Estate</option>
+                            <option value="Education">Education</option>
+                            <option value="Travel & Hospitality">Travel & Hospitality</option>
+                            <option value="General Business">General Business</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="contactName">Contact Name *</label>
+                        <input type="text" id="contactName" class="form-input" placeholder="John Doe" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="phone">Phone Number</label>
+                    <input type="tel" id="phone" class="form-input" placeholder="+1 (555) 000-0000">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="email">Work Email *</label>
+                    <input type="email" id="email" class="form-input" placeholder="john@company.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">Password *</label>
+                    <input type="password" id="password" class="form-input" placeholder="Min. 6 characters" minlength="6" required>
+                </div>
+
+                <button type="submit" id="submitBtn" class="auth-btn">Create Business Dashboard</button>
+            </form>
+
+            <div class="auth-footer">
+                Already registered your business? <a href="login.html">Log In</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Redirect if already logged in
+            const session = await getSupabaseSession();
+            if (session) {
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            const form = document.getElementById('registerForm');
+            const alertBox = document.getElementById('alertBox');
+            const submitBtn = document.getElementById('submitBtn');
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                alertBox.style.display = 'none';
+
+                const businessName = document.getElementById('businessName').value.trim();
+                const industry = document.getElementById('industry').value;
+                const contactName = document.getElementById('contactName').value.trim();
+                const phone = document.getElementById('phone').value.trim();
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value;
+
+                submitBtn.disabled = true;
+                submitBtn.innerText = 'Registering Business...';
+
+                try {
+                    // 1. Sign up user in Supabase Auth
+                    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                        email: email,
+                        password: password,
+                        options: {
+                            data: {
+                                business_name: businessName,
+                                contact_name: contactName
+                            }
+                        }
+                    });
+
+                    if (authError) throw authError;
+
+                    const user = authData.user;
+                    if (!user) throw new Error('Registration failed. Please try again.');
+
+                    // 2. Insert into businesses table
+                    const { error: dbError } = await supabaseClient
+                        .from('businesses')
+                        .insert([
+                            {
+                                id: user.id,
+                                business_name: businessName,
+                                industry: industry,
+                                contact_name: contactName,
+                                email: email,
+                                phone: phone
+                            }
+                        ]);
+
+                    if (dbError && !dbError.message.includes('duplicate')) {
+                        console.warn('Database record error:', dbError);
+                    }
+
+                    alertBox.className = 'alert-box alert-success';
+                    alertBox.innerText = 'Business registered successfully! Redirecting to your dashboard...';
+                    alertBox.style.display = 'block';
+
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1200);
+
+                } catch (err) {
+                    console.error('Registration error:', err);
+                    alertBox.className = 'alert-box alert-error';
+                    alertBox.innerText = err.message || 'An error occurred during registration.';
+                    alertBox.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = 'Create Business Dashboard';
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
