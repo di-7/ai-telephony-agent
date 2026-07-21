@@ -52,12 +52,23 @@ async function updateAuthStateUI() {
             navDashboardLink.href = 'dashboard.html';
         }
 
-        // 2. Update Navbar Buttons to "My Dashboard" & "Log out"
+        // 2. Update Navbar Buttons
         if (navActions) {
-            navActions.innerHTML = `
-                <button class="btn btn-primary" onclick="window.location.href='dashboard.html'">My Dashboard</button>
-                <button class="btn btn-dark" onclick="logoutBusiness()">Log out</button>
-            `;
+            const isDashboardPage = window.location.pathname.includes('dashboard.html') || document.getElementById('sidebarToggleBtn');
+            if (isDashboardPage) {
+                navActions.innerHTML = `
+                    <span id="navBusinessName" style="font-size: 13px; font-weight: 600; color: var(--color-carbon-ink); display: none;"></span>
+                    <button class="dash-menu-toggle-icon" id="sidebarToggleBtn" onclick="toggleSidebarDrawer()" aria-label="Toggle Business Menu" title="Business Menu & Profile">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    </button>
+                    <button class="btn btn-dark" id="authNavBtn" onclick="logoutBusiness()">Log out</button>
+                `;
+            } else {
+                navActions.innerHTML = `
+                    <button class="btn btn-primary" onclick="window.location.href='dashboard.html'">My Dashboard</button>
+                    <button class="btn btn-dark" onclick="logoutBusiness()">Log out</button>
+                `;
+            }
         }
 
         // 3. Update Hero Button to "Open My Dashboard"
