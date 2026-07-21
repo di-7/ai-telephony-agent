@@ -67,7 +67,6 @@ function renderBusinessInfo(business) {
     const contactEl = document.getElementById('displayContactName');
     const emailEl = document.getElementById('displayEmail');
     const phoneEl = document.getElementById('displayPhone');
-    const navNameEl = document.getElementById('navBusinessName');
 
     const bName = business.business_name || 'My Business';
 
@@ -76,10 +75,6 @@ function renderBusinessInfo(business) {
     if (contactEl) contactEl.innerText = business.contact_name || 'Admin';
     if (emailEl) emailEl.innerText = business.email || '';
     if (phoneEl) phoneEl.innerText = business.phone ? business.phone : 'No phone set';
-    if (navNameEl) {
-        navNameEl.innerText = bName;
-        navNameEl.style.display = 'inline-block';
-    }
 }
 
 // ========================================
