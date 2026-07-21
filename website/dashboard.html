@@ -27,7 +27,7 @@
 <body>
 
     <!-- Main Navigation Bar (Matches website theme) -->
-    <nav class="navbar" id="navbar">
+    <nav class="navbar scrolled" id="navbar">
         <div class="nav-container">
             <a href="index.html" class="nav-logo">
                 <img src="23836 (1).png" alt="Mixup" class="logo-img">
@@ -37,10 +37,7 @@
                 <a href="index.html#how-it-works" class="nav-link">How It Works</a>
                 <a href="index.html#features" class="nav-link">Features</a>
                 <a href="pricing.html" class="nav-link">Pricing</a>
-                <a href="dashboard.html" class="nav-link active" style="color: var(--color-signal-coral); font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                    Dashboard
-                </a>
+                <a href="dashboard.html" class="nav-link active" style="color: var(--color-signal-coral); font-weight: 700;">Dashboard</a>
                 <a href="index.html#contact" class="nav-link">Contact</a>
             </div>
             <div class="nav-actions">
@@ -245,6 +242,19 @@
 
     <!-- Dashboard JS Engine -->
     <script src="dashboard.js?v=2.0.0"></script>
+
+    <!-- Navbar scroll behavior (matches homepage) -->
+    <script>
+        (function() {
+            const navbar = document.getElementById('navbar');
+            if (!navbar) return;
+            // Always keep scrolled class on dashboard for white background
+            navbar.classList.add('scrolled');
+            window.addEventListener('scroll', function() {
+                navbar.classList.add('scrolled');
+            }, { passive: true });
+        })();
+    </script>
 </body>
 
 </html>
