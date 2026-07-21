@@ -23,7 +23,7 @@
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="styles.css?v=1.0.3">
-    <link rel="stylesheet" href="dashboard.css?v=3.2.0">
+    <link rel="stylesheet" href="dashboard.css?v=3.3.0">
 </head>
 
 <body>
@@ -49,7 +49,6 @@
                 <button class="dash-menu-toggle-icon" id="sidebarToggleBtn" onclick="toggleSidebarDrawer()" aria-label="Toggle Business Menu" title="Business Menu & Profile">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                 </button>
-                <button class="btn btn-dark" id="authNavBtn" onclick="logoutBusiness()">Log out</button>
             </div>
         </div>
     </nav>
@@ -67,7 +66,12 @@
                 <div class="sidebar-header">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
                         <h2 class="sidebar-business-title" id="displayBusinessName" style="margin: 0;">Loading...</h2>
-                        <span class="sidebar-industry-tag" id="displayIndustry">General</span>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="sidebar-industry-tag" id="displayIndustry">General</span>
+                            <button class="dash-sidebar-close-btn" onclick="toggleSidebarDrawer()" aria-label="Close Sidebar" title="Close Sidebar">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 12px; font-size: 12px; color: var(--color-slate);">

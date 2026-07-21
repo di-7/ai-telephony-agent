@@ -94,13 +94,14 @@ body {
   .dash-sidebar {
     position: fixed;
     top: 0;
-    left: 0;
+    right: 0;
+    left: auto;
     bottom: 0;
-    width: 300px;
+    width: 320px;
     z-index: 999;
-    border-radius: 0 24px 24px 0;
-    transform: translateX(-100%);
-    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.15);
+    border-radius: 24px 0 0 24px;
+    transform: translateX(100%);
+    box-shadow: -10px 0 35px rgba(0, 0, 0, 0.15);
     height: 100vh;
     overflow-y: auto;
     box-sizing: border-box;
@@ -109,6 +110,29 @@ body {
   .dash-sidebar.active {
     transform: translateX(0);
   }
+
+  .dash-sidebar-close-btn {
+    display: inline-flex !important;
+  }
+}
+
+.dash-sidebar-close-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-fog, #f4f4f8);
+  border: none;
+  color: var(--color-smoke, #666666);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dash-sidebar-close-btn:hover {
+  background: var(--color-signal-coral, #ff5065);
+  color: #ffffff;
 }
 
 .sidebar-header {
