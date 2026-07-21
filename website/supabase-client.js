@@ -1,5 +1,5 @@
 /* ==========================================
-   SUPABASE CLIENT CONFIGURATION
+   SUPABASE CLIENT & AUTH STATE ENGINE
    ========================================== */
 
 const SUPABASE_URL = 'https://zuxjdbrgfwpphswgxkiw.supabase.co';
@@ -11,8 +11,13 @@ const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_U
 // Helper to get active session
 async function getSupabaseSession() {
     if (!supabaseClient) return null;
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    return session;
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        return session;
+    } catch (e) {
+        console.warn('Supabase getSession error:', e);
+        return null;
+    }
 }
 
 // Helper to get current user
@@ -26,5 +31,81 @@ async function logoutBusiness() {
     if (supabaseClient) {
         await supabaseClient.auth.signOut();
     }
-    window.location.href = 'login.html';
+    window.location.href = 'index.html';
 }
+
+// Dynamically update UI based on registration/login state
+async function updateAuthStateUI() {
+    const session = await getSupabaseSession();
+    const isLoggedIn = !!(session && session.user);
+
+    const navDashboardLink = document.getElementById('navDashboardLink');
+    const navActions = document.querySelector('.nav-actions');
+    const heroDashboardBtn = document.getElementById('heroDashboardBtn');
+
+    if (isLoggedIn) {
+        // --- LOGGED IN / REGISTERED USER UI ---
+
+        // 1. Update Navbar link to "My Dashboard"
+        if (navDashboardLink) {
+            navDashboardLink.innerText = 'My Dashboard';
+            navDashboardLink.href = 'dashboard.html';
+        }
+
+        // 2. Update Navbar Buttons to "My Dashboard" & "Log out"
+        if (navActions) {
+            navActions.innerHTML = `
+                <button class="btn btn-primary" onclick="window.location.href='dashboard.html'">My Dashboard</button>
+                <button class="btn btn-dark" onclick="logoutBusiness()">Log out</button>
+            `;
+        }
+
+        // 3. Update Hero Button to "Open My Dashboard"
+        if (heroDashboardBtn) {
+            heroDashboardBtn.href = 'dashboard.html';
+            heroDashboardBtn.innerHTML = `
+                <span style="display: inline-flex; align-items: center; gap: 8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>
+                    </svg>
+                    Open My Dashboard
+                </span>
+            `;
+        }
+
+    } else {
+        // --- UNREGISTERED / GUEST USER UI ---
+
+        // 1. Update Navbar link to "Create Business Dashboard"
+        if (navDashboardLink) {
+            navDashboardLink.innerText = 'Create Business Dashboard';
+            navDashboardLink.href = 'register.html';
+        }
+
+        // 2. Update Navbar Buttons to "Log in" & "Register Business"
+        if (navActions) {
+            navActions.innerHTML = `
+                <button class="btn btn-dark" onclick="window.location.href='login.html'">Log in</button>
+                <button class="btn btn-primary" onclick="window.location.href='register.html'">Register Business</button>
+            `;
+        }
+
+        // 3. Update Hero Button to "Create Business Dashboard"
+        if (heroDashboardBtn) {
+            heroDashboardBtn.href = 'register.html';
+            heroDashboardBtn.innerHTML = `
+                <span style="display: inline-flex; align-items: center; gap: 8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>
+                    </svg>
+                    Create Business Dashboard
+                </span>
+            `;
+        }
+    }
+}
+
+// Auto-run on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    updateAuthStateUI();
+});

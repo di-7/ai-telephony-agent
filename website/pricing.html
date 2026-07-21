@@ -12,6 +12,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=1.0.6">
+
+    <!-- Supabase JS Client & Auth State UI -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-client.js"></script>
 </head>
 
 <body>
@@ -32,12 +36,12 @@
                 <a href="index.html#how-it-works" class="nav-link">How It Works</a>
                 <a href="index.html#features" class="nav-link">Features</a>
                 <a href="pricing.html" class="nav-link active">Pricing</a>
-                <a href="dashboard.html" class="nav-link" style="color: var(--color-signal-coral); font-weight: 700;">📊 Live Dashboard</a>
+                <a href="register.html" class="nav-link" id="navDashboardLink" style="color: var(--color-signal-coral); font-weight: 700;">Create Business Dashboard</a>
                 <a href="index.html#contact" class="nav-link">Contact</a>
             </div>
             <div class="nav-actions">
-                <button class="btn btn-dark" onclick="openInstantCallModal()">Log in</button>
-                <button class="btn btn-primary" onclick="openInstantCallModal()">Start for free</button>
+                <button class="btn btn-dark" onclick="window.location.href='login.html'">Log in</button>
+                <button class="btn btn-primary" onclick="window.location.href='register.html'">Register Business</button>
             </div>
             <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
                 <span></span>
