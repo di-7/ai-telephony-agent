@@ -83,13 +83,34 @@
             outline: none;
             transition: all 0.2s ease;
             box-sizing: border-box;
-            background: #fdfdfd;
+            background-color: #fdfdfd;
+            color: var(--color-carbon-ink, #0e0f10);
+        }
+
+        .form-select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%202f3133' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 16px;
+            padding-right: 40px;
+            cursor: pointer;
+        }
+
+        .form-select option {
+            font-family: 'Sora', sans-serif;
+            font-size: 14px;
+            padding: 12px;
+            background: #ffffff;
+            color: #0e0f10;
         }
 
         .form-input:focus, .form-select:focus {
             border-color: var(--color-signal-coral, #ff5065);
             box-shadow: 0 0 0 3px rgba(255, 80, 101, 0.15);
-            background: #ffffff;
+            background-color: #ffffff;
         }
 
         .form-row {
@@ -195,6 +216,8 @@
                     <div class="form-group">
                         <label class="form-label" for="industry">Industry *</label>
                         <select id="industry" class="form-select" required>
+                            <option value="" disabled selected>Select your industry...</option>
+                            <option value="Restaurant & Dining">Restaurant & Dining</option>
                             <option value="Healthcare">Healthcare</option>
                             <option value="Banking & Finance">Banking & Finance</option>
                             <option value="E-Commerce">E-Commerce</option>
