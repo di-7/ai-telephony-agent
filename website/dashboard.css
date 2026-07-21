@@ -13,33 +13,43 @@ body {
   padding: 0;
 }
 
+/* Ensure nav-actions & menu toggle icon are ALWAYS visible in top right corner on all screen sizes */
+.nav-actions {
+  display: flex !important;
+  align-items: center;
+  gap: 12px;
+  z-index: 1002;
+}
+
 /* Header Toggle Icon Button (Top Right Corner) */
 .dash-menu-toggle-icon {
-  width: 40px;
-  height: 40px;
+  display: inline-flex !important;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  background: var(--color-fog, #f4f4f8);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  color: var(--color-carbon-ink, #0e0f10);
-  display: inline-flex;
+  background: var(--color-pure-white, #ffffff);
+  border: 1.5px solid var(--color-signal-coral, #ff5065);
+  color: var(--color-signal-coral, #ff5065);
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(255, 80, 101, 0.2);
 }
 
 .dash-menu-toggle-icon:hover {
   background: var(--color-signal-coral, #ff5065);
   color: #ffffff;
   border-color: transparent;
-  transform: scale(1.05);
+  transform: scale(1.08);
+  box-shadow: 0 6px 20px rgba(255, 80, 101, 0.35);
 }
 
 .dash-menu-toggle-icon svg {
   flex-shrink: 0;
-}
-  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
 }
 
 /* Sidebar Backdrop Overlay */
