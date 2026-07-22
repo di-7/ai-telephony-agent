@@ -64,9 +64,10 @@ async function updateAuthStateUI() {
 
         // 2. Update Single Hero Button for Logged-In User
         if (heroGetStartedBtn) {
-            heroGetStartedBtn.onclick = () => { window.location.href = 'dashboard.html'; };
+            heroGetStartedBtn.href = 'dashboard.html';
+            heroGetStartedBtn.removeAttribute('onclick');
             heroGetStartedBtn.innerHTML = `
-                <span>Open My Dashboard</span>
+                <span>Go to Dashboard</span>
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                     <path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
@@ -86,7 +87,8 @@ async function updateAuthStateUI() {
 
         // 2. Update Single Hero Button for Guest User
         if (heroGetStartedBtn) {
-            heroGetStartedBtn.onclick = () => { window.location.href = 'register.html'; };
+            heroGetStartedBtn.href = 'register.html';
+            heroGetStartedBtn.removeAttribute('onclick');
             heroGetStartedBtn.innerHTML = `
                 <span>Get Started</span>
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
