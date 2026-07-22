@@ -2002,12 +2002,28 @@ img {
   }
 
   .hero-actions {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .hero-actions .btn {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
+    padding: 12px 16px;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
   }
 }
 
