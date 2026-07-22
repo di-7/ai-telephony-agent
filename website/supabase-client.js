@@ -69,15 +69,15 @@ async function updateAuthStateUI() {
             }
         }
 
-        // 3. Update Hero Button to "Open My Dashboard"
+        // 3. Update Hero Button to "My Dashboard"
         if (heroDashboardBtn) {
             heroDashboardBtn.href = 'dashboard.html';
             heroDashboardBtn.innerHTML = `
-                <span style="display: inline-flex; align-items: center; gap: 8px;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <span style="display: inline-flex; align-items: center; gap: 6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>
                     </svg>
-                    Open My Dashboard
+                    My Dashboard
                 </span>
             `;
         }
@@ -99,15 +99,15 @@ async function updateAuthStateUI() {
             `;
         }
 
-        // 3. Update Hero Button to "Create Business Dashboard"
+        // 3. Update Hero Button to "Create Dashboard"
         if (heroDashboardBtn) {
             heroDashboardBtn.href = 'register.html';
             heroDashboardBtn.innerHTML = `
-                <span style="display: inline-flex; align-items: center; gap: 8px;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <span style="display: inline-flex; align-items: center; gap: 6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>
                     </svg>
-                    Create Business Dashboard
+                    Create Dashboard
                 </span>
             `;
         }
