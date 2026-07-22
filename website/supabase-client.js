@@ -36,70 +36,77 @@ async function logoutBusiness() {
 
 // Dynamically update UI based on registration/login state
 async function updateAuthStateUI() {
-    const session = await getSupabaseSession();
-    const isLoggedIn = !!(session && session.user);
+    try {
+        const session = await getSupabaseSession();
+        const isLoggedIn = !!(session && session.user);
 
-    const navActions = document.querySelector('.nav-actions');
-    const heroGetStartedBtn = document.getElementById('heroGetStartedBtn');
+        const navActions = document.querySelector('.nav-actions');
+        const heroGetStartedBtn = document.getElementById('heroGetStartedBtn');
 
-    if (isLoggedIn) {
-        // --- LOGGED IN / REGISTERED USER UI ---
+        if (isLoggedIn) {
+            // --- LOGGED IN / REGISTERED USER UI ---
 
-        // 1. Update Navbar Buttons
-        if (navActions) {
-            const isDashboardPage = window.location.pathname.includes('dashboard.html') || document.getElementById('sidebarToggleBtn');
-            if (isDashboardPage) {
-                navActions.innerHTML = `
-                    <button class="dash-menu-toggle-icon" id="sidebarToggleBtn" onclick="toggleSidebarDrawer()" aria-label="Toggle Business Menu" title="Business Menu & Profile">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                    </button>
+            // 1. Update Navbar Buttons
+            if (navActions) {
+                const isDashboardPage = window.location.pathname.includes('dashboard.html') || document.getElementById('sidebarToggleBtn');
+                if (isDashboardPage) {
+                    navActions.innerHTML = `
+                        <button class="dash-menu-toggle-icon" id="sidebarToggleBtn" onclick="toggleSidebarDrawer()" aria-label="Toggle Business Menu" title="Business Menu & Profile">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                        </button>
+                    `;
+                } else {
+                    navActions.innerHTML = `
+                        <button class="btn btn-primary" onclick="window.location.href='dashboard.html'">My Dashboard</button>
+                        <button class="btn btn-dark" onclick="logoutBusiness()">Log out</button>
+                    `;
+                }
+            }
+
+            // 2. Update Single Hero Button for Logged-In User
+            if (heroGetStartedBtn) {
+                heroGetStartedBtn.href = 'dashboard.html';
+                heroGetStartedBtn.innerHTML = `
+                    <span>Go to Dashboard</span>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
                 `;
-            } else {
+            }
+
+        } else {
+            // --- UNREGISTERED / GUEST USER UI ---
+
+            // 1. Update Navbar Buttons
+            if (navActions) {
                 navActions.innerHTML = `
-                    <button class="btn btn-primary" onclick="window.location.href='dashboard.html'">My Dashboard</button>
-                    <button class="btn btn-dark" onclick="logoutBusiness()">Log out</button>
+                    <button class="btn btn-dark" onclick="window.location.href='login.html'">Log in</button>
+                    <button class="btn btn-primary" onclick="window.location.href='register.html'">Register Business</button>
+                `;
+            }
+
+            // 2. Ensure Hero Button points to registration
+            if (heroGetStartedBtn) {
+                heroGetStartedBtn.href = 'register.html';
+                heroGetStartedBtn.innerHTML = `
+                    <span>Get Started</span>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
                 `;
             }
         }
-
-        // 2. Update Single Hero Button for Logged-In User
-        if (heroGetStartedBtn) {
-            heroGetStartedBtn.href = 'dashboard.html';
-            heroGetStartedBtn.removeAttribute('onclick');
-            heroGetStartedBtn.innerHTML = `
-                <span>Go to Dashboard</span>
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            `;
-        }
-
-    } else {
-        // --- UNREGISTERED / GUEST USER UI ---
-
-        // 1. Update Navbar Buttons
-        if (navActions) {
-            navActions.innerHTML = `
-                <button class="btn btn-dark" onclick="window.location.href='login.html'">Log in</button>
-                <button class="btn btn-primary" onclick="window.location.href='register.html'">Register Business</button>
-            `;
-        }
-
-        // 2. Update Single Hero Button for Guest User
-        if (heroGetStartedBtn) {
-            heroGetStartedBtn.href = 'register.html';
-            heroGetStartedBtn.removeAttribute('onclick');
-            heroGetStartedBtn.innerHTML = `
-                <span>Get Started</span>
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            `;
-        }
+    } catch (err) {
+        console.warn('updateAuthStateUI error:', err);
+        // If anything fails, the button still works as a plain <a href="register.html"> link
     }
 }
 
 // Auto-run on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
-    updateAuthStateUI();
+    try {
+        updateAuthStateUI();
+    } catch (err) {
+        console.warn('Auth UI init error:', err);
+    }
 });
