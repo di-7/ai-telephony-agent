@@ -2010,32 +2010,26 @@ img {
 
   .hero-actions {
     display: flex;
-    flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 10px;
     width: 100%;
-    max-width: 480px;
     margin: 0 auto var(--spacing-32);
-    padding: 0 8px;
+    padding: 0 16px;
   }
 
   .hero-actions .btn {
-    flex: 1 1 0px;
-    min-width: 0;
-    padding: 10px 14px;
-    font-size: 13px;
+    width: 100%;
+    max-width: 260px;
+    padding: 12px 24px;
+    font-size: 15px;
     font-weight: 700;
-    min-height: 44px;
-    height: 44px;
+    min-height: 48px;
+    height: 48px;
     border-radius: 100px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 8px;
     box-sizing: border-box;
   }
 }

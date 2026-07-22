@@ -39,20 +39,13 @@ async function updateAuthStateUI() {
     const session = await getSupabaseSession();
     const isLoggedIn = !!(session && session.user);
 
-    const navDashboardLink = document.getElementById('navDashboardLink');
     const navActions = document.querySelector('.nav-actions');
-    const heroDashboardBtn = document.getElementById('heroDashboardBtn');
+    const heroGetStartedBtn = document.getElementById('heroGetStartedBtn');
 
     if (isLoggedIn) {
         // --- LOGGED IN / REGISTERED USER UI ---
 
-        // 1. Update Navbar link to "My Dashboard"
-        if (navDashboardLink) {
-            navDashboardLink.innerText = 'My Dashboard';
-            navDashboardLink.href = 'dashboard.html';
-        }
-
-        // 2. Update Navbar Buttons
+        // 1. Update Navbar Buttons
         if (navActions) {
             const isDashboardPage = window.location.pathname.includes('dashboard.html') || document.getElementById('sidebarToggleBtn');
             if (isDashboardPage) {
@@ -69,29 +62,21 @@ async function updateAuthStateUI() {
             }
         }
 
-        // 3. Update Hero Button to "My Dashboard"
-        if (heroDashboardBtn) {
-            heroDashboardBtn.href = 'dashboard.html';
-            heroDashboardBtn.innerHTML = `
-                <span style="display: inline-flex; align-items: center; gap: 6px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>
-                    </svg>
-                    My Dashboard
-                </span>
+        // 2. Update Single Hero Button for Logged-In User
+        if (heroGetStartedBtn) {
+            heroGetStartedBtn.onclick = () => { window.location.href = 'dashboard.html'; };
+            heroGetStartedBtn.innerHTML = `
+                <span>Open My Dashboard</span>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
             `;
         }
 
     } else {
         // --- UNREGISTERED / GUEST USER UI ---
 
-        // 1. Update Navbar link to "Create Business Dashboard"
-        if (navDashboardLink) {
-            navDashboardLink.innerText = 'Create Business Dashboard';
-            navDashboardLink.href = 'register.html';
-        }
-
-        // 2. Update Navbar Buttons to "Log in" & "Register Business"
+        // 1. Update Navbar Buttons
         if (navActions) {
             navActions.innerHTML = `
                 <button class="btn btn-dark" onclick="window.location.href='login.html'">Log in</button>
@@ -99,16 +84,14 @@ async function updateAuthStateUI() {
             `;
         }
 
-        // 3. Update Hero Button to "Create Dashboard"
-        if (heroDashboardBtn) {
-            heroDashboardBtn.href = 'register.html';
-            heroDashboardBtn.innerHTML = `
-                <span style="display: inline-flex; align-items: center; gap: 6px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>
-                    </svg>
-                    Create Dashboard
-                </span>
+        // 2. Update Single Hero Button for Guest User
+        if (heroGetStartedBtn) {
+            heroGetStartedBtn.onclick = () => { window.location.href = 'register.html'; };
+            heroGetStartedBtn.innerHTML = `
+                <span>Get Started</span>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path d="M4 10h12m-4-4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
             `;
         }
     }
