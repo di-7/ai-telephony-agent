@@ -287,14 +287,22 @@
                 submitBtn.innerText = 'Registering Business...';
 
                 try {
-                    // 1. Sign up user in Supabase Auth
+                    // 1. Determine redirect URL for email verification
+                    const redirectUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                        ? `${window.location.origin}/dashboard.html`
+                        : 'https://mixup-di7.netlify.app/dashboard.html';
+
+                    // 2. Sign up user in Supabase Auth with full metadata & redirect URL
                     const { data: authData, error: authError } = await supabaseClient.auth.signUp({
                         email: email,
                         password: password,
                         options: {
+                            emailRedirectTo: redirectUrl,
                             data: {
                                 business_name: businessName,
-                                contact_name: contactName
+                                industry: industry,
+                                contact_name: contactName,
+                                phone: phone
                             }
                         }
                     });
@@ -304,10 +312,10 @@
                     const user = authData.user;
                     if (!user) throw new Error('Registration failed. Please try again.');
 
-                    // 2. Insert into businesses table
+                    // 3. Attempt insert into businesses table
                     const { error: dbError } = await supabaseClient
                         .from('businesses')
-                        .insert([
+                        .upsert([
                             {
                                 id: user.id,
                                 business_name: businessName,
@@ -318,8 +326,8 @@
                             }
                         ]);
 
-                    if (dbError && !dbError.message.includes('duplicate')) {
-                        console.warn('Database record error:', dbError);
+                    if (dbError) {
+                        console.warn('Database record notice:', dbError);
                     }
 
                     alertBox.className = 'alert-box alert-success';

@@ -30,9 +30,10 @@ async function checkBusinessAuth() {
     }
 
     const user = session.user;
+    const metadata = user.user_metadata || {};
 
     try {
-        const { data: businessData, error } = await supabaseClient
+        let { data: businessData, error } = await supabaseClient
             .from('businesses')
             .select('*')
             .eq('id', user.id)
@@ -42,13 +43,37 @@ async function checkBusinessAuth() {
             console.warn('Error fetching business info from Supabase:', error);
         }
 
+        // If record is missing in database or phone is empty, upsert using user metadata
+        if (!businessData || (!businessData.phone && metadata.phone)) {
+            const payload = {
+                id: user.id,
+                business_name: businessData?.business_name || metadata.business_name || user.email.split('@')[0],
+                industry: businessData?.industry || metadata.industry || 'General Business',
+                contact_name: businessData?.contact_name || metadata.contact_name || 'Business Owner',
+                email: user.email,
+                phone: businessData?.phone || metadata.phone || ''
+            };
+
+            const { data: upserted, error: upsertErr } = await supabaseClient
+                .from('businesses')
+                .upsert([payload])
+                .select()
+                .maybeSingle();
+
+            if (!upsertErr && upserted) {
+                businessData = upserted;
+            } else if (upsertErr) {
+                console.warn('Error upserting business profile into Supabase:', upsertErr);
+            }
+        }
+
         currentBusiness = businessData || {
             id: user.id,
-            business_name: user.user_metadata?.business_name || user.email.split('@')[0],
-            industry: 'General Business',
-            contact_name: user.user_metadata?.contact_name || 'Business Owner',
+            business_name: metadata.business_name || user.email.split('@')[0],
+            industry: metadata.industry || 'General Business',
+            contact_name: metadata.contact_name || 'Business Owner',
             email: user.email,
-            phone: ''
+            phone: metadata.phone || ''
         };
 
         renderBusinessInfo(currentBusiness);

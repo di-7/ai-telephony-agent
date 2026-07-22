@@ -70,3 +70,31 @@ CREATE POLICY "Service role can select call logs"
 -- 7. Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_call_logs_business_id ON public.call_logs(business_id);
 CREATE INDEX IF NOT EXISTS idx_call_logs_created_at ON public.call_logs(created_at DESC);
+
+-- 8. Auto-create business record upon auth.users creation (Trigger)
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.businesses (id, business_name, industry, contact_name, email, phone)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'business_name', 'My Business'),
+    COALESCE(NEW.raw_user_meta_data->>'industry', 'General Business'),
+    COALESCE(NEW.raw_user_meta_data->>'contact_name', 'Business Owner'),
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'phone', '')
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    phone = EXCLUDED.phone,
+    business_name = EXCLUDED.business_name,
+    contact_name = EXCLUDED.contact_name,
+    industry = EXCLUDED.industry;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
