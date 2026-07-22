@@ -43,15 +43,27 @@ async function checkBusinessAuth() {
             console.warn('Error fetching business info from Supabase:', error);
         }
 
-        // If record is missing in database or phone is empty, upsert using user metadata
-        if (!businessData || (!businessData.phone && metadata.phone)) {
+        // Determine best values between DB record and user_metadata
+        const finalBusinessName = businessData?.business_name || metadata.business_name || user.email.split('@')[0];
+        const finalIndustry = (businessData?.industry && businessData.industry !== 'General Business') 
+            ? businessData.industry 
+            : (metadata.industry || businessData?.industry || 'General Business');
+        const finalContactName = businessData?.contact_name || metadata.contact_name || 'Business Owner';
+        const finalPhone = businessData?.phone || metadata.phone || '';
+
+        // If the DB row is missing, OR if DB has default/missing values compared to metadata, upsert to DB
+        const needsSync = !businessData || 
+            (!businessData.phone && finalPhone) || 
+            (businessData.industry === 'General Business' && finalIndustry !== 'General Business');
+
+        if (needsSync) {
             const payload = {
                 id: user.id,
-                business_name: businessData?.business_name || metadata.business_name || user.email.split('@')[0],
-                industry: businessData?.industry || metadata.industry || 'General Business',
-                contact_name: businessData?.contact_name || metadata.contact_name || 'Business Owner',
+                business_name: finalBusinessName,
+                industry: finalIndustry,
+                contact_name: finalContactName,
                 email: user.email,
-                phone: businessData?.phone || metadata.phone || ''
+                phone: finalPhone
             };
 
             const { data: upserted, error: upsertErr } = await supabaseClient
@@ -69,11 +81,11 @@ async function checkBusinessAuth() {
 
         currentBusiness = businessData || {
             id: user.id,
-            business_name: metadata.business_name || user.email.split('@')[0],
-            industry: metadata.industry || 'General Business',
-            contact_name: metadata.contact_name || 'Business Owner',
+            business_name: finalBusinessName,
+            industry: finalIndustry,
+            contact_name: finalContactName,
             email: user.email,
-            phone: metadata.phone || ''
+            phone: finalPhone
         };
 
         renderBusinessInfo(currentBusiness);
@@ -99,7 +111,7 @@ function renderBusinessInfo(business) {
     if (industryEl) industryEl.innerText = business.industry || 'General';
     if (contactEl) contactEl.innerText = business.contact_name || 'Admin';
     if (emailEl) emailEl.innerText = business.email || '';
-    if (phoneEl) phoneEl.innerText = business.phone ? business.phone : 'No phone set';
+    if (phoneEl) phoneEl.innerText = (business.phone && business.phone.trim() !== '') ? business.phone : 'No phone set';
 }
 
 // ========================================
@@ -116,6 +128,24 @@ async function triggerTestDemoCall() {
     if (!phone || phone.trim().length < 5) {
         phone = prompt('Please enter your phone number to receive the AI demo call:', '+1');
         if (!phone) return;
+        
+        // Save provided phone back to current business profile
+        currentBusiness.phone = phone;
+        renderBusinessInfo(currentBusiness);
+
+        // Update database
+        supabaseClient.from('businesses').upsert([{
+            id: currentBusiness.id,
+            business_name: currentBusiness.business_name,
+            industry: currentBusiness.industry,
+            contact_name: currentBusiness.contact_name,
+            email: currentBusiness.email,
+            phone: phone
+        }]).then(() => {}).catch(e => console.warn(e));
+
+        if (supabaseClient.auth) {
+            supabaseClient.auth.updateUser({ data: { phone: phone } }).catch(e => console.warn(e));
+        }
     }
 
     // Format phone number
@@ -438,14 +468,100 @@ function closeModal() {
     if (modal) modal.classList.remove('active');
 }
 
+function openEditProfileModal() {
+    if (!currentBusiness) return;
+    const nameInput = document.getElementById('editBusinessName');
+    const industrySelect = document.getElementById('editIndustry');
+    const contactInput = document.getElementById('editContactName');
+    const phoneInput = document.getElementById('editPhone');
+
+    if (nameInput) nameInput.value = currentBusiness.business_name || '';
+    if (industrySelect) industrySelect.value = currentBusiness.industry || 'General Business';
+    if (contactInput) contactInput.value = currentBusiness.contact_name || '';
+    if (phoneInput) phoneInput.value = currentBusiness.phone || '';
+
+    const modal = document.getElementById('editProfileModal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeEditProfileModal() {
+    const modal = document.getElementById('editProfileModal');
+    if (modal) modal.classList.remove('active');
+}
+
+async function saveBusinessProfile(e) {
+    if (e) e.preventDefault();
+    if (!currentBusiness) return;
+
+    const bName = document.getElementById('editBusinessName').value.trim();
+    const ind = document.getElementById('editIndustry').value;
+    const cName = document.getElementById('editContactName').value.trim();
+    const ph = document.getElementById('editPhone').value.trim();
+
+    const saveBtn = document.getElementById('saveProfileBtn');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerText = 'Saving...';
+    }
+
+    try {
+        const payload = {
+            id: currentBusiness.id,
+            business_name: bName || currentBusiness.business_name,
+            industry: ind || 'General Business',
+            contact_name: cName || currentBusiness.contact_name,
+            email: currentBusiness.email,
+            phone: ph
+        };
+
+        // 1. Update Supabase Database
+        const { data, error } = await supabaseClient
+            .from('businesses')
+            .upsert([payload])
+            .select()
+            .maybeSingle();
+
+        if (error) throw error;
+
+        // 2. Update Supabase Auth Metadata
+        if (supabaseClient.auth) {
+            await supabaseClient.auth.updateUser({
+                data: {
+                    business_name: payload.business_name,
+                    industry: payload.industry,
+                    contact_name: payload.contact_name,
+                    phone: payload.phone
+                }
+            }).catch(err => console.warn('Auth metadata update warning:', err));
+        }
+
+        currentBusiness = data || payload;
+        renderBusinessInfo(currentBusiness);
+        closeEditProfileModal();
+
+    } catch (err) {
+        console.error('Error saving business profile:', err);
+        alert('Failed to update business profile: ' + (err.message || err));
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerText = 'Save Changes';
+        }
+    }
+}
+
 document.addEventListener('click', (e) => {
     const modal = document.getElementById('callModal');
     const testModal = document.getElementById('testCallModal');
+    const editModal = document.getElementById('editProfileModal');
     if (modal && modal.classList.contains('active') && e.target === modal) {
         closeModal();
     }
     if (testModal && testModal.classList.contains('active') && e.target === testModal) {
         closeTestCallModal();
+    }
+    if (editModal && editModal.classList.contains('active') && e.target === editModal) {
+        closeEditProfileModal();
     }
 });
 
