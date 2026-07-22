@@ -308,12 +308,16 @@ function initChart(logs) {
     const emptyState = document.getElementById('chartEmptyState');
     if (!canvas) return;
 
+    const chartWrap = canvas.parentElement;
+
     if (!logs || logs.length === 0) {
+        if (chartWrap) chartWrap.style.display = 'none';
         canvas.style.display = 'none';
         if (emptyState) emptyState.style.display = 'flex';
         return;
     }
 
+    if (chartWrap) chartWrap.style.display = 'block';
     canvas.style.display = 'block';
     if (emptyState) emptyState.style.display = 'none';
 
@@ -608,7 +612,10 @@ function showEmptyStates() {
     const chartEmpty = document.getElementById('chartEmptyState');
     const feedEmpty = document.getElementById('feedEmptyState');
 
-    if (chartCanvas) chartCanvas.style.display = 'none';
+    if (chartCanvas) {
+        chartCanvas.style.display = 'none';
+        if (chartCanvas.parentElement) chartCanvas.parentElement.style.display = 'none';
+    }
     if (chartEmpty) chartEmpty.style.display = 'flex';
     if (feedEmpty) feedEmpty.style.display = 'flex';
 }
