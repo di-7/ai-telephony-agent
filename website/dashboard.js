@@ -1,6 +1,6 @@
 /* ==========================================
    MIXUP FUNCTIONAL ANALYTICS DASHBOARD ENGINE
-   v2.2 - Sidebar Navigation & Direct Call Trigger
+   v3.0 - Real Data Only (No Mock Transcripts)
    ========================================== */
 
 let mainChart = null;
@@ -162,53 +162,46 @@ async function triggerTestDemoCall() {
     }
 
     try {
-        // 1. Call backend API endpoint to trigger VideoSDK call
+        // Call backend API endpoint to trigger VideoSDK call
+        // The backend handles call logging — no mock data inserted from frontend
         const apiEndpoint = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? `${window.location.protocol}//${window.location.hostname}:8081/api/make-call`
             : 'https://ai-telephony-agent.onrender.com/api/make-call';
 
-        fetch(apiEndpoint, {
+        const response = await fetch(apiEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 to_number: phone,
                 name: currentBusiness.contact_name || currentBusiness.business_name,
-                company: currentBusiness.business_name
+                company: currentBusiness.business_name,
+                business_id: currentBusiness.id
             })
-        }).catch(err => console.error('Call API error:', err));
+        });
 
-        // 2. Persist call log in Supabase under this business ID
-        const newLog = {
-            business_id: currentBusiness.id,
-            caller_phone: phone,
-            caller_name: currentBusiness.contact_name || 'Test Caller',
-            caller_company: currentBusiness.business_name,
-            source: 'instant_call',
-            duration: '1m 00s',
-            status: 'completed',
-            sentiment: 'Interested',
-            transcript: [
-                { speaker: 'agent', name: 'Sarah (Mixup AI)', text: `Hello ${currentBusiness.contact_name || 'there'}! This is your live test call for ${currentBusiness.business_name}. How is our AI voice performance working for you?` },
-                { speaker: 'customer', name: currentBusiness.contact_name || 'Caller', text: `It works great! I'm testing the real-time call flow.` },
-                { speaker: 'agent', name: 'Sarah (Mixup AI)', text: `Awesome! This call record and audio summary have been logged directly into your analytics dashboard.` }
-            ]
-        };
-
-        const { error: dbErr } = await supabaseClient
-            .from('call_logs')
-            .insert([newLog]);
-
-        if (dbErr) {
-            console.warn('Supabase log error:', dbErr);
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            const errMsg = errData.error || `Call failed (HTTP ${response.status})`;
+            if (statusText) {
+                statusText.innerHTML = `<span style="color: #ff5065;">❌ ${escapeHtml(errMsg)}</span>`;
+            }
+            return;
         }
 
-        // Auto-refresh feed after 3 seconds
+        if (statusText) {
+            statusText.innerHTML = `📞 Call initiated to <strong>${escapeHtml(phone)}</strong>. Pick up your phone!<br><span style="font-size: 12px; color: #7a7b7c; margin-top: 8px; display: block;">Call details will appear in your feed once processed.</span>`;
+        }
+
+        // Auto-refresh feed after 5 seconds to pick up backend-logged data
         setTimeout(() => {
             fetchBusinessDashboardData();
-        }, 3000);
+        }, 5000);
 
     } catch (err) {
         console.error('Trigger call error:', err);
+        if (statusText) {
+            statusText.innerHTML = `<span style="color: #ff5065;">❌ Could not reach the call server. Please try again later.</span>`;
+        }
     }
 }
 
@@ -259,16 +252,35 @@ function refreshDashboard() {
 
 function updateKPIs(logs) {
     const totalCalls = logs.length;
-    const completed = logs.filter(l => l.status === 'completed' || !l.status).length;
-    const successRate = totalCalls > 0 ? Math.round((completed / totalCalls) * 100) : 0;
+    const answered = logs.filter(l => l.status === 'completed').length;
+    const initiated = logs.filter(l => l.status === 'initiated' || l.status === 'ringing').length;
+    const successRate = totalCalls > 0 ? Math.round((answered / totalCalls) * 100) : 0;
     
     const delighted = logs.filter(l => l.sentiment === 'Delighted').length;
-    const interested = logs.filter(l => l.sentiment === 'Interested' || !l.sentiment).length;
-    const sentiment = totalCalls > 0 ? Math.min(Math.round(((delighted + interested * 0.8) / totalCalls) * 100), 100) : 0;
+    const interested = logs.filter(l => l.sentiment === 'Interested').length;
+    const sentimentBase = answered > 0 ? answered : totalCalls;
+    const sentiment = sentimentBase > 0 ? Math.min(Math.round(((delighted + interested * 0.8) / sentimentBase) * 100), 100) : 0;
+
+    // Calculate real average duration from logs that have parseable durations
+    let avgDuration = '--';
+    const completedLogs = logs.filter(l => l.status === 'completed' && l.duration);
+    if (completedLogs.length > 0) {
+        let totalSeconds = 0;
+        completedLogs.forEach(l => {
+            const match = (l.duration || '').match(/(\d+)m\s*(\d+)s/);
+            if (match) {
+                totalSeconds += parseInt(match[1]) * 60 + parseInt(match[2]);
+            }
+        });
+        if (totalSeconds > 0) {
+            const avgSec = Math.round(totalSeconds / completedLogs.length);
+            avgDuration = `${Math.floor(avgSec / 60)}m ${String(avgSec % 60).padStart(2, '0')}s`;
+        }
+    }
 
     document.getElementById('kpiCalls').innerText = totalCalls.toLocaleString();
     document.getElementById('kpiSuccessRate').innerText = `${successRate}%`;
-    document.getElementById('kpiAvgTime').innerText = totalCalls > 0 ? '1m 00s' : '--';
+    document.getElementById('kpiAvgTime').innerText = avgDuration;
     document.getElementById('kpiSentiment').innerText = `${sentiment}%`;
 
     const callsBadge = document.getElementById('kpiCallsBadge');
@@ -276,8 +288,8 @@ function updateKPIs(logs) {
     const sentimentBadge = document.getElementById('kpiSentimentBadge');
 
     if (callsBadge) callsBadge.innerText = totalCalls > 0 ? `${totalCalls} logged` : '0 calls';
-    if (successBadge) successBadge.innerText = completed > 0 ? `${completed} qualified` : '0 qualified';
-    if (sentimentBadge) sentimentBadge.innerText = sentiment > 0 ? `NPS +${Math.round(sentiment * 0.8)}` : '0 rating';
+    if (successBadge) successBadge.innerText = answered > 0 ? `${answered} answered` : `${initiated} initiated`;
+    if (sentimentBadge) sentimentBadge.innerText = sentiment > 0 ? `NPS +${Math.round(sentiment * 0.8)}` : 'N/A';
 }
 
 function updateSourceBreakdown(logs) {
@@ -400,10 +412,22 @@ function renderFeed(logs) {
         const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
         const phone = call.caller_phone || call.phone || '--';
         const source = call.source === 'cta_form' ? 'CTA Form' : 'Instant Call';
-        const sentiment = call.sentiment || 'Interested';
-        const tagClass = sentiment === 'Delighted' ? 'dash-tag-delighted' : 'dash-tag-interested';
+        const status = call.status || 'initiated';
+        const duration = call.duration || '--';
         const timeAgo = getTimeAgo(call.created_at || call.timestamp);
-        const duration = call.duration || '1m 00s';
+
+        // Status-based styling
+        let statusLabel, tagClass;
+        if (status === 'completed') {
+            statusLabel = call.sentiment || 'Completed';
+            tagClass = call.sentiment === 'Delighted' ? 'dash-tag-delighted' : 'dash-tag-interested';
+        } else if (status === 'initiated' || status === 'ringing') {
+            statusLabel = 'Initiated';
+            tagClass = 'dash-tag-initiated';
+        } else {
+            statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+            tagClass = 'dash-tag-initiated';
+        }
 
         const div = document.createElement('div');
         div.className = 'dash-feed-item';
@@ -413,11 +437,11 @@ function renderFeed(logs) {
                 <div class="dash-avatar">${initials}</div>
                 <div class="dash-caller-info">
                     <span class="dash-caller-name">${escapeHtml(name)}</span>
-                    <span class="dash-caller-meta">${escapeHtml(phone)} &middot; ${escapeHtml(source)}</span>
+                    <span class="dash-caller-meta">${escapeHtml(phone)} &middot; ${escapeHtml(source)} &middot; ${escapeHtml(duration)}</span>
                 </div>
             </div>
             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                <span class="${tagClass}">${escapeHtml(sentiment)}</span>
+                <span class="${tagClass}">${escapeHtml(statusLabel)}</span>
                 <span style="font-size: 11px; color: #7a7b7c; font-family: 'JetBrains Mono', monospace;">${escapeHtml(timeAgo)}</span>
             </div>
         `;
@@ -433,32 +457,46 @@ function openModal(call) {
     const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     const phone = call.caller_phone || call.phone || '--';
     const source = call.source === 'cta_form' ? 'CTA Form' : 'Instant Call';
-    const duration = call.duration || '1m 00s';
+    const duration = call.duration || '--';
+    const status = call.status || 'initiated';
 
     document.getElementById('modalAvatar').innerText = initials;
     document.getElementById('modalName').innerText = name;
-    document.getElementById('modalMeta').innerText = `${phone} \u2022 ${source} \u2022 Duration: ${duration}`;
+    document.getElementById('modalMeta').innerText = `${phone} \u2022 ${source} \u2022 Duration: ${duration} \u2022 Status: ${status}`;
 
     const chatList = document.getElementById('modalChatList');
-    const transcript = call.transcript || [
-        { speaker: 'agent', name: 'Sarah (Mixup AI)', text: `Hello ${name}! Thank you for contacting ${currentBusiness?.business_name || 'our business'}. How can our AI assistant help you today?` },
-        { speaker: 'customer', name: name, text: `Hi, I was interested in getting more information about your ${currentBusiness?.industry || 'services'}.` },
-        { speaker: 'agent', name: 'Sarah (Mixup AI)', text: `Great! We've recorded your interest and our team will follow up with you shortly. Have a great day!` }
-    ];
+    const transcript = call.transcript;
 
-    chatList.innerHTML = transcript.map(msg => {
-        const isAgent = msg.speaker === 'agent';
-        const speakerIcon = isAgent
-            ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
-            : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
-        const speakerName = msg.name || (isAgent ? 'AI Agent' : name);
-        return `
-            <div class="dash-bubble ${isAgent ? 'agent' : 'customer'}">
-                <span class="dash-bubble-speaker">${speakerIcon} ${escapeHtml(speakerName)}</span>
-                ${escapeHtml(msg.text)}
+    // Only show real transcripts — no mock data
+    if (!transcript || !Array.isArray(transcript) || transcript.length === 0) {
+        chatList.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: #7a7b7c;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; opacity: 0.4;">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <p style="font-weight: 600; margin-bottom: 4px;">No transcript available</p>
+                <p style="font-size: 12px;">
+                    ${status === 'initiated' || status === 'ringing' 
+                        ? 'This call was initiated but no conversation was recorded. The call may not have been answered.' 
+                        : 'Transcript data is not available for this call.'}
+                </p>
             </div>
         `;
-    }).join('');
+    } else {
+        chatList.innerHTML = transcript.map(msg => {
+            const isAgent = msg.speaker === 'agent';
+            const speakerIcon = isAgent
+                ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
+                : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+            const speakerName = msg.name || (isAgent ? 'AI Agent' : name);
+            return `
+                <div class="dash-bubble ${isAgent ? 'agent' : 'customer'}">
+                    <span class="dash-bubble-speaker">${speakerIcon} ${escapeHtml(speakerName)}</span>
+                    ${escapeHtml(msg.text)}
+                </div>
+            `;
+        }).join('');
+    }
 
     modal.classList.add('active');
 }

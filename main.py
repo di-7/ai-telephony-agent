@@ -82,14 +82,10 @@ def add_call_log(phone_number, name='', email='', company='', source='instant_ca
         'company': company,
         'source': source,
         'timestamp': datetime.now(timezone.utc).isoformat(),
-        'duration': '1m 00s',
-        'status': 'completed',
-        'sentiment': 'Interested',
-        'transcript': [
-            {'speaker': 'agent', 'name': 'Sarah (Mixup AI)', 'text': f'Hello {name or "there"}! I\'m calling from Mixup regarding your interest in our AI telephony platform. Are you looking to scale your customer engagement?'},
-            {'speaker': 'customer', 'name': name or 'Caller', 'text': 'Yes, I\'d like to learn more about how your AI agents work and what kind of integrations you support.'},
-            {'speaker': 'agent', 'name': 'Sarah (Mixup AI)', 'text': 'Our AI agents handle real-time voice conversations, qualify leads instantly, and integrate with CRMs like Salesforce and HubSpot. Let me connect you with our team for a full demo!'}
-        ]
+        'duration': '--',
+        'status': 'initiated',
+        'sentiment': '',
+        'transcript': []
     }
     logs.insert(0, entry)
     logs = logs[:100]
