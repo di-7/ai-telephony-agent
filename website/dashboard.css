@@ -74,72 +74,48 @@ body {
   max-width: 1320px;
   margin: 0 auto;
   padding: 95px 24px 60px 24px;
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 28px;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* Dashboard Sidebar Styling */
+/* Dashboard Sidebar Styling - Slide-out Drawer on all screens */
 .dash-sidebar {
   background: var(--color-pure-white, #ffffff);
   border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 24px;
   padding: 28px 20px;
-  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.03);
+  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: fit-content;
-  position: sticky;
-  top: 95px;
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: auto;
+  bottom: 0;
+  width: 320px;
+  max-width: 85vw;
+  z-index: 1005;
+  border-radius: 24px 0 0 24px;
+  transform: translateX(100%);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100vh;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .dash-sidebar.active {
-  position: fixed !important;
-  top: 0 !important;
-  right: 0 !important;
-  left: auto !important;
-  bottom: 0 !important;
-  width: 320px !important;
-  z-index: 1005 !important;
-  border-radius: 24px 0 0 24px !important;
   transform: translateX(0) !important;
-  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.2) !important;
-  height: 100vh !important;
-  overflow-y: auto !important;
-  box-sizing: border-box !important;
-}
-
-.dash-sidebar.active .dash-sidebar-close-btn {
-  display: inline-flex !important;
 }
 
 @media (max-width: 992px) {
   .dash-wrapper {
-    grid-template-columns: 1fr;
     padding: 85px 16px 40px 16px;
-  }
-
-  .dash-sidebar {
-    position: fixed;
-    top: 0;
-    right: 0;
-    left: auto;
-    bottom: 0;
-    width: 320px;
-    z-index: 1005;
-    border-radius: 24px 0 0 24px;
-    transform: translateX(100%);
-    box-shadow: -10px 0 35px rgba(0, 0, 0, 0.15);
-    height: 100vh;
-    overflow-y: auto;
-    box-sizing: border-box;
   }
 }
 
 .dash-sidebar-close-btn {
-  display: none;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
   width: 28px;

@@ -588,6 +588,13 @@ def make_context() -> JobContext:
 
 if __name__ == "__main__":
     try:
+        # Ensure event loop exists in the main thread
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
         # Start health check server in background thread
         health_thread = threading.Thread(target=start_health_server, daemon=True)
         health_thread.start()
