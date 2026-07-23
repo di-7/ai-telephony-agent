@@ -160,17 +160,29 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.style.boxShadow = '0 4px 20px rgba(34, 197, 94, 0.3)';
             submitBtn.disabled = true;
 
-            // Trigger actual call
-            fetch('https://ai-telephony-agent.onrender.com/api/make-call', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    to_number: phone, 
-                    name: name,
-                    email: email,
-                    company: company
-                })
-            }).catch(err => console.error("CTA call trigger failed:", err));
+            // Determine dynamic API endpoint
+            const apiEndpoint = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                ? `${window.location.protocol}//${window.location.hostname}:8081/api/make-call`
+                : 'https://ai-telephony-agent.onrender.com/api/make-call';
+
+            // Check for logged in business session to pass business_id
+            const sessionPromise = (typeof getSupabaseSession === 'function') ? getSupabaseSession() : Promise.resolve(null);
+            
+            sessionPromise.then(session => {
+                const businessId = session?.user?.id || null;
+
+                fetch(apiEndpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        to_number: phone, 
+                        name: name,
+                        email: email,
+                        company: company,
+                        business_id: businessId
+                    })
+                }).catch(err => console.error("CTA call trigger failed:", err));
+            });
 
             // Reset after 10 seconds
             setTimeout(() => {
@@ -295,12 +307,27 @@ function initiateCall() {
     callMeBtn.style.display = 'none';
     callStatus.style.display = 'flex';
 
-    // INTERGRATION POINT - Call the backend endpoint
-    fetch('https://ai-telephony-agent.onrender.com/api/make-call', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to_number: phoneInput })
-    }).catch(err => console.error("Call trigger failed:", err));
+    // Determine dynamic API endpoint
+    const apiEndpoint = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? `${window.location.protocol}//${window.location.hostname}:8081/api/make-call`
+        : 'https://ai-telephony-agent.onrender.com/api/make-call';
+
+    const sessionPromise = (typeof getSupabaseSession === 'function') ? getSupabaseSession() : Promise.resolve(null);
+
+    sessionPromise.then(session => {
+        const businessId = session?.user?.id || null;
+        const userEmail = session?.user?.email || '';
+
+        fetch(apiEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                to_number: phoneInput,
+                email: userEmail,
+                business_id: businessId
+            })
+        }).catch(err => console.error("Call trigger failed:", err));
+    });
 
     // Simulate backend processing and active call state
     setTimeout(() => {

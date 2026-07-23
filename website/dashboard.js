@@ -218,17 +218,126 @@ async function fetchBusinessDashboardData() {
     if (!currentBusiness) return;
 
     try {
-        const { data: logs, error } = await supabaseClient
-            .from('call_logs')
-            .select('*')
-            .eq('business_id', currentBusiness.id)
-            .order('created_at', { ascending: false });
+        let logsMap = new Map();
 
-        if (error) {
-            console.warn('Error loading logs from Supabase:', error);
+        // 1. Fetch from Supabase by business_id
+        try {
+            const { data: supaLogs, error } = await supabaseClient
+                .from('call_logs')
+                .select('*')
+                .eq('business_id', currentBusiness.id)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.warn('Error loading logs by business_id from Supabase:', error);
+            } else if (supaLogs) {
+                supaLogs.forEach(l => logsMap.set(l.id, l));
+            }
+        } catch (e) {
+            console.warn('Supabase query by business_id failed:', e);
         }
 
-        allCallLogs = logs || [];
+        // 2. Fetch from Supabase by caller_email if available
+        if (currentBusiness.email) {
+            try {
+                const { data: emailLogs } = await supabaseClient
+                    .from('call_logs')
+                    .select('*')
+                    .eq('caller_email', currentBusiness.email)
+                    .order('created_at', { ascending: false });
+
+                if (emailLogs) {
+                    emailLogs.forEach(l => {
+                        if (!logsMap.has(l.id)) {
+                            logsMap.set(l.id, l);
+                            // Auto-link business_id in Supabase background
+                            if (!l.business_id) {
+                                supabaseClient.from('call_logs')
+                                    .update({ business_id: currentBusiness.id })
+                                    .eq('id', l.id)
+                                    .then(() => {})
+                                    .catch(e => console.warn(e));
+                            }
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('Supabase query by email failed:', e);
+            }
+        }
+
+        // 3. Fetch from Supabase by caller_phone if available
+        if (currentBusiness.phone && currentBusiness.phone.trim().length >= 7) {
+            try {
+                const cleanPhone = currentBusiness.phone.replace(/\D/g, '');
+                const { data: phoneLogs } = await supabaseClient
+                    .from('call_logs')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (phoneLogs) {
+                    phoneLogs.forEach(l => {
+                        const lPhone = (l.caller_phone || l.phone || '').replace(/\D/g, '');
+                        if (lPhone && cleanPhone && (lPhone.includes(cleanPhone) || cleanPhone.includes(lPhone))) {
+                            if (!logsMap.has(l.id)) {
+                                logsMap.set(l.id, l);
+                                if (!l.business_id) {
+                                    supabaseClient.from('call_logs')
+                                        .update({ business_id: currentBusiness.id })
+                                        .eq('id', l.id)
+                                        .then(() => {})
+                                        .catch(e => console.warn(e));
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('Supabase query by phone failed:', e);
+            }
+        }
+
+        let logs = Array.from(logsMap.values());
+
+        // 4. Fallback to Backend API (/api/call-logs) if Supabase returned 0 logs
+        if (logs.length === 0) {
+            try {
+                const apiHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                    ? `${window.location.protocol}//${window.location.hostname}:8081`
+                    : 'https://ai-telephony-agent.onrender.com';
+
+                const resp = await fetch(`${apiHost}/api/call-logs`);
+                if (resp.ok) {
+                    const apiLogs = await resp.json();
+                    if (Array.isArray(apiLogs) && apiLogs.length > 0) {
+                        const cleanPhone = (currentBusiness.phone || '').replace(/\D/g, '');
+                        const userEmail = (currentBusiness.email || '').toLowerCase();
+
+                        const matchedApiLogs = apiLogs.filter(l => {
+                            if (l.business_id && l.business_id === currentBusiness.id) return true;
+                            if (l.email && userEmail && l.email.toLowerCase() === userEmail) return true;
+                            if (l.caller_email && userEmail && l.caller_email.toLowerCase() === userEmail) return true;
+                            const p = (l.phone || l.caller_phone || '').replace(/\D/g, '');
+                            if (p && cleanPhone && (p.includes(cleanPhone) || cleanPhone.includes(p))) return true;
+                            return false;
+                        });
+
+                        logs = matchedApiLogs.length > 0 ? matchedApiLogs : apiLogs;
+                    }
+                }
+            } catch (apiErr) {
+                console.warn('Backend API call-logs fallback error:', apiErr);
+            }
+        }
+
+        // Sort logs descending by timestamp/created_at
+        logs.sort((a, b) => {
+            const dA = new Date(a.created_at || a.timestamp || 0);
+            const dB = new Date(b.created_at || b.timestamp || 0);
+            return dB - dA;
+        });
+
+        allCallLogs = logs;
 
         updateKPIs(allCallLogs);
         initChart(allCallLogs);

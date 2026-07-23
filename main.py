@@ -66,18 +66,7 @@ def pop_recent_pending_call():
 def find_business_id_by_phone_or_email(phone, email):
     """Attempt to find matching business_id in Supabase by phone number or email."""
     try:
-        if phone:
-            clean_phone = phone.strip()
-            url = f"{SUPABASE_URL}/rest/v1/businesses?phone=eq.{urllib.parse.quote(clean_phone)}&select=id"
-            req = urllib.request.Request(url, method='GET')
-            req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
-            req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
-            with urllib.request.urlopen(req) as resp:
-                data = json_module.loads(resp.read().decode('utf-8'))
-                if data and len(data) > 0:
-                    logging.info(f"Found business_id by phone match: {data[0]['id']}")
-                    return data[0]['id']
-        if email:
+        if email and email.strip():
             clean_email = email.strip()
             url = f"{SUPABASE_URL}/rest/v1/businesses?email=eq.{urllib.parse.quote(clean_email)}&select=id"
             req = urllib.request.Request(url, method='GET')
@@ -88,6 +77,33 @@ def find_business_id_by_phone_or_email(phone, email):
                 if data and len(data) > 0:
                     logging.info(f"Found business_id by email match: {data[0]['id']}")
                     return data[0]['id']
+
+        if phone and phone.strip():
+            clean_phone = phone.strip()
+            url = f"{SUPABASE_URL}/rest/v1/businesses?phone=eq.{urllib.parse.quote(clean_phone)}&select=id"
+            req = urllib.request.Request(url, method='GET')
+            req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
+            req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
+            with urllib.request.urlopen(req) as resp:
+                data = json_module.loads(resp.read().decode('utf-8'))
+                if data and len(data) > 0:
+                    logging.info(f"Found business_id by phone match: {data[0]['id']}")
+                    return data[0]['id']
+
+            # Digit-only fallback search for phone numbers formatted differently
+            digits_only = ''.join(c for c in clean_phone if c.isdigit())
+            if len(digits_only) >= 7:
+                url = f"{SUPABASE_URL}/rest/v1/businesses?select=id,phone"
+                req = urllib.request.Request(url, method='GET')
+                req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
+                req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
+                with urllib.request.urlopen(req) as resp:
+                    all_b = json_module.loads(resp.read().decode('utf-8'))
+                    for b in all_b:
+                        b_digits = ''.join(c for c in (b.get('phone') or '') if c.isdigit())
+                        if b_digits and (b_digits.endswith(digits_only) or digits_only.endswith(b_digits)):
+                            logging.info(f"Found business_id by fuzzy phone match: {b['id']}")
+                            return b['id']
     except Exception as e:
         logging.warning(f"Business lookup failed: {e}")
     return None
@@ -119,8 +135,24 @@ def add_call_log_to_supabase(entry):
         req.add_header('Content-Type', 'application/json')
         req.add_header('Prefer', 'return=minimal')
 
-        with urllib.request.urlopen(req) as resp:
-            logging.info(f"Call log persisted to Supabase: status {resp.status}, id {entry['id']}")
+        try:
+            with urllib.request.urlopen(req) as resp:
+                logging.info(f"Call log persisted to Supabase: status {resp.status}, id {entry['id']}")
+        except urllib.error.HTTPError as he:
+            # If foreign key or FK violation on business_id occurs, retry without business_id
+            if 'business_id' in payload_data and he.code in (400, 409):
+                logging.warning(f"FK error on business_id, retrying insert without business_id: {he}")
+                payload_data.pop('business_id', None)
+                payload_retry = json_module.dumps(payload_data).encode('utf-8')
+                req_retry = urllib.request.Request(url, data=payload_retry, method='POST')
+                req_retry.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
+                req_retry.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
+                req_retry.add_header('Content-Type', 'application/json')
+                req_retry.add_header('Prefer', 'return=minimal')
+                with urllib.request.urlopen(req_retry) as resp_retry:
+                    logging.info(f"Call log persisted to Supabase (without FK): status {resp_retry.status}")
+            else:
+                raise he
     except Exception as e:
         logging.error(f"Failed to post call log to Supabase: {e}")
 

@@ -52,11 +52,21 @@ CREATE POLICY "Users can update own business"
 -- 5. RLS Policies for Call Logs Table
 CREATE POLICY "Users can view own call logs" 
   ON public.call_logs FOR SELECT 
-  USING (business_id = auth.uid());
+  USING (
+    business_id = auth.uid()
+    OR (auth.jwt() ->> 'email' IS NOT NULL AND caller_email = auth.jwt() ->> 'email')
+  );
+
+CREATE POLICY "Users can update own call logs"
+  ON public.call_logs FOR UPDATE
+  USING (
+    business_id = auth.uid()
+    OR (auth.jwt() ->> 'email' IS NOT NULL AND caller_email = auth.jwt() ->> 'email')
+  );
 
 CREATE POLICY "Users can insert own call logs" 
   ON public.call_logs FOR INSERT 
-  WITH CHECK (business_id = auth.uid());
+  WITH CHECK (business_id = auth.uid() OR business_id IS NULL);
 
 -- 6. Service Role Bypass Policies (allows backend API to log calls automatically)
 CREATE POLICY "Service role can insert call logs" 
