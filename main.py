@@ -479,7 +479,7 @@ async def start_session(context: JobContext):
 
     # Also register pipeline-level hooks as a fallback for transcript capture
     @pipeline.on("on_user_turn_end")
-    async def on_user_turn_end(turn_text):
+    def on_user_turn_end(turn_text):
         try:
             if turn_text and str(turn_text).strip():
                 text = str(turn_text).strip()
@@ -496,7 +496,7 @@ async def start_session(context: JobContext):
             logging.error(f"Error in on_user_turn_end hook: {e}")
 
     @pipeline.on("on_agent_turn_end")
-    async def on_agent_turn_end(turn_text):
+    def on_agent_turn_end(turn_text):
         try:
             if turn_text and str(turn_text).strip():
                 text = str(turn_text).strip()
