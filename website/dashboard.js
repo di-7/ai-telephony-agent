@@ -428,6 +428,9 @@ function renderFeed(logs) {
         } else if (status === 'initiated' || status === 'ringing') {
             statusLabel = 'Initiated';
             tagClass = 'dash-tag-initiated';
+        } else if (status === 'no_answer') {
+            statusLabel = 'No Answer';
+            tagClass = 'dash-tag-no-answer';
         } else {
             statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
             tagClass = 'dash-tag-initiated';

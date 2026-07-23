@@ -623,6 +623,15 @@ body {
   border-radius: 100px;
 }
 
+.dash-tag-no-answer {
+  background: rgba(239, 68, 68, 0.10);
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 100px;
+}
+
 /* Call Source Section */
 .dash-source-row {
   margin-top: 20px;
