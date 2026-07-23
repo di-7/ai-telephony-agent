@@ -368,20 +368,8 @@ function initFloatingCta() {
     const floatingCta = document.getElementById('floatingCta');
     if (!floatingCta) return;
 
-    let lastScrollY = 0;
-    
-    window.addEventListener('scroll', () => {
-        const currentScrollY = window.scrollY;
-        
-        // Show after scrolling 500px
-        if (currentScrollY > 500) {
-            floatingCta.classList.add('visible');
-        } else {
-            floatingCta.classList.remove('visible');
-        }
-        
-        lastScrollY = currentScrollY;
-    }, { passive: true });
+    // Floating call button is permanently active at bottom-right corner
+    floatingCta.classList.add('visible');
 }
 
 // --- Smooth Scroll with Easing ---
