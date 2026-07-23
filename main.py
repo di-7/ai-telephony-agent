@@ -381,10 +381,51 @@ class MyVoiceAgent(Agent):
     async def on_exit(self) -> None:
         pass
 
+def fetch_recent_initiated_call_from_supabase():
+    """Query Supabase for the most recent 'initiated' call log to pair with this agent session.
+    This is needed because the HTTP server and VideoSDK agent run in SEPARATE PROCESSES,
+    so in-memory PENDING_CALLS cannot be shared."""
+    try:
+        url = (f"{SUPABASE_URL}/rest/v1/call_logs"
+               f"?status=eq.initiated"
+               f"&order=created_at.desc"
+               f"&limit=1"
+               f"&select=id,caller_name,caller_phone,caller_email,caller_company,source,business_id,created_at")
+        req = urllib.request.Request(url, method='GET')
+        req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
+        req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json_module.loads(resp.read().decode('utf-8'))
+            if data and len(data) > 0:
+                row = data[0]
+                entry = {
+                    'id': row['id'],
+                    'business_id': row.get('business_id'),
+                    'phone': row.get('caller_phone', ''),
+                    'name': row.get('caller_name', 'Unknown Caller'),
+                    'email': row.get('caller_email', ''),
+                    'company': row.get('caller_company', ''),
+                    'source': row.get('source', 'instant_call'),
+                }
+                logging.info(f"Fetched recent initiated call from Supabase: {entry['id']}, caller: {entry['name']} ({entry['phone']})")
+                return entry
+    except Exception as e:
+        logging.warning(f"Failed to fetch recent initiated call from Supabase: {e}")
+    return None
+
 async def start_session(context: JobContext):
+    # Try in-memory queue first (works when same process), then fall back to Supabase query
     call_entry = pop_recent_pending_call()
     if call_entry:
-        logging.info(f"Agent session paired with pending call log: {call_entry['id']}, caller: {call_entry['name']} ({call_entry['phone']})")
+        logging.info(f"Agent session paired via in-memory queue: {call_entry['id']}, caller: {call_entry['name']} ({call_entry['phone']})")
+    else:
+        # CRITICAL: HTTP server and agent worker run in separate processes, so PENDING_CALLS
+        # will always be empty here. Query Supabase directly for the most recent initiated call.
+        call_entry = fetch_recent_initiated_call_from_supabase()
+        if call_entry:
+            logging.info(f"Agent session paired via Supabase query: {call_entry['id']}, caller: {call_entry['name']} ({call_entry['phone']})")
+        else:
+            logging.warning("No pending call entry found (neither in-memory nor Supabase). Transcript will still be captured.")
 
     # Configure the Gemini model for real-time voice
     model = GeminiRealtime(
@@ -398,42 +439,99 @@ async def start_session(context: JobContext):
 
     transcript_list = []
 
-    def on_transcription_event(data: dict):
+    def on_transcription_event(data):
+        """Capture transcription events from the Gemini realtime model."""
         try:
-            if isinstance(data, dict) and data.get("is_final") and data.get("text"):
-                role = data.get("role")
-                speaker_role = "agent" if role == "agent" else "customer"
-                caller_name = (call_entry.get('name') if call_entry and call_entry.get('name') else "Caller")
-                speaker_name = "Sarah (Mixup AI)" if role == "agent" else caller_name
+            logging.info(f"RAW transcription event received: {data}")
+            if isinstance(data, dict):
                 text = data.get("text", "").strip()
+                is_final = data.get("is_final", False)
+                role = data.get("role", "unknown")
+                
                 if text:
-                    transcript_list.append({
-                        "speaker": speaker_role,
-                        "name": speaker_name,
-                        "text": text
-                    })
-                    logging.info(f"Captured live transcript [{speaker_role}]: {text}")
+                    if is_final:
+                        speaker_role = "agent" if role == "agent" else "customer"
+                        caller_name = (call_entry.get('name') if call_entry and call_entry.get('name') else "Caller")
+                        speaker_name = "Sarah (Mixup AI)" if role == "agent" else caller_name
+                        transcript_list.append({
+                            "speaker": speaker_role,
+                            "name": speaker_name,
+                            "text": text
+                        })
+                        logging.info(f"FINAL transcript [{speaker_role}]: {text}")
+                    else:
+                        logging.debug(f"Interim transcript [{role}]: {text}")
+            elif isinstance(data, str) and data.strip():
+                # Some SDK versions emit plain strings
+                transcript_list.append({
+                    "speaker": "unknown",
+                    "name": "Speaker",
+                    "text": data.strip()
+                })
+                logging.info(f"FINAL transcript [string]: {data.strip()}")
         except Exception as e:
-            logging.error(f"Error processing transcription event: {e}")
+            logging.error(f"Error processing transcription event: {e}", exc_info=True)
 
+    # Register transcription listener on the model
     model.on("realtime_model_transcription", on_transcription_event)
 
     pipeline = Pipeline(llm=model)
+
+    # Also register pipeline-level hooks as a fallback for transcript capture
+    @pipeline.on("on_user_turn_end")
+    async def on_user_turn_end(turn_text):
+        try:
+            if turn_text and str(turn_text).strip():
+                text = str(turn_text).strip()
+                caller_name = (call_entry.get('name') if call_entry and call_entry.get('name') else "Caller")
+                # Avoid duplicates if model event already captured this
+                if not any(t['text'] == text and t['speaker'] == 'customer' for t in transcript_list):
+                    transcript_list.append({
+                        "speaker": "customer",
+                        "name": caller_name,
+                        "text": text
+                    })
+                    logging.info(f"Pipeline hook captured user turn: {text}")
+        except Exception as e:
+            logging.error(f"Error in on_user_turn_end hook: {e}")
+
+    @pipeline.on("on_agent_turn_end")
+    async def on_agent_turn_end(turn_text):
+        try:
+            if turn_text and str(turn_text).strip():
+                text = str(turn_text).strip()
+                # Avoid duplicates if model event already captured this
+                if not any(t['text'] == text and t['speaker'] == 'agent' for t in transcript_list):
+                    transcript_list.append({
+                        "speaker": "agent",
+                        "name": "Sarah (Mixup AI)",
+                        "text": text
+                    })
+                    logging.info(f"Pipeline hook captured agent turn: {text}")
+        except Exception as e:
+            logging.error(f"Error in on_agent_turn_end hook: {e}")
+
     session = AgentSession(agent=MyVoiceAgent(), pipeline=pipeline)
 
     start_time = time.time()
 
     try:
         await context.connect()
+        logging.info("Agent connected to room. Starting session...")
         await session.start()
+        logging.info("Agent session started. Waiting up to 60 seconds...")
         
         # Hard limit: disconnect after 60 seconds
         await asyncio.sleep(60)
         logging.info("1 minute demo time limit reached. Closing session.")
             
+    except Exception as e:
+        logging.error(f"Error during agent session: {e}", exc_info=True)
     finally:
         elapsed = int(time.time() - start_time)
         duration_str = f"{elapsed // 60}m {elapsed % 60:02d}s" if elapsed >= 5 else "--"
+        
+        logging.info(f"Call session ending. Duration: {duration_str}, Transcript turns: {len(transcript_list)}")
         
         if call_entry:
             call_entry['duration'] = duration_str
@@ -448,15 +546,24 @@ async def start_session(context: JobContext):
             logging.info(f"Call session ended. Duration: {duration_str}, Turns: {len(transcript_list)}, Status: {call_entry['status']}")
             
             # Save updated logs locally
-            logs = load_call_logs()
-            for idx, item in enumerate(logs):
-                if item.get('id') == call_entry['id']:
-                    logs[idx] = call_entry
-                    break
-            save_call_logs(logs)
+            try:
+                logs = load_call_logs()
+                for idx, item in enumerate(logs):
+                    if item.get('id') == call_entry['id']:
+                        logs[idx] = call_entry
+                        break
+                save_call_logs(logs)
+            except Exception as e:
+                logging.error(f"Failed to save local call logs: {e}")
 
             # Update Supabase database
-            threading.Thread(target=update_call_log_in_supabase, args=(call_entry,)).start()
+            try:
+                update_call_log_in_supabase(call_entry)
+                logging.info(f"Supabase updated for call {call_entry['id']}")
+            except Exception as e:
+                logging.error(f"Failed to update Supabase: {e}")
+        else:
+            logging.warning("No call_entry to update. Creating a standalone record...")
 
         # End the meeting for ALL participants (including SIP caller)
         try:
@@ -466,8 +573,14 @@ async def start_session(context: JobContext):
         except Exception as e:
             logging.warning(f"Could not end room: {e}")
         
-        await session.close()
-        await context.shutdown()
+        try:
+            await session.close()
+        except Exception as e:
+            logging.warning(f"Could not close session: {e}")
+        try:
+            await context.shutdown()
+        except Exception as e:
+            logging.warning(f"Could not shutdown context: {e}")
 
 def make_context() -> JobContext:
     room_options = RoomOptions()
