@@ -50,6 +50,10 @@ CREATE POLICY "Users can update own business"
   USING (auth.uid() = id);
 
 -- 5. RLS Policies for Call Logs Table
+DROP POLICY IF EXISTS "Users can view own call logs" ON public.call_logs;
+DROP POLICY IF EXISTS "Users can update own call logs" ON public.call_logs;
+DROP POLICY IF EXISTS "Users can insert own call logs" ON public.call_logs;
+
 CREATE POLICY "Users can view own call logs" 
   ON public.call_logs FOR SELECT 
   USING (
