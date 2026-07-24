@@ -609,10 +609,10 @@ async def start_session(context: JobContext):
         # End the meeting for ALL participants (including SIP caller)
         try:
             if context.room:
-                await context.room.end()
-                logging.info("Room ended for all participants.")
+                await context.room.leave()
+                logging.info("Room left successfully for agent session.")
         except Exception as e:
-            logging.warning(f"Could not end room: {e}")
+            logging.warning(f"Could not leave room: {e}")
         
         try:
             await session.close()
