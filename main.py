@@ -464,7 +464,7 @@ async def start_session(context: JobContext):
         model="gemini-3.1-flash-live-preview",
         api_key=os.getenv("GOOGLE_API_KEY"),
         config=GeminiLiveConfig(
-            voice="Sulafat",
+            voice="Aoede",
             response_modalities=["AUDIO"]
         )
     )
