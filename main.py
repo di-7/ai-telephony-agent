@@ -461,10 +461,10 @@ async def start_session(context: JobContext):
 
     # Configure the Gemini model for real-time voice
     model = GeminiRealtime(
-        model="gemini-2.5-flash-native-audio-preview-12-2025",
+        model="models/gemini-3.1-flash-live-preview",
         api_key=os.getenv("GOOGLE_API_KEY"),
         config=GeminiLiveConfig(
-            voice="Aoede",
+            voice="Sulafat",
             response_modalities=["AUDIO"]
         )
     )
