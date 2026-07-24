@@ -24,11 +24,25 @@ from datetime import datetime, timezone
 CALL_LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'call_logs.json')
 
 def load_call_logs():
-    """Load call logs from JSON file."""
+    """Load call logs from Supabase cloud database with local file fallback."""
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/call_logs?caller_name=neq.SYSTEM_AGENT_CONFIG&status=neq.config&order=created_at.desc&limit=100"
+        req = urllib.request.Request(url, headers={
+            "apikey": SUPABASE_SERVICE_ROLE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"
+        })
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json_module.loads(resp.read().decode('utf-8'))
+            if isinstance(data, list) and len(data) > 0:
+                return data
+    except Exception as e:
+        logging.warning(f"Could not load call logs from Supabase: {e}")
+
     try:
         if os.path.exists(CALL_LOG_FILE):
             with open(CALL_LOG_FILE, 'r') as f:
-                return json_module.load(f)
+                logs = json_module.load(f)
+                return [l for l in logs if l.get('caller_name') != 'SYSTEM_AGENT_CONFIG' and l.get('status') != 'config']
     except Exception as e:
         logging.error(f"Failed to load call logs: {e}")
     return []
