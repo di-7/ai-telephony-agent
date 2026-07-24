@@ -810,7 +810,6 @@ async function loadAgentConfigFromSupabase() {
 
         if (!error && data && data.length > 0 && data[0].transcript) {
             const config = JSON.parse(data[0].transcript);
-            console.log('Loaded active agent config from Supabase cloud database:', config);
             return config;
         }
     } catch (e) {
