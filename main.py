@@ -121,7 +121,7 @@ def save_agent_config_to_supabase(config_data, business_id=None):
     """Persist agent configuration to Supabase agent_configs table."""
     b_id = business_id or "c16fc8ab-3bb2-44fe-88ed-560f950c8069"
     try:
-        url = f"{SUPABASE_URL}/rest/v1/agent_configs"
+        url = f"{SUPABASE_URL}/rest/v1/agent_configs?on_conflict=business_id"
         payload = {
             "business_id": b_id,
             "provider": config_data.get("provider", "gemini"),
