@@ -722,3 +722,178 @@ function escapeHtml(text) {
     div.appendChild(document.createTextNode(text));
     return div.innerHTML;
 }
+
+// ========================================
+// SIDEBAR TAB SWITCHING & ENGINE CONFIG
+// ========================================
+
+function switchDashboardTab(tabName) {
+    const tabAnalytics = document.getElementById('tabAnalytics');
+    const tabConfig = document.getElementById('tabConfig');
+    const navAnalyticsBtn = document.getElementById('navAnalyticsBtn');
+    const navConfigBtn = document.getElementById('navConfigBtn');
+
+    if (tabName === 'config') {
+        if (tabAnalytics) tabAnalytics.style.display = 'none';
+        if (tabConfig) tabConfig.style.display = 'block';
+        if (navAnalyticsBtn) navAnalyticsBtn.classList.remove('active');
+        if (navConfigBtn) navConfigBtn.classList.add('active');
+        loadAgentConfigFromStorage();
+    } else {
+        if (tabAnalytics) tabAnalytics.style.display = 'block';
+        if (tabConfig) tabConfig.style.display = 'none';
+        if (navAnalyticsBtn) navAnalyticsBtn.classList.add('active');
+        if (navConfigBtn) navConfigBtn.classList.remove('active');
+    }
+
+    // Auto close sidebar drawer on mobile after clicking
+    if (window.innerWidth <= 768) {
+        toggleSidebarDrawer();
+    }
+}
+
+function selectEngineProvider(provider) {
+    const cardGemini = document.getElementById('cardGemini');
+    const cardKokoro = document.getElementById('cardKokoro');
+    const radioGemini = document.getElementById('radioGemini');
+    const radioKokoro = document.getElementById('radioKokoro');
+    const secGeminiControls = document.getElementById('secGeminiControls');
+    const secKokoroControls = document.getElementById('secKokoroControls');
+
+    if (provider === 'kokoro') {
+        if (cardGemini) cardGemini.classList.remove('active');
+        if (cardKokoro) cardKokoro.classList.add('active');
+        if (radioGemini) radioGemini.checked = false;
+        if (radioKokoro) radioKokoro.checked = true;
+
+        if (secGeminiControls) secGeminiControls.style.display = 'none';
+        if (secKokoroControls) secKokoroControls.style.display = 'block';
+    } else {
+        if (cardGemini) cardGemini.classList.add('active');
+        if (cardKokoro) cardKokoro.classList.remove('active');
+        if (radioGemini) radioGemini.checked = true;
+        if (radioKokoro) radioKokoro.checked = false;
+
+        if (secGeminiControls) secGeminiControls.style.display = 'block';
+        if (secKokoroControls) secKokoroControls.style.display = 'none';
+    }
+}
+
+async function loadAgentConfigFromStorage() {
+    let config = null;
+
+    // Try fetching from backend API first
+    try {
+        const resp = await fetch('/api/config');
+        if (resp.ok) {
+            config = await resp.json();
+        }
+    } catch (e) {
+        console.warn('Could not fetch config from backend:', e);
+    }
+
+    if (!config) {
+        // Fallback to localStorage
+        const stored = localStorage.getItem('mixup_agent_config');
+        if (stored) {
+            try { config = JSON.parse(stored); } catch (e) {}
+        }
+    }
+
+    if (!config) {
+        config = {
+            provider: 'gemini',
+            gemini: {
+                model: 'models/gemini-3.1-flash-live-preview',
+                voice: 'Aoede',
+                vad_silence_ms: 200
+            },
+            kokoro: {
+                voice: 'af_heart',
+                speed: 1.0
+            },
+            system_instruction: "You are a warm, helpful sales receptionist for Mixup AI. Greet the caller nicely, answer questions naturally, and collect their name and company to schedule a demo."
+        };
+    }
+
+    // Populate UI fields
+    selectEngineProvider(config.provider || 'gemini');
+
+    if (config.gemini) {
+        const cfgVoice = document.getElementById('cfgGeminiVoice');
+        const cfgModel = document.getElementById('cfgGeminiModel');
+        const cfgVad = document.getElementById('cfgGeminiVad');
+
+        if (cfgVoice && config.gemini.voice) cfgVoice.value = config.gemini.voice;
+        if (cfgModel && config.gemini.model) cfgModel.value = config.gemini.model;
+        if (cfgVad && config.gemini.vad_silence_ms) cfgVad.value = config.gemini.vad_silence_ms;
+    }
+
+    if (config.kokoro) {
+        const cfgKokoroVoice = document.getElementById('cfgKokoroVoice');
+        const cfgKokoroSpeed = document.getElementById('cfgKokoroSpeed');
+
+        if (cfgKokoroVoice && config.kokoro.voice) cfgKokoroVoice.value = config.kokoro.voice;
+        if (cfgKokoroSpeed && config.kokoro.speed) cfgKokoroSpeed.value = config.kokoro.speed;
+    }
+
+    const cfgPrompt = document.getElementById('cfgSystemPrompt');
+    if (cfgPrompt && config.system_instruction) {
+        cfgPrompt.value = config.system_instruction;
+    }
+}
+
+async function saveAgentConfig() {
+    const radioKokoro = document.getElementById('radioKokoro');
+    const provider = radioKokoro && radioKokoro.checked ? 'kokoro' : 'gemini';
+
+    const cfgGeminiVoice = document.getElementById('cfgGeminiVoice');
+    const cfgGeminiModel = document.getElementById('cfgGeminiModel');
+    const cfgGeminiVad = document.getElementById('cfgGeminiVad');
+
+    const cfgKokoroVoice = document.getElementById('cfgKokoroVoice');
+    const cfgKokoroSpeed = document.getElementById('cfgKokoroSpeed');
+
+    const cfgSystemPrompt = document.getElementById('cfgSystemPrompt');
+
+    const payload = {
+        provider: provider,
+        gemini: {
+            model: cfgGeminiModel ? cfgGeminiModel.value : 'models/gemini-3.1-flash-live-preview',
+            voice: cfgGeminiVoice ? cfgGeminiVoice.value : 'Aoede',
+            vad_silence_ms: cfgGeminiVad ? parseInt(cfgGeminiVad.value, 10) : 200
+        },
+        kokoro: {
+            voice: cfgKokoroVoice ? cfgKokoroVoice.value : 'af_heart',
+            speed: cfgKokoroSpeed ? parseFloat(cfgKokoroSpeed.value) : 1.0
+        },
+        system_instruction: cfgSystemPrompt ? cfgSystemPrompt.value.trim() : ''
+    };
+
+    // Save to localStorage
+    localStorage.setItem('mixup_agent_config', JSON.stringify(payload));
+
+    // Send to backend API
+    try {
+        const resp = await fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (resp.ok) {
+            console.log('Configuration saved to backend successfully');
+        }
+    } catch (e) {
+        console.warn('Failed to post config to backend API:', e);
+    }
+
+    // Show status indicator
+    const statusElem = document.getElementById('configSaveStatus');
+    if (statusElem) {
+        statusElem.style.display = 'inline';
+        setTimeout(() => {
+            statusElem.style.display = 'none';
+        }, 3000);
+    }
+}
+

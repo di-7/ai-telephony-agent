@@ -41,6 +41,43 @@ def save_call_logs(logs):
     except Exception as e:
         logging.error(f"Failed to save call logs: {e}")
 
+# --- Agent Configuration Storage (JSON file-based) ---
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'agent_config.json')
+
+DEFAULT_AGENT_CONFIG = {
+    "provider": "gemini",
+    "gemini": {
+        "model": "models/gemini-3.1-flash-live-preview",
+        "voice": "Aoede",
+        "vad_silence_ms": 200
+    },
+    "kokoro": {
+        "voice": "af_heart",
+        "speed": 1.0
+    },
+    "system_instruction": "You are a warm, helpful sales receptionist for Mixup AI. Greet the caller nicely, answer questions naturally, and collect their name and company to schedule a demo."
+}
+
+def load_agent_config():
+    try:
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as f:
+                saved = json_module.load(f)
+                config = DEFAULT_AGENT_CONFIG.copy()
+                config.update(saved)
+                return config
+    except Exception as e:
+        logging.error(f"Failed to load agent config: {e}")
+    return DEFAULT_AGENT_CONFIG.copy()
+
+def save_agent_config(config_data):
+    try:
+        with open(CONFIG_FILE, 'w') as f:
+            json_module.dump(config_data, f, indent=2)
+        logging.info("Saved agent_config.json successfully")
+    except Exception as e:
+        logging.error(f"Failed to save agent config: {e}")
+
 # --- Supabase Configuration ---
 SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://zuxjdbrgfwpphswgxkiw.supabase.co')
 SUPABASE_SERVICE_ROLE_KEY = os.getenv(
@@ -289,6 +326,12 @@ class HealthHandler(BaseHTTPRequestHandler):
                 'recent_calls': logs[:10]
             }
             self.wfile.write(json_module.dumps(analytics).encode())
+        elif self.path == '/api/config':
+            self.send_response(200)
+            self._send_cors_headers()
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json_module.dumps(load_agent_config()).encode())
         else:
             self.send_response(404)
             self._send_cors_headers()
@@ -300,7 +343,24 @@ class HealthHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
-        if self.path == '/api/make-call':
+        if self.path == '/api/config':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            try:
+                new_cfg = json_module.loads(post_data)
+                save_agent_config(new_cfg)
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json_module.dumps({"status": "success", "config": new_cfg}).encode())
+            except Exception as e:
+                logging.error(f"Failed to save config via API: {e}")
+                self.send_response(400)
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(b'{"error": "Failed to save configuration"}')
+        elif self.path == '/api/make-call':
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
             
@@ -460,23 +520,37 @@ async def start_session(context: JobContext):
         else:
             logging.warning("No pending call entry found (neither in-memory nor Supabase). Transcript will still be captured.")
 
-    # Configure the Gemini model for real-time voice with ultra-low-latency VAD and Aoede voice
+    # Load dynamic configuration from dashboard settings
+    agent_cfg = load_agent_config()
+    provider = agent_cfg.get("provider", "gemini")
+    gemini_cfg = agent_cfg.get("gemini", {})
+    selected_voice = gemini_cfg.get("voice", "Aoede")
+    selected_model = gemini_cfg.get("model", "models/gemini-3.1-flash-live-preview")
+    vad_silence = int(gemini_cfg.get("vad_silence_ms", 200))
+    system_inst = agent_cfg.get("system_instruction", "")
+
+    logging.info(f"Starting agent session | provider={provider} | model={selected_model} | voice={selected_voice} | vad={vad_silence}ms")
+
+    # Configure the Gemini model for real-time voice with dynamic config settings
     model = GeminiRealtime(
-        model="models/gemini-3.1-flash-live-preview",
+        model=selected_model,
         api_key=os.getenv("GOOGLE_API_KEY"),
         config=GeminiLiveConfig(
-            voice="Aoede",
+            voice=selected_voice,
             response_modalities=["AUDIO"],
             realtime_input_config=RealtimeInputConfig(
                 automatic_activity_detection=AutomaticActivityDetection(
                     start_of_speech_sensitivity=StartSensitivity.START_SENSITIVITY_HIGH,
                     end_of_speech_sensitivity=EndSensitivity.END_SENSITIVITY_HIGH,
                     prefix_padding_ms=10,
-                    silence_duration_ms=200,
+                    silence_duration_ms=vad_silence,
                 )
             )
         )
     )
+
+    if system_inst and hasattr(model, '_instructions'):
+        model._instructions = system_inst
 
     transcript_list = []
 

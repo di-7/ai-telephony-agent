@@ -91,6 +91,18 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Sidebar Navigation Menu -->
+                <div class="sidebar-nav-menu">
+                    <button class="sidebar-nav-item active" id="navAnalyticsBtn" onclick="switchDashboardTab('analytics')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                        <span>Call Analytics</span>
+                    </button>
+                    <button class="sidebar-nav-item" id="navConfigBtn" onclick="switchDashboardTab('config')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <span>Voice & Model Config</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Sidebar Footer & Logout -->
@@ -104,173 +116,327 @@
 
         <!-- Main Dashboard Content -->
         <main class="dash-main-content">
+            <!-- Tab 1: Call Analytics & Intelligence -->
+            <div id="tabAnalytics">
+                <!-- Header Row -->
+                <div class="dash-header-wrap">
+                    <div>
+                        <h1 class="dash-header-title">Call Analytics & Intelligence</h1>
+                        <p class="dash-header-subtitle">Real-time performance metrics across your automated AI voice agent sessions.</p>
+                    </div>
 
-            <!-- Header Row -->
-            <div class="dash-header-wrap">
-                <div>
-                    <h1 class="dash-header-title">Call Analytics & Intelligence</h1>
-                    <p class="dash-header-subtitle">Real-time performance metrics across your automated AI voice agent sessions.</p>
+                    <!-- Time Filter Pills -->
+                    <div class="dash-filter-bar">
+                        <button class="dash-filter-btn" data-range="today">Today</button>
+                        <button class="dash-filter-btn" data-range="7d">7 Days</button>
+                        <button class="dash-filter-btn active" data-range="30d">30 Days</button>
+                        <button class="dash-filter-btn" data-range="all">All Time</button>
+                    </div>
                 </div>
 
-                <!-- Time Filter Pills -->
-                <div class="dash-filter-bar">
-                    <button class="dash-filter-btn" data-range="today">Today</button>
-                    <button class="dash-filter-btn" data-range="7d">7 Days</button>
-                    <button class="dash-filter-btn active" data-range="30d">30 Days</button>
-                    <button class="dash-filter-btn" data-range="all">All Time</button>
-                </div>
+                <!-- KPI Summary Grid (4 Cards) -->
+                <section class="dash-kpi-grid">
+
+                    <!-- KPI 1: Total Calls -->
+                    <div class="dash-kpi-card">
+                        <div class="dash-kpi-top">
+                            <span class="dash-kpi-label">Total AI Calls</span>
+                            <div class="dash-kpi-icon-pill">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            </div>
+                        </div>
+                        <div class="dash-kpi-val" id="kpiCalls">0</div>
+                        <div class="dash-kpi-sub">
+                            <span class="dash-badge-green" id="kpiCallsBadge">--</span>
+                            <span class="dash-sub-text">total calls logged</span>
+                        </div>
+                    </div>
+
+                    <!-- KPI 2: Qualification Rate -->
+                    <div class="dash-kpi-card">
+                        <div class="dash-kpi-top">
+                            <span class="dash-kpi-label">Qualification Rate</span>
+                            <div class="dash-kpi-icon-pill">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                            </div>
+                        </div>
+                        <div class="dash-kpi-val" id="kpiSuccessRate">0%</div>
+                        <div class="dash-kpi-sub">
+                            <span class="dash-badge-green" id="kpiSuccessBadge">--</span>
+                            <span class="dash-sub-text">leads qualified</span>
+                        </div>
+                    </div>
+
+                    <!-- KPI 3: Avg Call Duration -->
+                    <div class="dash-kpi-card">
+                        <div class="dash-kpi-top">
+                            <span class="dash-kpi-label">Avg Call Duration</span>
+                            <div class="dash-kpi-icon-pill">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            </div>
+                        </div>
+                        <div class="dash-kpi-val" id="kpiAvgTime">--</div>
+                        <div class="dash-kpi-sub">
+                            <span class="dash-badge-green">Per Call</span>
+                            <span class="dash-sub-text">natural conversation</span>
+                        </div>
+                    </div>
+
+                    <!-- KPI 4: Sentiment Score -->
+                    <div class="dash-kpi-card">
+                        <div class="dash-kpi-top">
+                            <span class="dash-kpi-label">Customer Delight Index</span>
+                            <div class="dash-kpi-icon-pill">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                            </div>
+                        </div>
+                        <div class="dash-kpi-val" id="kpiSentiment">0%</div>
+                        <div class="dash-kpi-sub">
+                            <span class="dash-badge-green" id="kpiSentimentBadge">--</span>
+                            <span class="dash-sub-text">positive sentiment</span>
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- Main Visualizations Grid (Chart + Call Activity Stream) -->
+                <section class="dash-main-row">
+
+                    <!-- Chart Card -->
+                    <div class="dash-card">
+                        <div class="dash-card-header">
+                            <div>
+                                <div class="dash-card-title">Call Performance Velocity</div>
+                                <div class="dash-card-sub">Calls recorded from your AI agent sessions</div>
+                            </div>
+                        </div>
+                        <div class="dash-chart-wrap">
+                            <canvas id="callVelocityChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Call Log Stream Panel -->
+                    <div class="dash-card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+                        <div class="dash-card-header" style="padding: 24px 24px 16px 24px;">
+                            <div>
+                                <div class="dash-card-title">Live Call Activity Feed</div>
+                                <div class="dash-card-sub">Real-time transcripts & customer metadata</div>
+                            </div>
+                        </div>
+
+                        <!-- Call Log Table/Feed Container -->
+                        <div class="dash-call-feed-wrap">
+                            <div id="callFeedContainer">
+                                <div class="dash-empty-state">
+                                    <div class="dash-empty-icon">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                    </div>
+                                    <p class="dash-empty-text">No call logs found for this filter range.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- Secondary Grid (Lead Sources & Conversion Channels) -->
+                <section class="dash-sec-row" style="margin-top: 24px;">
+                    <div class="dash-card">
+                        <div class="dash-card-header">
+                            <div>
+                                <div class="dash-card-title">Inbound Lead Origination</div>
+                                <div class="dash-card-sub">Channel breakdown of qualified incoming callers</div>
+                            </div>
+                        </div>
+                        <div class="dash-source-grid">
+                            <div class="dash-source-item">
+                                <div class="dash-source-icon cta">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                </div>
+                                <div class="dash-source-info">
+                                    <span class="dash-source-label">CTA Form Submission</span>
+                                    <span class="dash-source-val" id="ctaCallCount">0</span>
+                                </div>
+                            </div>
+                            <div class="dash-source-item">
+                                <div class="dash-source-icon instant">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                                </div>
+                                <div class="dash-source-info">
+                                    <span class="dash-source-label">Instant Call Trigger</span>
+                                    <span class="dash-source-val" id="instantCallCount">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
 
-            <!-- KPI Summary Grid (4 Cards) -->
-            <section class="dash-kpi-grid">
-
-                <!-- KPI 1: Total Calls -->
-                <div class="dash-kpi-card">
-                    <div class="dash-kpi-top">
-                        <span class="dash-kpi-label">Total AI Calls</span>
-                        <div class="dash-kpi-icon-pill">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                        </div>
+            <!-- Tab 2: Voice & Model Configuration Panel -->
+            <div id="tabConfig" style="display: none;">
+                <!-- Config Header Row -->
+                <div class="dash-header-wrap">
+                    <div>
+                        <h1 class="dash-header-title">Voice Agent & Model Configuration</h1>
+                        <p class="dash-header-subtitle">Choose between Gemini Live and Kokoro-TTS open source model, and customize voice parameters.</p>
                     </div>
-                    <div class="dash-kpi-val" id="kpiCalls">0</div>
-                    <div class="dash-kpi-sub">
-                        <span class="dash-badge-green" id="kpiCallsBadge">--</span>
-                        <span class="dash-sub-text">total calls logged</span>
-                    </div>
-                </div>
-
-                <!-- KPI 2: Qualification Rate -->
-                <div class="dash-kpi-card">
-                    <div class="dash-kpi-top">
-                        <span class="dash-kpi-label">Qualification Rate</span>
-                        <div class="dash-kpi-icon-pill">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-                        </div>
-                    </div>
-                    <div class="dash-kpi-val" id="kpiSuccessRate">0%</div>
-                    <div class="dash-kpi-sub">
-                        <span class="dash-badge-green" id="kpiSuccessBadge">--</span>
-                        <span class="dash-sub-text">leads qualified</span>
-                    </div>
-                </div>
-
-                <!-- KPI 3: Avg Call Duration -->
-                <div class="dash-kpi-card">
-                    <div class="dash-kpi-top">
-                        <span class="dash-kpi-label">Avg Call Duration</span>
-                        <div class="dash-kpi-icon-pill">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        </div>
-                    </div>
-                    <div class="dash-kpi-val" id="kpiAvgTime">--</div>
-                    <div class="dash-kpi-sub">
-                        <span class="dash-badge-green">Per Call</span>
-                        <span class="dash-sub-text">natural conversation</span>
-                    </div>
-                </div>
-
-                <!-- KPI 4: Sentiment Score -->
-                <div class="dash-kpi-card">
-                    <div class="dash-kpi-top">
-                        <span class="dash-kpi-label">Customer Delight Index</span>
-                        <div class="dash-kpi-icon-pill">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-                        </div>
-                    </div>
-                    <div class="dash-kpi-val" id="kpiSentiment">0%</div>
-                    <div class="dash-kpi-sub">
-                        <span class="dash-badge-green" id="kpiSentimentBadge">--</span>
-                        <span class="dash-sub-text">positive sentiment</span>
-                    </div>
-                </div>
-
-            </section>
-
-            <!-- Main Visualizations Grid (Chart + Call Activity Stream) -->
-            <section class="dash-main-row">
-
-                <!-- Chart Card -->
-                <div class="dash-card">
-                    <div class="dash-card-header">
-                        <div>
-                            <div class="dash-card-title">Call Performance Velocity</div>
-                            <div class="dash-card-sub">Calls recorded from your AI agent sessions</div>
-                        </div>
-                    </div>
-                    <div class="dash-chart-wrap">
-                        <canvas id="simpleChart"></canvas>
-                    </div>
-                    <!-- Empty state for chart -->
-                    <div class="dash-empty-state" id="chartEmptyState" style="display: none;">
-                        <div class="dash-empty-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-                        </div>
-                        <p class="dash-empty-text">No call activity logged yet. Trigger a test demo call to view your real-time analytics!</p>
-                    </div>
-                </div>
-
-                <!-- Recent Calls Feed Card -->
-                <div class="dash-card">
-                    <div class="dash-card-header">
-                        <div>
-                            <div class="dash-card-title">Recent AI Calls</div>
-                            <div class="dash-card-sub">Click any call to view full audio transcript</div>
-                        </div>
-                        <button class="dash-refresh-btn" onclick="refreshDashboard()" title="Refresh data">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                        </button>
-                    </div>
-
-                    <div class="dash-feed-list" id="callFeed">
-                        <!-- Populated dynamically by dashboard.js -->
-                    </div>
-
-                    <!-- Empty state for feed -->
-                    <div class="dash-empty-state" id="feedEmptyState" style="display: none;">
-                        <div class="dash-empty-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                        </div>
-                        <p class="dash-empty-text">No call logs recorded yet for your business account.</p>
-                        <button class="dash-empty-btn" onclick="triggerTestDemoCall()">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                            <span>Test Demo Call</span>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-primary" onclick="saveAgentConfig()" style="padding: 10px 24px; font-weight: 700; background: linear-gradient(135deg, #ff5065, #ff7a59); color: white; border: none; border-radius: 100px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            Save Settings
                         </button>
                     </div>
                 </div>
 
-            </section>
+                <!-- Config Grid -->
+                <div style="display: flex; flex-direction: column; gap: 24px; margin-top: 24px;">
 
-            <!-- Call Source Breakdown -->
-            <section class="dash-source-row">
-                <div class="dash-card dash-source-card">
-                    <div class="dash-card-header">
-                        <div>
-                            <div class="dash-card-title">Call Acquisition Channels</div>
-                            <div class="dash-card-sub">Lead entry points for your AI Voice Agent</div>
+                    <!-- Section 1: Choose Architecture -->
+                    <div class="dash-card">
+                        <div class="dash-card-header">
+                            <div>
+                                <div class="dash-card-title">1. AI Speech Engine Architecture</div>
+                                <div class="dash-card-sub">Choose your voice model provider for automated phone sessions</div>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 16px;">
+                            <!-- Gemini Live Card -->
+                            <div class="model-select-card active" id="cardGemini" onclick="selectEngineProvider('gemini')">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                    <span class="badge-pill badge-green">Google Gemini Live</span>
+                                    <input type="radio" name="modelProviderRadio" value="gemini" id="radioGemini" checked style="accent-color: #ff5065; transform: scale(1.2);">
+                                </div>
+                                <h3 style="font-size: 18px; font-weight: 700; margin: 14px 0 6px 0; color: var(--color-carbon-ink);">Gemini Live API (Speech-to-Speech)</h3>
+                                <p style="font-size: 13px; color: var(--color-slate); line-height: 1.5; margin: 0 0 12px 0;">
+                                    Native multimodal audio streaming engine. Lowest latency (~300ms) with dynamic conversational turn-taking.
+                                </p>
+                                <div style="font-size: 12px; font-weight: 700; color: #10b981; display: flex; align-items: center; gap: 6px;">
+                                    ⚡ Ultra-Low Latency (~300ms)
+                                </div>
+                            </div>
+
+                            <!-- Kokoro-TTS Card -->
+                            <div class="model-select-card" id="cardKokoro" onclick="selectEngineProvider('kokoro')">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                    <span class="badge-pill badge-purple">100% Free / Open Source</span>
+                                    <input type="radio" name="modelProviderRadio" value="kokoro" id="radioKokoro" style="accent-color: #ff5065; transform: scale(1.2);">
+                                </div>
+                                <h3 style="font-size: 18px; font-weight: 700; margin: 14px 0 6px 0; color: var(--color-carbon-ink);">Kokoro-TTS + Groq Pipeline</h3>
+                                <p style="font-size: 13px; color: var(--color-slate); line-height: 1.5; margin: 0 0 12px 0;">
+                                    100% Open-Source 82M TTS model paired with Groq Whisper & Llama 3.3. Zero API cost with hyper-realistic human voices.
+                                </p>
+                                <div style="font-size: 12px; font-weight: 700; color: #8b5cf6; display: flex; align-items: center; gap: 6px;">
+                                    🎧 Hyper-Realistic Open Source Voices
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="dash-source-grid">
-                        <div class="dash-source-item">
-                            <div class="dash-source-icon cta">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-                            </div>
-                            <div class="dash-source-info">
-                                <span class="dash-source-label">CTA Form Submission</span>
-                                <span class="dash-source-val" id="ctaCallCount">0</span>
+
+                    <!-- Section 2: Gemini Voice Controls -->
+                    <div class="dash-card" id="secGeminiControls">
+                        <div class="dash-card-header">
+                            <div>
+                                <div class="dash-card-title">2. Gemini Live Voice & Tuning</div>
+                                <div class="dash-card-sub">Select prebuilt voice ID and Voice Activity Detection (VAD) response speed</div>
                             </div>
                         </div>
-                        <div class="dash-source-item">
-                            <div class="dash-source-icon instant">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-top: 16px;">
+                            <div>
+                                <label class="form-label-custom">Select Voice Persona</label>
+                                <select id="cfgGeminiVoice" class="form-control-custom">
+                                    <option value="Aoede" selected>Aoede — Warm, Conversational Female (Recommended)</option>
+                                    <option value="Sulafat">Sulafat — Expressive, Dynamic Female</option>
+                                    <option value="Fenrir">Fenrir — Deep, Smooth Male (Recommended)</option>
+                                    <option value="Kore">Kore — Calm, Relaxed Female</option>
+                                    <option value="Charon">Charon — Clear, Professional Male</option>
+                                    <option value="Puck">Puck — Energetic Male</option>
+                                </select>
                             </div>
-                            <div class="dash-source-info">
-                                <span class="dash-source-label">Instant Call Trigger</span>
-                                <span class="dash-source-val" id="instantCallCount">0</span>
+
+                            <div>
+                                <label class="form-label-custom">Gemini Model Identifier</label>
+                                <select id="cfgGeminiModel" class="form-control-custom">
+                                    <option value="models/gemini-3.1-flash-live-preview" selected>models/gemini-3.1-flash-live-preview (Gemini 3.1)</option>
+                                    <option value="gemini-2.5-flash-native-audio-preview-12-2025">gemini-2.5-flash-native-audio-preview-12-2025 (Gemini 2.5)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="form-label-custom">VAD Silence Response Timeout</label>
+                                <select id="cfgGeminiVad" class="form-control-custom">
+                                    <option value="120">120ms — Ultra-Aggressive (Fastest)</option>
+                                    <option value="200" selected>200ms — Balanced (Recommended)</option>
+                                    <option value="400">400ms — Standard Conversational</option>
+                                </select>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Section 3: Kokoro-TTS Voice Controls -->
+                    <div class="dash-card" id="secKokoroControls" style="display: none;">
+                        <div class="dash-card-header">
+                            <div>
+                                <div class="dash-card-title">2. Kokoro Open-Source Voice Controls</div>
+                                <div class="dash-card-sub">Fine-tune Kokoro voice models and synthesis speed</div>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-top: 16px;">
+                            <div>
+                                <label class="form-label-custom">Kokoro Voice Model</label>
+                                <select id="cfgKokoroVoice" class="form-control-custom">
+                                    <option value="af_heart" selected>af_heart — Heart (Natural US Female)</option>
+                                    <option value="af_bella">af_bella — Bella (Smooth US Female)</option>
+                                    <option value="am_adam">am_adam — Adam (Natural US Male)</option>
+                                    <option value="am_michael">am_michael — Michael (Professional US Male)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="form-label-custom">Speech Pacing / Speed</label>
+                                <select id="cfgKokoroSpeed" class="form-control-custom">
+                                    <option value="0.9">0.9x — Relaxed & Clear</option>
+                                    <option value="1.0" selected>1.0x — Natural Speed</option>
+                                    <option value="1.1">1.1x — Energetic & Fast</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="form-label-custom">STT & LLM Pipeline</label>
+                                <input type="text" class="form-control-custom" value="Groq Whisper v3 + Llama-3.3-70B" disabled style="background: rgba(0,0,0,0.04);">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 4: System Instructions -->
+                    <div class="dash-card">
+                        <div class="dash-card-header">
+                            <div>
+                                <div class="dash-card-title">3. System Prompt & Receptionist Instructions</div>
+                                <div class="dash-card-sub">Define how the AI agent introduces itself and handles calls</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 16px;">
+                            <label class="form-label-custom">System Prompt / Instructions</label>
+                            <textarea id="cfgSystemPrompt" class="form-control-custom" rows="4" style="resize: vertical; font-family: inherit;">You are a warm, helpful sales receptionist for Mixup AI. Greet the caller nicely, answer questions naturally, and collect their name and company to schedule a demo.</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Save Action Bar -->
+                    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 16px; margin-top: 8px;">
+                        <span id="configSaveStatus" style="font-size: 13px; font-weight: 600; color: #10b981; display: none;">
+                            ✓ Settings saved successfully!
+                        </span>
+                        <button class="btn btn-primary" onclick="saveAgentConfig()" style="padding: 12px 32px; font-size: 15px; font-weight: 700; background: linear-gradient(135deg, #ff5065, #ff7a59); color: white; border: none; border-radius: 100px; cursor: pointer; box-shadow: 0 4px 14px rgba(255, 80, 101, 0.3);">
+                            Save & Apply Settings
+                        </button>
+                    </div>
+
                 </div>
-            </section>
+            </div>
 
         </main>
     </div>
