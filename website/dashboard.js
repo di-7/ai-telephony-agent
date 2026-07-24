@@ -711,6 +711,16 @@ function setupEvents() {
             e.target.classList.add('active');
         });
     });
+
+    // Auto-save agent config on any dropdown or input change
+    ['cfgGeminiVoice', 'cfgGeminiModel', 'cfgGeminiVad', 'cfgKokoroVoice', 'cfgKokoroSpeed', 'cfgSystemPrompt'].forEach(id => {
+        const elem = document.getElementById(id);
+        if (elem) {
+            elem.addEventListener('change', () => {
+                saveAgentConfig();
+            });
+        }
+    });
 }
 
 function getTimeAgo(timestamp) {
@@ -906,7 +916,7 @@ async function saveAgentConfig() {
 
     const cfgGeminiVoice = document.getElementById('cfgGeminiVoice');
     const cfgGeminiModel = document.getElementById('cfgGeminiModel');
-    const cfgGeminiVad = document.getElementById('cfgGeminiVad');
+    const cfgVad = document.getElementById('cfgGeminiVad');
 
     const cfgKokoroVoice = document.getElementById('cfgKokoroVoice');
     const cfgKokoroSpeed = document.getElementById('cfgKokoroSpeed');
@@ -918,10 +928,10 @@ async function saveAgentConfig() {
         gemini: {
             model: cfgGeminiModel ? cfgGeminiModel.value : 'models/gemini-3.1-flash-live-preview',
             voice: cfgGeminiVoice ? cfgGeminiVoice.value : 'Aoede',
-            vad_silence_ms: cfgGeminiVad ? parseInt(cfgGeminiVad.value, 10) : 200
+            vad_silence_ms: cfgVad ? parseInt(cfgVad.value, 10) : 200
         },
         kokoro: {
-            voice: cfgKokoroVoice ? cfgKokoroVoice.value : 'am_adam',
+            voice: cfgKokoroVoice ? cfgKokoroVoice.value : 'af_bella',
             speed: cfgKokoroSpeed ? parseFloat(cfgKokoroSpeed.value) : 1.0
         },
         system_instruction: cfgSystemPrompt ? cfgSystemPrompt.value.trim() : ''
@@ -931,42 +941,40 @@ async function saveAgentConfig() {
     localStorage.setItem('mixup_agent_config', JSON.stringify(payload));
 
     // 2. Save to Supabase Cloud Database directly
-    if (typeof supabaseClient !== 'undefined' && supabaseClient && currentBusiness) {
+    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        const bId = currentBusiness?.id || 'c16fc8ab-3bb2-44fe-88ed-560f950c8069';
         try {
-            await supabaseClient.from('call_logs').insert([{
-                business_id: currentBusiness.id,
-                caller_name: 'SYSTEM_AGENT_CONFIG',
-                status: 'config',
-                source: 'agent_config',
-                transcript: JSON.stringify(payload)
-            }]);
-            console.log('Saved agent configuration to Supabase successfully!');
+            const { error } = await supabaseClient.from('agent_configs').upsert([{
+                business_id: bId,
+                provider: provider,
+                config: payload,
+                updated_at: new Date().toISOString()
+            }], { onConflict: 'business_id' });
+
+            if (error) {
+                // Fallback insert to call_logs table
+                await supabaseClient.from('call_logs').insert([{
+                    business_id: bId,
+                    caller_name: 'SYSTEM_AGENT_CONFIG',
+                    status: 'config',
+                    source: 'agent_config',
+                    transcript: JSON.stringify(payload)
+                }]);
+            }
         } catch (err) {
-            console.warn('Error saving config to Supabase directly:', err);
+            console.warn('Error saving config to Supabase:', err);
         }
     }
 
     // 3. Send to backend API
     try {
-        const resp = await fetch(getBackendUrl('/api/config'), {
+        await fetch(getBackendUrl('/api/config'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        if (resp.ok) {
-            console.log('Configuration saved to backend API successfully');
-        }
     } catch (e) {
         console.warn('Failed to post config to backend API:', e);
-    }
-
-    // Show status indicator
-    const statusElem = document.getElementById('configSaveStatus');
-    if (statusElem) {
-        statusElem.style.display = 'inline';
-        setTimeout(() => {
-            statusElem.style.display = 'none';
-        }, 3000);
     }
 }
 
