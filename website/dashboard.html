@@ -211,29 +211,39 @@
                             </div>
                         </div>
                         <div class="dash-chart-wrap">
-                            <canvas id="callVelocityChart"></canvas>
+                            <canvas id="simpleChart"></canvas>
+                        </div>
+                        <!-- Empty state for chart -->
+                        <div class="dash-empty-state" id="chartEmptyState" style="display: none;">
+                            <div class="dash-empty-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                            </div>
+                            <p class="dash-empty-text">No call activity logged yet.</p>
                         </div>
                     </div>
 
                     <!-- Call Log Stream Panel -->
-                    <div class="dash-card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
-                        <div class="dash-card-header" style="padding: 24px 24px 16px 24px;">
+                    <div class="dash-card">
+                        <div class="dash-card-header">
                             <div>
-                                <div class="dash-card-title">Live Call Activity Feed</div>
-                                <div class="dash-card-sub">Real-time transcripts & customer metadata</div>
+                                <div class="dash-card-title">Recent AI Calls</div>
+                                <div class="dash-card-sub">Click any call to view full audio transcript</div>
                             </div>
+                            <button class="dash-refresh-btn" onclick="refreshDashboard()" title="Refresh data">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                            </button>
                         </div>
 
-                        <!-- Call Log Table/Feed Container -->
-                        <div class="dash-call-feed-wrap">
-                            <div id="callFeedContainer">
-                                <div class="dash-empty-state">
-                                    <div class="dash-empty-icon">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                                    </div>
-                                    <p class="dash-empty-text">No call logs found for this filter range.</p>
-                                </div>
+                        <div class="dash-feed-list" id="callFeed">
+                            <!-- Populated dynamically by dashboard.js -->
+                        </div>
+
+                        <!-- Empty state for feed -->
+                        <div class="dash-empty-state" id="feedEmptyState" style="display: none;">
+                            <div class="dash-empty-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                             </div>
+                            <p class="dash-empty-text">No call logs recorded yet for your business account.</p>
                         </div>
                     </div>
 
