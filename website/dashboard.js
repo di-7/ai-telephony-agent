@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 2. Fetch business data & call logs from Supabase
     await fetchBusinessDashboardData();
     setupEvents();
+    loadAgentConfigFromStorage();
 });
 
 // ========================================
@@ -788,24 +789,31 @@ function getBackendUrl(path) {
 async function loadAgentConfigFromStorage() {
     let config = null;
 
-    // Try fetching from backend API first
+    // 1. Read from localStorage immediately on refresh so UI updates instantly
+    const stored = localStorage.getItem('mixup_agent_config');
+    if (stored) {
+        try { config = JSON.parse(stored); } catch (e) {}
+    }
+
+    if (config) {
+        populateConfigUI(config);
+    }
+
+    // 2. Sync with backend API asynchronously
     try {
         const resp = await fetch(getBackendUrl('/api/config'));
         if (resp.ok) {
-            config = await resp.json();
+            const remoteConfig = await resp.json();
+            if (remoteConfig && Object.keys(remoteConfig).length > 0) {
+                localStorage.setItem('mixup_agent_config', JSON.stringify(remoteConfig));
+                populateConfigUI(remoteConfig);
+            }
         }
     } catch (e) {
         console.warn('Could not fetch config from backend:', e);
     }
 
-    if (!config) {
-        // Fallback to localStorage
-        const stored = localStorage.getItem('mixup_agent_config');
-        if (stored) {
-            try { config = JSON.parse(stored); } catch (e) {}
-        }
-    }
-
+    // 3. Fallback defaults if still empty
     if (!config) {
         config = {
             provider: 'gemini',
@@ -815,14 +823,18 @@ async function loadAgentConfigFromStorage() {
                 vad_silence_ms: 200
             },
             kokoro: {
-                voice: 'af_heart',
+                voice: 'am_adam',
                 speed: 1.0
             },
             system_instruction: "You are a warm, helpful sales receptionist for Mixup AI. Greet the caller nicely, answer questions naturally, and collect their name and company to schedule a demo."
         };
+        populateConfigUI(config);
     }
+}
 
-    // Populate UI fields
+function populateConfigUI(config) {
+    if (!config) return;
+
     selectEngineProvider(config.provider || 'gemini');
 
     if (config.gemini) {
