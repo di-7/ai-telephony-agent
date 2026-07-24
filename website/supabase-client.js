@@ -12,7 +12,35 @@ const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_U
 async function getSupabaseSession() {
     if (!supabaseClient) return null;
     try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        
+        if (error && error.message && error.message.includes('JWT expired')) {
+            console.warn('JWT token expired! Attempting automatic session refresh...');
+            const { data: refreshed, error: refreshErr } = await supabaseClient.auth.refreshSession();
+            if (!refreshErr && refreshed && refreshed.session) {
+                console.log('Session refreshed successfully!');
+                return refreshed.session;
+            }
+            console.warn('Session refresh failed. Redirecting to login...');
+            await supabaseClient.auth.signOut().catch(() => {});
+            window.location.href = 'login.html';
+            return null;
+        }
+
+        if (session && session.expires_at) {
+            const nowSec = Math.floor(Date.now() / 1000);
+            if (session.expires_at <= nowSec) {
+                console.warn('JWT token timestamp expired! Refreshing session...');
+                const { data: refreshed, error: refreshErr } = await supabaseClient.auth.refreshSession();
+                if (!refreshErr && refreshed && refreshed.session) {
+                    return refreshed.session;
+                }
+                await supabaseClient.auth.signOut().catch(() => {});
+                window.location.href = 'login.html';
+                return null;
+            }
+        }
+
         return session;
     } catch (e) {
         console.warn('Supabase getSession error:', e);

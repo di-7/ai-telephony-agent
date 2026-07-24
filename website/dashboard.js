@@ -42,6 +42,14 @@ async function checkBusinessAuth() {
 
         if (error) {
             console.warn('Error fetching business info from Supabase:', error);
+            if (error.code === 'PGRST303' || (error.message && error.message.includes('JWT expired'))) {
+                console.warn('JWT expired during auth check. Refreshing session...');
+                const { data: refreshed } = await supabaseClient.auth.refreshSession().catch(() => ({}));
+                if (refreshed && refreshed.session) {
+                    const retry = await supabaseClient.from('businesses').select('*').eq('id', user.id).maybeSingle();
+                    if (retry.data) businessData = retry.data;
+                }
+            }
         }
 
         // Determine best values between DB record and user_metadata
