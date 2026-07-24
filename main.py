@@ -897,7 +897,7 @@ if __name__ == "__main__":
             agent_id="MyTelephonyAgent",  # CRITICAL: Unique identifier for routing
             register=True,               # REQUIRED: Register with VideoSDK for telephony
             max_processes=1,             # Free tier: limited CPU/RAM, only 1 process
-            num_idle_processes=1,        # Keep the process warm and ready
+            num_idle_processes=0,        # Free tier RAM optimization (prevents Signal 15 OOM killer)
             initialize_timeout=120.0,    # Give Render's free tier plenty of time to initialize
             host="0.0.0.0",
             port=int(os.getenv("AGENT_PORT", 8082)),
