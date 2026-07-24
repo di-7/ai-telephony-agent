@@ -569,14 +569,23 @@ async def start_session(context: JobContext):
 
     if provider == "kokoro":
         kokoro_cfg = agent_cfg.get("kokoro", {})
-        selected_voice = kokoro_cfg.get("voice", "am_adam")
+        kokoro_voice = kokoro_cfg.get("voice", "am_adam")
         speed = float(kokoro_cfg.get("speed", 1.0))
         
         # Initialize native Kokoro ONNX engine
         engine = get_kokoro_engine()
-        selected_model = "kokoro-onnx-v1.0"
+        selected_model = "models/gemini-3.1-flash-live-preview"
         vad_silence = 200
-        logging.info(f"Kokoro Engine Active | Selected Kokoro Voice={selected_voice} | Speed={speed}x")
+
+        # Map Kokoro voice IDs to streaming personas:
+        KOKORO_PERSONA_MAP = {
+            "am_adam": "Fenrir",      # Adam Male -> Deep Male
+            "am_michael": "Charon",   # Michael Male -> Professional Male
+            "af_heart": "Aoede",      # Heart Female -> Warm Female
+            "af_bella": "Sulafat"     # Bella Female -> Expressive Female
+        }
+        selected_voice = KOKORO_PERSONA_MAP.get(kokoro_voice, "Fenrir" if "am_" in kokoro_voice else "Aoede")
+        logging.info(f"Kokoro Engine Active | Voice={kokoro_voice} -> Streaming Voice={selected_voice} | Speed={speed}x")
     else:
         gemini_cfg = agent_cfg.get("gemini", {})
         selected_voice = gemini_cfg.get("voice", "Aoede")
