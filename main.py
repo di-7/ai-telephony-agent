@@ -397,8 +397,9 @@ def send_team_alert(phone_number, name, email, company, resend_key):
 class HealthHandler(BaseHTTPRequestHandler):
     def _send_cors_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE, PATCH')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        self.send_header('Access-Control-Max-Age', '86400')
 
     def do_GET(self):
         if self.path == '/' or self.path == '/health':
@@ -450,7 +451,7 @@ class HealthHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_OPTIONS(self):
-        self.send_response(200)
+        self.send_response(200, "OK")
         self._send_cors_headers()
         self.end_headers()
 
