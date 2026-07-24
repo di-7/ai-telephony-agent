@@ -86,6 +86,7 @@ CREATE INDEX IF NOT EXISTS idx_call_logs_business_id ON public.call_logs(busines
 CREATE INDEX IF NOT EXISTS idx_call_logs_created_at ON public.call_logs(created_at DESC);
 
 -- 8. Auto-create business record upon auth.users creation (Trigger)
+-- 8. Auto-create business record upon auth.users creation (Trigger)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -111,4 +112,45 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+
+-- ================================================================
+-- 9. Create Agent Configurations Table (dedicated voice model & prompt settings)
+-- ================================================================
+CREATE TABLE IF NOT EXISTS public.agent_configs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id UUID REFERENCES public.businesses(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL DEFAULT 'gemini',
+  config JSONB NOT NULL DEFAULT '{
+    "provider": "gemini",
+    "gemini": {
+      "model": "models/gemini-3.1-flash-live-preview",
+      "voice": "Aoede",
+      "vad_silence_ms": 200
+    },
+    "kokoro": {
+      "voice": "am_adam",
+      "speed": 1.0
+    },
+    "system_instruction": "You are a warm, helpful sales receptionist for Mixup AI. Greet the caller nicely, answer questions naturally, and collect their name and company to schedule a demo."
+  }'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT unique_business_config UNIQUE (business_id)
+);
+
+-- Enable RLS for Agent Configs Table
+ALTER TABLE public.agent_configs ENABLE ROW LEVEL SECURITY;
+
+-- Allow SELECT for all authenticated & public clients
+CREATE POLICY "Allow public select agent_configs" 
+  ON public.agent_configs FOR SELECT 
+  USING (true);
+
+-- Allow INSERT / UPDATE (UPSERT) for all clients
+CREATE POLICY "Allow public insert and update agent_configs" 
+  ON public.agent_configs FOR ALL 
+  USING (true)
+  WITH CHECK (true);
+
 

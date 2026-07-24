@@ -59,7 +59,30 @@ DEFAULT_AGENT_CONFIG = {
 }
 
 def load_agent_config_from_supabase(business_id=None):
-    """Fetch the latest active agent configuration from Supabase cloud database."""
+    """Fetch the latest active agent configuration from Supabase agent_configs table (or fallback call_logs)."""
+    # 1. Try dedicated agent_configs table
+    try:
+        query = "select=*&limit=1"
+        if business_id:
+            query = f"business_id=eq.{business_id}&select=*&limit=1"
+        
+        url = f"{SUPABASE_URL}/rest/v1/agent_configs?{query}"
+        req = urllib.request.Request(url, headers={
+            "apikey": SUPABASE_SERVICE_ROLE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"
+        })
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json_module.loads(resp.read().decode('utf-8'))
+            if data and len(data) > 0:
+                rec = data[0]
+                config = rec.get('config') if isinstance(rec.get('config'), dict) else json_module.loads(rec.get('config', '{}'))
+                if config:
+                    logging.info(f"Loaded config from Supabase agent_configs table: provider={config.get('provider')}")
+                    return config
+    except Exception as e:
+        pass
+
+    # 2. Fallback to call_logs table
     try:
         query = "caller_name=eq.SYSTEM_AGENT_CONFIG&order=created_at.desc&limit=1"
         if business_id:
@@ -74,35 +97,53 @@ def load_agent_config_from_supabase(business_id=None):
             data = json_module.loads(resp.read().decode('utf-8'))
             if data and len(data) > 0 and data[0].get('transcript'):
                 config = json_module.loads(data[0]['transcript'])
-                logging.info(f"Loaded agent configuration from Supabase successfully: provider={config.get('provider')}")
+                logging.info(f"Loaded agent config from Supabase fallback: provider={config.get('provider')}")
                 return config
     except Exception as e:
         logging.warning(f"Could not load agent config from Supabase: {e}")
     return None
 
 def save_agent_config_to_supabase(config_data, business_id=None):
-    """Persist agent configuration to Supabase cloud database."""
+    """Persist agent configuration to Supabase agent_configs table."""
+    b_id = business_id or "c16fc8ab-3bb2-44fe-88ed-560f950c8069"
     try:
-        url = f"{SUPABASE_URL}/rest/v1/call_logs"
+        url = f"{SUPABASE_URL}/rest/v1/agent_configs"
         payload = {
-            "business_id": business_id or "c16fc8ab-3bb2-44fe-88ed-560f950c8069",
-            "caller_name": "SYSTEM_AGENT_CONFIG",
-            "status": "config",
-            "source": "agent_config",
-            "transcript": json_module.dumps(config_data)
+            "business_id": b_id,
+            "provider": config_data.get("provider", "gemini"),
+            "config": config_data
         }
         data = json_module.dumps(payload).encode('utf-8')
         req = urllib.request.Request(url, data=data, headers={
             "apikey": SUPABASE_SERVICE_ROLE_KEY,
             "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
             "Content-Type": "application/json",
-            "Prefer": "return=representation"
+            "Prefer": "resolution=merge-duplicates"
         }, method='POST')
         with urllib.request.urlopen(req, timeout=5) as resp:
-            logging.info("Persisted agent configuration to Supabase successfully!")
+            logging.info("Saved agent config to Supabase agent_configs table successfully!")
             return True
     except Exception as e:
-        logging.error(f"Failed to save agent config to Supabase: {e}")
+        logging.warning(f"Fallback saving to call_logs table: {e}")
+        try:
+            url = f"{SUPABASE_URL}/rest/v1/call_logs"
+            payload = {
+                "business_id": b_id,
+                "caller_name": "SYSTEM_AGENT_CONFIG",
+                "status": "config",
+                "source": "agent_config",
+                "transcript": json_module.dumps(config_data)
+            }
+            data = json_module.dumps(payload).encode('utf-8')
+            req = urllib.request.Request(url, data=data, headers={
+                "apikey": SUPABASE_SERVICE_ROLE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+                "Content-Type": "application/json"
+            }, method='POST')
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                return True
+        except Exception:
+            pass
     return False
 
 def load_agent_config():
