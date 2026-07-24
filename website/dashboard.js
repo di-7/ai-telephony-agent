@@ -237,6 +237,10 @@ async function fetchBusinessDashboardData() {
                 const userName = (currentBusiness.contact_name || currentBusiness.business_name || '').toLowerCase();
 
                 supaLogs.forEach(l => {
+                    if (l.caller_name === 'SYSTEM_AGENT_CONFIG' || l.status === 'config' || l.source === 'agent_config') {
+                        return; // Ignore system config records from call analytics
+                    }
+
                     const lPhone = (l.caller_phone || l.phone || '').replace(/\D/g, '');
                     const lEmail = (l.caller_email || l.email || '').toLowerCase();
                     const lName = (l.caller_name || l.name || '').toLowerCase();
@@ -786,6 +790,27 @@ function getBackendUrl(path) {
     return `${baseUrl}${path}`;
 }
 
+async function loadAgentConfigFromSupabase() {
+    if (typeof supabaseClient === 'undefined' || !supabaseClient) return null;
+    try {
+        const { data, error } = await supabaseClient
+            .from('call_logs')
+            .select('*')
+            .eq('caller_name', 'SYSTEM_AGENT_CONFIG')
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        if (!error && data && data.length > 0 && data[0].transcript) {
+            const config = JSON.parse(data[0].transcript);
+            console.log('Loaded active agent config from Supabase cloud database:', config);
+            return config;
+        }
+    } catch (e) {
+        console.warn('Could not load config from Supabase:', e);
+    }
+    return null;
+}
+
 async function loadAgentConfigFromStorage() {
     let config = null;
 
@@ -799,18 +824,25 @@ async function loadAgentConfigFromStorage() {
         populateConfigUI(config);
     }
 
-    // 2. Sync with backend API asynchronously
+    // 2. Sync with Supabase Cloud DB & Backend API asynchronously
     try {
-        const resp = await fetch(getBackendUrl('/api/config'));
-        if (resp.ok) {
-            const remoteConfig = await resp.json();
-            if (remoteConfig && Object.keys(remoteConfig).length > 0) {
-                localStorage.setItem('mixup_agent_config', JSON.stringify(remoteConfig));
-                populateConfigUI(remoteConfig);
+        const spConfig = await loadAgentConfigFromSupabase();
+        if (spConfig) {
+            config = spConfig;
+            localStorage.setItem('mixup_agent_config', JSON.stringify(spConfig));
+            populateConfigUI(spConfig);
+        } else {
+            const resp = await fetch(getBackendUrl('/api/config'));
+            if (resp.ok) {
+                const remoteConfig = await resp.json();
+                if (remoteConfig && Object.keys(remoteConfig).length > 0) {
+                    localStorage.setItem('mixup_agent_config', JSON.stringify(remoteConfig));
+                    populateConfigUI(remoteConfig);
+                }
             }
         }
     } catch (e) {
-        console.warn('Could not fetch config from backend:', e);
+        console.warn('Could not fetch config from backend/Supabase:', e);
     }
 
     // 3. Fallback defaults if still empty
@@ -882,16 +914,32 @@ async function saveAgentConfig() {
             vad_silence_ms: cfgGeminiVad ? parseInt(cfgGeminiVad.value, 10) : 200
         },
         kokoro: {
-            voice: cfgKokoroVoice ? cfgKokoroVoice.value : 'af_heart',
+            voice: cfgKokoroVoice ? cfgKokoroVoice.value : 'am_adam',
             speed: cfgKokoroSpeed ? parseFloat(cfgKokoroSpeed.value) : 1.0
         },
         system_instruction: cfgSystemPrompt ? cfgSystemPrompt.value.trim() : ''
     };
 
-    // Save to localStorage
+    // 1. Save to localStorage
     localStorage.setItem('mixup_agent_config', JSON.stringify(payload));
 
-    // Send to backend API
+    // 2. Save to Supabase Cloud Database directly
+    if (typeof supabaseClient !== 'undefined' && supabaseClient && currentBusiness) {
+        try {
+            await supabaseClient.from('call_logs').insert([{
+                business_id: currentBusiness.id,
+                caller_name: 'SYSTEM_AGENT_CONFIG',
+                status: 'config',
+                source: 'agent_config',
+                transcript: JSON.stringify(payload)
+            }]);
+            console.log('Saved agent configuration to Supabase successfully!');
+        } catch (err) {
+            console.warn('Error saving config to Supabase directly:', err);
+        }
+    }
+
+    // 3. Send to backend API
     try {
         const resp = await fetch(getBackendUrl('/api/config'), {
             method: 'POST',
@@ -899,7 +947,7 @@ async function saveAgentConfig() {
             body: JSON.stringify(payload)
         });
         if (resp.ok) {
-            console.log('Configuration saved to backend successfully');
+            console.log('Configuration saved to backend API successfully');
         }
     } catch (e) {
         console.warn('Failed to post config to backend API:', e);

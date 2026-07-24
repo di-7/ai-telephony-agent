@@ -58,7 +58,61 @@ DEFAULT_AGENT_CONFIG = {
     "system_instruction": "You are a warm, helpful sales receptionist for Mixup AI. Greet the caller nicely, answer questions naturally, and collect their name and company to schedule a demo."
 }
 
+def load_agent_config_from_supabase(business_id=None):
+    """Fetch the latest active agent configuration from Supabase cloud database."""
+    try:
+        query = "caller_name=eq.SYSTEM_AGENT_CONFIG&order=created_at.desc&limit=1"
+        if business_id:
+            query = f"business_id=eq.{business_id}&caller_name=eq.SYSTEM_AGENT_CONFIG&order=created_at.desc&limit=1"
+        
+        url = f"{SUPABASE_URL}/rest/v1/call_logs?{query}"
+        req = urllib.request.Request(url, headers={
+            "apikey": SUPABASE_SERVICE_ROLE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"
+        })
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json_module.loads(resp.read().decode('utf-8'))
+            if data and len(data) > 0 and data[0].get('transcript'):
+                config = json_module.loads(data[0]['transcript'])
+                logging.info(f"Loaded agent configuration from Supabase successfully: provider={config.get('provider')}")
+                return config
+    except Exception as e:
+        logging.warning(f"Could not load agent config from Supabase: {e}")
+    return None
+
+def save_agent_config_to_supabase(config_data, business_id=None):
+    """Persist agent configuration to Supabase cloud database."""
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/call_logs"
+        payload = {
+            "business_id": business_id or "c16fc8ab-3bb2-44fe-88ed-560f950c8069",
+            "caller_name": "SYSTEM_AGENT_CONFIG",
+            "status": "config",
+            "source": "agent_config",
+            "transcript": json_module.dumps(config_data)
+        }
+        data = json_module.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(url, data=data, headers={
+            "apikey": SUPABASE_SERVICE_ROLE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+        }, method='POST')
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            logging.info("Persisted agent configuration to Supabase successfully!")
+            return True
+    except Exception as e:
+        logging.error(f"Failed to save agent config to Supabase: {e}")
+    return False
+
 def load_agent_config():
+    # 1. Try loading from Supabase first
+    sp_config = load_agent_config_from_supabase()
+    if sp_config:
+        save_agent_config_local(sp_config)
+        return sp_config
+
+    # 2. Fallback to local JSON file
     try:
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, 'r') as f:
@@ -67,16 +121,19 @@ def load_agent_config():
                 config.update(saved)
                 return config
     except Exception as e:
-        logging.error(f"Failed to load agent config: {e}")
+        logging.error(f"Failed to load agent config from file: {e}")
     return DEFAULT_AGENT_CONFIG.copy()
 
-def save_agent_config(config_data):
+def save_agent_config_local(config_data):
     try:
         with open(CONFIG_FILE, 'w') as f:
             json_module.dump(config_data, f, indent=2)
-        logging.info("Saved agent_config.json successfully")
     except Exception as e:
-        logging.error(f"Failed to save agent config: {e}")
+        pass
+
+def save_agent_config(config_data):
+    save_agent_config_local(config_data)
+    save_agent_config_to_supabase(config_data)
 
 # --- Supabase Configuration ---
 SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://zuxjdbrgfwpphswgxkiw.supabase.co')
