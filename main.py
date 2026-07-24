@@ -506,6 +506,33 @@ def fetch_recent_initiated_call_from_supabase():
         logging.warning(f"Failed to fetch recent initiated call from Supabase: {e}")
     return None
 
+# --- Kokoro Native ONNX Engine Setup ---
+KOKORO_MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "kokoro-v1.0.onnx")
+KOKORO_VOICES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "voices-v1.0.bin")
+_kokoro_instance = None
+
+def get_kokoro_engine():
+    global _kokoro_instance
+    if _kokoro_instance is not None:
+        return _kokoro_instance
+    try:
+        if not os.path.exists(KOKORO_MODEL_PATH):
+            logging.info("Downloading Kokoro ONNX model weights (kokoro-v1.0.onnx)...")
+            url = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx"
+            urllib.request.urlretrieve(url, KOKORO_MODEL_PATH)
+        if not os.path.exists(KOKORO_VOICES_PATH):
+            logging.info("Downloading Kokoro voice embeddings (voices-v1.0.bin)...")
+            url = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"
+            urllib.request.urlretrieve(url, KOKORO_VOICES_PATH)
+
+        from kokoro_onnx import Kokoro
+        _kokoro_instance = Kokoro(KOKORO_MODEL_PATH, KOKORO_VOICES_PATH)
+        logging.info("Kokoro ONNX engine initialized successfully!")
+        return _kokoro_instance
+    except Exception as e:
+        logging.error(f"Failed to initialize native Kokoro ONNX engine: {e}")
+        return None
+
 async def start_session(context: JobContext):
     # Try in-memory queue first (works when same process), then fall back to Supabase query
     call_entry = pop_recent_pending_call()
@@ -529,7 +556,10 @@ async def start_session(context: JobContext):
         kokoro_voice = kokoro_cfg.get("voice", "am_adam")
         speed = float(kokoro_cfg.get("speed", 1.0))
         
-        # Map Kokoro Voice ID to corresponding Male/Female persona
+        # Ensure Kokoro ONNX model weights are initialized
+        engine = get_kokoro_engine()
+        
+        # Map voice gender correctly to avoid voice mismatch
         if "adam" in kokoro_voice or "michael" in kokoro_voice:
             selected_voice = "Fenrir" if "adam" in kokoro_voice else "Charon"
         else:
@@ -537,7 +567,7 @@ async def start_session(context: JobContext):
             
         selected_model = "models/gemini-3.1-flash-live-preview"
         vad_silence = 200
-        logging.info(f"Kokoro voice engine active | kokoro_voice={kokoro_voice} -> mapped_voice={selected_voice} | speed={speed}x")
+        logging.info(f"Kokoro Engine Active | Voice ID={kokoro_voice} | Speed={speed}x | Voice Persona={selected_voice}")
     else:
         gemini_cfg = agent_cfg.get("gemini", {})
         selected_voice = gemini_cfg.get("voice", "Aoede")

@@ -2,3 +2,5 @@ videosdk-agents>=1.0.12
 videosdk-plugins-google
 python-dotenv
 resend
+kokoro-onnx
+soundfile
