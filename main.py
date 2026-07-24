@@ -624,27 +624,45 @@ KOKORO_MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ko
 KOKORO_VOICES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "voices-v1.0.bin")
 _kokoro_instance = None
 
+def preload_kokoro_in_background():
+    """Download Kokoro ONNX model files in the background on startup so calls connect instantly."""
+    try:
+        if not os.path.exists(KOKORO_MODEL_PATH):
+            logging.info("Pre-downloading Kokoro ONNX model weights (kokoro-v1.0.onnx)...")
+            url = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx"
+            tmp_path = KOKORO_MODEL_PATH + ".tmp"
+            urllib.request.urlretrieve(url, tmp_path)
+            if os.path.exists(tmp_path):
+                os.rename(tmp_path, KOKORO_MODEL_PATH)
+            logging.info("Kokoro ONNX model weights ready!")
+        if not os.path.exists(KOKORO_VOICES_PATH):
+            logging.info("Pre-downloading Kokoro voice embeddings (voices-v1.0.bin)...")
+            url = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"
+            tmp_path = KOKORO_VOICES_PATH + ".tmp"
+            urllib.request.urlretrieve(url, tmp_path)
+            if os.path.exists(tmp_path):
+                os.rename(tmp_path, KOKORO_VOICES_PATH)
+            logging.info("Kokoro voice embeddings ready!")
+    except Exception as e:
+        logging.warning(f"Background Kokoro download warning: {e}")
+
 def get_kokoro_engine():
     global _kokoro_instance
     if _kokoro_instance is not None:
         return _kokoro_instance
     try:
-        if not os.path.exists(KOKORO_MODEL_PATH):
-            logging.info("Downloading Kokoro ONNX model weights (kokoro-v1.0.onnx)...")
-            url = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx"
-            urllib.request.urlretrieve(url, KOKORO_MODEL_PATH)
-        if not os.path.exists(KOKORO_VOICES_PATH):
-            logging.info("Downloading Kokoro voice embeddings (voices-v1.0.bin)...")
-            url = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"
-            urllib.request.urlretrieve(url, KOKORO_VOICES_PATH)
+        if not os.path.exists(KOKORO_MODEL_PATH) or not os.path.exists(KOKORO_VOICES_PATH):
+            logging.info("Kokoro files missing on disk. Downloading synchronously...")
+            preload_kokoro_in_background()
 
-        from kokoro_onnx import Kokoro
-        _kokoro_instance = Kokoro(KOKORO_MODEL_PATH, KOKORO_VOICES_PATH)
-        logging.info("Kokoro ONNX engine initialized successfully!")
-        return _kokoro_instance
+        if os.path.exists(KOKORO_MODEL_PATH) and os.path.exists(KOKORO_VOICES_PATH):
+            from kokoro_onnx import Kokoro
+            _kokoro_instance = Kokoro(KOKORO_MODEL_PATH, KOKORO_VOICES_PATH)
+            logging.info("Kokoro ONNX engine initialized successfully!")
+            return _kokoro_instance
     except Exception as e:
         logging.error(f"Failed to initialize native Kokoro ONNX engine: {e}")
-        return None
+    return None
 
 def synthesize_kokoro_speech(text: str, voice: str = "am_adam", speed: float = 1.0) -> bytes:
     """Synthesize speech using native Kokoro ONNX model engine."""
@@ -891,6 +909,9 @@ if __name__ == "__main__":
         # Start health check server in background thread
         health_thread = threading.Thread(target=start_health_server, daemon=True)
         health_thread.start()
+
+        # Pre-download Kokoro ONNX model files in background so call setup connects instantly
+        threading.Thread(target=preload_kokoro_in_background, daemon=True).start()
 
         # Register the agent with a unique ID
         options = Options(
