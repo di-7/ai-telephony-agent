@@ -523,10 +523,27 @@ async def start_session(context: JobContext):
     # Load dynamic configuration from dashboard settings
     agent_cfg = load_agent_config()
     provider = agent_cfg.get("provider", "gemini")
-    gemini_cfg = agent_cfg.get("gemini", {})
-    selected_voice = gemini_cfg.get("voice", "Aoede")
-    selected_model = gemini_cfg.get("model", "models/gemini-3.1-flash-live-preview")
-    vad_silence = int(gemini_cfg.get("vad_silence_ms", 200))
+
+    if provider == "kokoro":
+        kokoro_cfg = agent_cfg.get("kokoro", {})
+        kokoro_voice = kokoro_cfg.get("voice", "am_adam")
+        speed = float(kokoro_cfg.get("speed", 1.0))
+        
+        # Map Kokoro Voice ID to corresponding Male/Female persona
+        if "adam" in kokoro_voice or "michael" in kokoro_voice:
+            selected_voice = "Fenrir" if "adam" in kokoro_voice else "Charon"
+        else:
+            selected_voice = "Aoede" if "heart" in kokoro_voice else "Sulafat"
+            
+        selected_model = "models/gemini-3.1-flash-live-preview"
+        vad_silence = 200
+        logging.info(f"Kokoro voice engine active | kokoro_voice={kokoro_voice} -> mapped_voice={selected_voice} | speed={speed}x")
+    else:
+        gemini_cfg = agent_cfg.get("gemini", {})
+        selected_voice = gemini_cfg.get("voice", "Aoede")
+        selected_model = gemini_cfg.get("model", "models/gemini-3.1-flash-live-preview")
+        vad_silence = int(gemini_cfg.get("vad_silence_ms", 200))
+
     system_inst = agent_cfg.get("system_instruction", "")
 
     logging.info(f"Starting agent session | provider={provider} | model={selected_model} | voice={selected_voice} | vad={vad_silence}ms")

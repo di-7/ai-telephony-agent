@@ -779,12 +779,18 @@ function selectEngineProvider(provider) {
     }
 }
 
+function getBackendUrl(path) {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const baseUrl = isLocal ? `${window.location.protocol}//${window.location.hostname}:8081` : 'https://ai-telephony-agent.onrender.com';
+    return `${baseUrl}${path}`;
+}
+
 async function loadAgentConfigFromStorage() {
     let config = null;
 
     // Try fetching from backend API first
     try {
-        const resp = await fetch('/api/config');
+        const resp = await fetch(getBackendUrl('/api/config'));
         if (resp.ok) {
             config = await resp.json();
         }
@@ -875,7 +881,7 @@ async function saveAgentConfig() {
 
     // Send to backend API
     try {
-        const resp = await fetch('/api/config', {
+        const resp = await fetch(getBackendUrl('/api/config'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
