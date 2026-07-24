@@ -8,6 +8,7 @@ import urllib.error
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from videosdk.agents import Agent, AgentSession, Pipeline, JobContext, RoomOptions, WorkerJob, Options
 from videosdk.plugins.google import GeminiRealtime, GeminiLiveConfig
+from google.genai.types import RealtimeInputConfig, AutomaticActivityDetection, EndSensitivity, StartSensitivity
 from dotenv import load_dotenv
 import os
 import logging
@@ -459,13 +460,21 @@ async def start_session(context: JobContext):
         else:
             logging.warning("No pending call entry found (neither in-memory nor Supabase). Transcript will still be captured.")
 
-    # Configure the Gemini model for real-time voice
+    # Configure the Gemini model for real-time voice with ultra-low-latency VAD and Aoede voice
     model = GeminiRealtime(
         model="models/gemini-3.1-flash-live-preview",
         api_key=os.getenv("GOOGLE_API_KEY"),
         config=GeminiLiveConfig(
-            voice="Sulafat",
-            response_modalities=["AUDIO"]
+            voice="Aoede",
+            response_modalities=["AUDIO"],
+            realtime_input_config=RealtimeInputConfig(
+                automatic_activity_detection=AutomaticActivityDetection(
+                    start_of_speech_sensitivity=StartSensitivity.START_SENSITIVITY_HIGH,
+                    end_of_speech_sensitivity=EndSensitivity.END_SENSITIVITY_HIGH,
+                    prefix_padding_ms=10,
+                    silence_duration_ms=200,
+                )
+            )
         )
     )
 
