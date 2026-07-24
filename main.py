@@ -533,6 +533,22 @@ def get_kokoro_engine():
         logging.error(f"Failed to initialize native Kokoro ONNX engine: {e}")
         return None
 
+def synthesize_kokoro_speech(text: str, voice: str = "am_adam", speed: float = 1.0) -> bytes:
+    """Synthesize speech using native Kokoro ONNX model engine."""
+    engine = get_kokoro_engine()
+    if engine is None:
+        logging.error("Kokoro ONNX engine not available")
+        return b""
+    try:
+        samples, sample_rate = engine.create(text, voice=voice, speed=speed, lang="en-us")
+        import io, soundfile as sf
+        buf = io.BytesIO()
+        sf.write(buf, samples, sample_rate, format='WAV')
+        return buf.getvalue()
+    except Exception as e:
+        logging.error(f"Error in Kokoro ONNX speech synthesis: {e}")
+        return b""
+
 async def start_session(context: JobContext):
     # Try in-memory queue first (works when same process), then fall back to Supabase query
     call_entry = pop_recent_pending_call()
@@ -553,23 +569,14 @@ async def start_session(context: JobContext):
 
     if provider == "kokoro":
         kokoro_cfg = agent_cfg.get("kokoro", {})
-        kokoro_voice = kokoro_cfg.get("voice", "am_adam")
+        selected_voice = kokoro_cfg.get("voice", "am_adam")
         speed = float(kokoro_cfg.get("speed", 1.0))
         
-        # Ensure Kokoro ONNX model weights are initialized
+        # Initialize native Kokoro ONNX engine
         engine = get_kokoro_engine()
-        
-        # Explicit Voice Map supporting all Male and Female selections
-        VOICE_MAP = {
-            "am_adam": "Fenrir",      # Adam Male
-            "am_michael": "Charon",   # Michael Male
-            "af_heart": "Aoede",      # Heart Female
-            "af_bella": "Sulafat"     # Bella Female
-        }
-        selected_voice = VOICE_MAP.get(kokoro_voice, "Fenrir" if "m" in kokoro_voice else "Aoede")
-        selected_model = "models/gemini-3.1-flash-live-preview"
+        selected_model = "kokoro-onnx-v1.0"
         vad_silence = 200
-        logging.info(f"Kokoro Engine Active | Voice ID={kokoro_voice} -> Persona={selected_voice} | Speed={speed}x")
+        logging.info(f"Kokoro Engine Active | Selected Kokoro Voice={selected_voice} | Speed={speed}x")
     else:
         gemini_cfg = agent_cfg.get("gemini", {})
         selected_voice = gemini_cfg.get("voice", "Aoede")
