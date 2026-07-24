@@ -559,15 +559,17 @@ async def start_session(context: JobContext):
         # Ensure Kokoro ONNX model weights are initialized
         engine = get_kokoro_engine()
         
-        # Map voice gender correctly to avoid voice mismatch
-        if "adam" in kokoro_voice or "michael" in kokoro_voice:
-            selected_voice = "Fenrir" if "adam" in kokoro_voice else "Charon"
-        else:
-            selected_voice = "Aoede" if "heart" in kokoro_voice else "Sulafat"
-            
+        # Explicit Voice Map supporting all Male and Female selections
+        VOICE_MAP = {
+            "am_adam": "Fenrir",      # Adam Male
+            "am_michael": "Charon",   # Michael Male
+            "af_heart": "Aoede",      # Heart Female
+            "af_bella": "Sulafat"     # Bella Female
+        }
+        selected_voice = VOICE_MAP.get(kokoro_voice, "Fenrir" if "m" in kokoro_voice else "Aoede")
         selected_model = "models/gemini-3.1-flash-live-preview"
         vad_silence = 200
-        logging.info(f"Kokoro Engine Active | Voice ID={kokoro_voice} | Speed={speed}x | Voice Persona={selected_voice}")
+        logging.info(f"Kokoro Engine Active | Voice ID={kokoro_voice} -> Persona={selected_voice} | Speed={speed}x")
     else:
         gemini_cfg = agent_cfg.get("gemini", {})
         selected_voice = gemini_cfg.get("voice", "Aoede")
