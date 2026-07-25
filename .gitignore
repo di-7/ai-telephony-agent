@@ -8,3 +8,8 @@ __pycache__/
 
 # IDE
 .vscode/
+
+# Kokoro ONNX model weights (baked directly into Docker build)
+*.onnx
+*.bin
+*.tmp

@@ -21,6 +21,12 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY . .
 
+# Pre-download Kokoro ONNX weights inside the Docker image during BUILD phase
+RUN python -c "import urllib.request, os; \
+    os.path.exists('kokoro-v1.0.onnx') or urllib.request.urlretrieve('https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx', 'kokoro-v1.0.onnx'); \
+    os.path.exists('voices-v1.0.bin') or urllib.request.urlretrieve('https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin', 'voices-v1.0.bin'); \
+    print('Kokoro models baked into Docker image successfully!')"
+
 # Expose port (Render will use PORT env var)
 EXPOSE 8081
 
