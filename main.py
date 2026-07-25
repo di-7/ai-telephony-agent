@@ -928,9 +928,9 @@ if __name__ == "__main__":
         # Pre-download Kokoro ONNX model files in background so call setup connects instantly
         threading.Thread(target=preload_kokoro_in_background, daemon=True).start()
 
-        # Register the agent with a unique ID (configured via VideoSDK Cloud or local environment)
+        # Register your custom Python agent worker with a unique ID
         options = Options(
-            agent_id=os.getenv("AGENT_ID", "ag_rajwdl"),  # Matches VideoSDK Deployment Agent ID
+            agent_id=os.getenv("AGENT_ID", "MyTelephonyAgent"),  # Your custom Python agent worker ID
             register=True,               # REQUIRED: Register with VideoSDK for telephony
             max_processes=1,             # Free tier: limited CPU/RAM, only 1 process
             num_idle_processes=0,        # Free tier RAM optimization (prevents Signal 15 OOM killer)
