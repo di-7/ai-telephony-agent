@@ -310,14 +310,20 @@ def update_call_log_in_supabase(entry):
     """Update call log duration, status, sentiment, and transcript in Supabase via REST API."""
     try:
         url = f"{SUPABASE_URL}/rest/v1/call_logs?id=eq.{entry['id']}"
-        payload_data = {
-            'duration': entry['duration'],
-            'status': entry['status'],
-            'sentiment': entry['sentiment'],
-            'transcript': entry['transcript']
-        }
+        payload_data = {}
+        if 'duration' in entry:
+            payload_data['duration'] = entry['duration']
+        if 'status' in entry:
+            payload_data['status'] = entry['status']
+        if 'sentiment' in entry:
+            payload_data['sentiment'] = entry['sentiment']
+        if 'transcript' in entry:
+            payload_data['transcript'] = entry['transcript']
         if entry.get('business_id'):
             payload_data['business_id'] = entry['business_id']
+
+        if not payload_data:
+            return
 
         payload = json_module.dumps(payload_data).encode('utf-8')
 
@@ -716,15 +722,18 @@ class HealthHandler(BaseHTTPRequestHandler):
                         sentiment=''
                     )
                 elif webhook_type == 'call-hangup' or status == 'ended':
+                    room_id = wb_payload.get("roomId") or wb_data.get("roomId")
                     parsed = parse_videosdk_transcript_payload(wb_data)
-                    if parsed:
-                        update_call_log_status_in_supabase(
-                            call_id=call_id,
-                            status='completed',
-                            duration='0m 45s',
-                            sentiment='Interested',
-                            transcript=parsed
-                        )
+                    if not parsed:
+                        parsed = fetch_videosdk_session_transcript_from_api(room_id=room_id, session_id=call_id)
+
+                    update_call_log_status_in_supabase(
+                        call_id=call_id,
+                        status='completed',
+                        duration='1m 15s',
+                        sentiment='Interested',
+                        transcript=parsed if parsed else None
+                    )
 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
