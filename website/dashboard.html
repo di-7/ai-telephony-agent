@@ -307,32 +307,24 @@
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 16px;">
                             <!-- Gemini Live Card -->
                             <div class="model-select-card active" id="cardGemini" onclick="selectEngineProvider('gemini')">
-                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                    <span class="badge-pill badge-green">Google Gemini Live</span>
+                                <div style="display: flex; justify-content: flex-end; align-items: flex-start;">
                                     <input type="radio" name="modelProviderRadio" value="gemini" id="radioGemini" checked style="accent-color: #ff5065; transform: scale(1.2);">
                                 </div>
-                                <h3 style="font-size: 18px; font-weight: 700; margin: 14px 0 6px 0; color: var(--color-carbon-ink);">Gemini Live API (Speech-to-Speech)</h3>
-                                <p style="font-size: 13px; color: var(--color-slate); line-height: 1.5; margin: 0 0 12px 0;">
+                                <h3 style="font-size: 18px; font-weight: 700; margin: 10px 0 6px 0; color: var(--color-carbon-ink);">Gemini Live API (Speech-to-Speech)</h3>
+                                <p style="font-size: 13px; color: var(--color-slate); line-height: 1.5; margin: 0;">
                                     Native multimodal audio streaming engine. Lowest latency (~300ms) with dynamic conversational turn-taking.
                                 </p>
-                                <div style="font-size: 12px; font-weight: 700; color: #10b981; display: flex; align-items: center; gap: 6px;">
-                                    ⚡ Ultra-Low Latency (~300ms)
-                                </div>
                             </div>
 
                             <!-- Kokoro-TTS Card -->
                             <div class="model-select-card" id="cardKokoro" onclick="selectEngineProvider('kokoro')">
-                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                    <span class="badge-pill badge-purple">100% Free / Open Source</span>
+                                <div style="display: flex; justify-content: flex-end; align-items: flex-start;">
                                     <input type="radio" name="modelProviderRadio" value="kokoro" id="radioKokoro" style="accent-color: #ff5065; transform: scale(1.2);">
                                 </div>
-                                <h3 style="font-size: 18px; font-weight: 700; margin: 14px 0 6px 0; color: var(--color-carbon-ink);">Kokoro-TTS + Groq Pipeline</h3>
-                                <p style="font-size: 13px; color: var(--color-slate); line-height: 1.5; margin: 0 0 12px 0;">
+                                <h3 style="font-size: 18px; font-weight: 700; margin: 10px 0 6px 0; color: var(--color-carbon-ink);">Kokoro-TTS + Groq Pipeline</h3>
+                                <p style="font-size: 13px; color: var(--color-slate); line-height: 1.5; margin: 0;">
                                     100% Open-Source 82M TTS model paired with Groq Whisper & Llama 3.3. Zero API cost with hyper-realistic human voices.
                                 </p>
-                                <div style="font-size: 12px; font-weight: 700; color: #8b5cf6; display: flex; align-items: center; gap: 6px;">
-                                    🎧 Hyper-Realistic Open Source Voices
-                                </div>
                             </div>
                         </div>
                     </div>
