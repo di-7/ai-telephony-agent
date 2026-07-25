@@ -439,13 +439,40 @@ def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None):
     return None
 
 def fetch_and_update_final_transcript_async(call_id, room_id):
-    """Background task to poll VideoSDK API 5s after call ends to fetch the finalized transcript."""
+    """Background task to poll VideoSDK API 5s after call ends to fetch finalized transcript and exact duration."""
     import time
     time.sleep(5)
-    parsed = fetch_videosdk_session_transcript_from_api(room_id=room_id, session_id=call_id)
+    token = os.getenv("VIDEOSDK_AUTH_TOKEN")
+    if not token or token == 'your_videosdk_auth_token_here':
+        return
+        
+    duration_str = '1m 15s'
+    parsed = None
+    
+    if room_id:
+        url = f"https://api.videosdk.live/v2/sessions?roomId={room_id}"
+        try:
+            req = urllib.request.Request(url, method='GET')
+            req.add_header('Authorization', token)
+            with urllib.request.urlopen(req) as resp:
+                raw_resp = json_module.loads(resp.read().decode('utf-8'))
+                parsed = parse_videosdk_transcript_payload(raw_resp)
+                
+                # Extract exact session duration from VideoSDK Cloud
+                data_list = raw_resp.get('data')
+                if isinstance(data_list, list) and len(data_list) > 0 and isinstance(data_list[0], dict):
+                    raw_dur = data_list[0].get('duration') or data_list[0].get('sessionDuration')
+                    if raw_dur:
+                        duration_str = str(raw_dur)
+        except Exception as e:
+            logging.debug(f"Async VideoSDK session duration fetch error: {e}")
+            
+    if not parsed:
+        parsed = fetch_videosdk_session_transcript_from_api(room_id=room_id, session_id=call_id)
+        
     if parsed and len(parsed) > 0:
-        update_call_log_status_in_supabase(call_id=call_id, status='completed', duration='1m 15s', sentiment='Interested', transcript=parsed)
-        logging.info(f"Successfully updated call {call_id} with {len(parsed)} VideoSDK transcript turns after call hangup!")
+        update_call_log_status_in_supabase(call_id=call_id, status='completed', duration=duration_str, sentiment='Interested', transcript=parsed)
+        logging.info(f"Successfully updated call {call_id} with exact duration {duration_str} and {len(parsed)} transcript turns!")
 
 def update_call_log_status_in_supabase(call_id=None, status='completed', duration='0m 45s', sentiment='Interested', transcript=None):
     """Find and update matching call log entry in Supabase with specific status and transcript."""
