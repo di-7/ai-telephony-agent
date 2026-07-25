@@ -213,7 +213,6 @@ def get_videosdk_token():
             'apikey': api_key,
             'permissions': ['allow_join', 'allow_mod'],
             'version': 2,
-            'roles': ['crawler'],
             'iat': int(time.time()),
             'exp': int(time.time()) + 86400  # valid for 24 hours
         }
