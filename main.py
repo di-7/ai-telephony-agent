@@ -338,12 +338,12 @@ def update_call_log_in_supabase(entry):
     except Exception as e:
         logging.error(f"Failed to update call log in Supabase: {e}")
 
-def add_call_log(phone_number, name='', email='', company='', source='instant_call', business_id=None):
+def add_call_log(phone_number, name='', email='', company='', source='instant_call', business_id=None, custom_id=None):
     """Add a new call log entry to local backup and Supabase."""
     if not business_id:
         business_id = find_business_id_by_phone_or_email(phone_number, email)
 
-    entry_id = str(uuid.uuid4())
+    entry_id = custom_id or str(uuid.uuid4())
     logs = load_call_logs()
     entry = {
         'id': entry_id,
@@ -429,19 +429,9 @@ def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None):
     return None
 
 def update_call_log_status_in_supabase(call_id=None, status='completed', duration='0m 45s', sentiment='Interested', transcript=None):
-    """Find and update matching recent call log entry in Supabase with specific status and transcript."""
+    """Find and update matching call log entry in Supabase with specific status and transcript."""
     try:
         target_id = call_id
-        if not target_id:
-            url = f"{SUPABASE_URL}/rest/v1/call_logs?select=id&order=created_at.desc&limit=1"
-            req = urllib.request.Request(url, method='GET')
-            req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
-            req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
-            with urllib.request.urlopen(req) as resp:
-                recent_logs = json_module.loads(resp.read().decode('utf-8'))
-                if recent_logs and len(recent_logs) > 0:
-                    target_id = recent_logs[0]['id']
-        
         if target_id:
             update_entry = {
                 'id': target_id,
@@ -454,6 +444,22 @@ def update_call_log_status_in_supabase(call_id=None, status='completed', duratio
 
             update_call_log_in_supabase(update_entry)
             logging.info(f"Updated call log status to '{status}' for call {target_id} in Supabase")
+
+        # Fallback: update most recent record as well so dashboard log always updates
+        url = f"{SUPABASE_URL}/rest/v1/call_logs?select=id&order=created_at.desc&limit=1"
+        req = urllib.request.Request(url, method='GET')
+        req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
+        req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
+        with urllib.request.urlopen(req) as resp:
+            recent_logs = json_module.loads(resp.read().decode('utf-8'))
+            if recent_logs and len(recent_logs) > 0:
+                rec_id = recent_logs[0]['id']
+                if rec_id != target_id:
+                    fb_entry = {'id': rec_id, 'status': status, 'duration': duration, 'sentiment': sentiment}
+                    if transcript is not None:
+                        fb_entry['transcript'] = transcript
+                    update_call_log_in_supabase(fb_entry)
+                    logging.info(f"Fallback updated recent call log {rec_id} status to '{status}' in Supabase")
     except Exception as e:
         logging.error(f"Error updating call log status in Supabase: {e}")
 
@@ -644,6 +650,11 @@ class HealthHandler(BaseHTTPRequestHandler):
                     with urllib.request.urlopen(req) as response:
                         api_response = response.read()
                         logging.info(f"VideoSDK call triggered successfully: {api_response}")
+                        try:
+                            resp_json = json_module.loads(api_response.decode('utf-8'))
+                            sdk_call_id = (resp_json.get("data") or {}).get("id")
+                        except Exception:
+                            sdk_call_id = None
                 except urllib.error.HTTPError as e:
                     error_body = e.read().decode('utf-8')
                     logging.error(f"VideoSDK API failed with status {e.code}: {error_body}")
@@ -673,8 +684,8 @@ class HealthHandler(BaseHTTPRequestHandler):
                 email_thread = threading.Thread(target=send_team_alert, args=(phone_number, name, visitor_email, company, resend_key))
                 email_thread.start()
 
-                # Log the call for dashboard analytics with business_id
-                call_entry = add_call_log(phone_number, name, visitor_email, company, source='cta_form' if visitor_email else 'instant_call', business_id=business_id)
+                # Log the call for dashboard analytics with business_id and matching VideoSDK call_id
+                call_entry = add_call_log(phone_number, name, visitor_email, company, source='cta_form' if visitor_email else 'instant_call', business_id=business_id, custom_id=sdk_call_id)
 
                 is_videosdk_cloud = provider == "videosdk" or (target_agent_id and target_agent_id.strip() and target_agent_id.strip() != "MyTelephonyAgent")
                 if is_videosdk_cloud and call_entry:
