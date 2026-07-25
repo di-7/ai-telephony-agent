@@ -979,13 +979,34 @@ async function saveAgentConfig() {
         console.warn('Failed to post config to backend API:', e);
     }
 
-    // Show status indicator
+    // Show status indicator & button success animation
+    const saveBtn = document.querySelector('button[onclick="saveAgentConfig()"]');
+    const originalBtnHtml = saveBtn ? saveBtn.innerHTML : 'Save & Apply Settings';
+
+    if (saveBtn) {
+        saveBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        saveBtn.innerHTML = `✓ Settings Saved & Applied!`;
+    }
+
     const statusElem = document.getElementById('configSaveStatus');
     if (statusElem) {
-        statusElem.style.display = 'inline';
-        setTimeout(() => {
-            statusElem.style.display = 'none';
-        }, 3000);
+        statusElem.style.display = 'inline-flex';
+        statusElem.style.alignItems = 'center';
+        statusElem.style.gap = '6px';
+        statusElem.style.padding = '8px 16px';
+        statusElem.style.background = 'rgba(16, 185, 129, 0.12)';
+        statusElem.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+        statusElem.style.borderRadius = '20px';
+        statusElem.style.color = '#059669';
+        statusElem.style.fontWeight = '700';
     }
+
+    setTimeout(() => {
+        if (statusElem) statusElem.style.display = 'none';
+        if (saveBtn) {
+            saveBtn.style.background = 'linear-gradient(135deg, #ff5065, #ff7a59)';
+            saveBtn.innerHTML = originalBtnHtml;
+        }
+    }, 3000);
 }
 
