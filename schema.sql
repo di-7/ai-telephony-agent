@@ -167,6 +167,7 @@ CREATE TABLE IF NOT EXISTS public.admin_users (
 -- Enable RLS for Admin Users Table
 ALTER TABLE public.admin_users ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow public select admin_users" ON public.admin_users;
 CREATE POLICY "Allow public select admin_users" 
   ON public.admin_users FOR SELECT 
   USING (true);
@@ -174,6 +175,6 @@ CREATE POLICY "Allow public select admin_users"
 -- Insert initial super admin email
 INSERT INTO public.admin_users (email, role)
 VALUES ('dukeindustries7@gmail.com', 'super_admin')
-ON CONFLICT (email) DO NOTHING;
+ON CONFLICT (email) DO UPDATE SET role = 'super_admin';
 
 
