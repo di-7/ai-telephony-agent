@@ -744,35 +744,21 @@ function escapeHtml(text) {
 
 function switchDashboardTab(tabName) {
     const tabAnalytics = document.getElementById('tabAnalytics');
-    const tabConfig = document.getElementById('tabConfig');
     const tabAdmin = document.getElementById('tabAdmin');
     const navAnalyticsBtn = document.getElementById('navAnalyticsBtn');
     const navConfigBtn = document.getElementById('navConfigBtn');
-    const navAdminBtn = document.getElementById('navAdminBtn');
 
-    if (tabName === 'admin') {
+    if (tabName === 'config' || tabName === 'admin') {
         if (tabAnalytics) tabAnalytics.style.display = 'none';
-        if (tabConfig) tabConfig.style.display = 'none';
         if (tabAdmin) tabAdmin.style.display = 'block';
         if (navAnalyticsBtn) navAnalyticsBtn.classList.remove('active');
-        if (navConfigBtn) navConfigBtn.classList.remove('active');
-        if (navAdminBtn) navAdminBtn.classList.add('active');
-        loadAdminUserList();
-    } else if (tabName === 'config') {
-        if (tabAnalytics) tabAnalytics.style.display = 'none';
-        if (tabConfig) tabConfig.style.display = 'block';
-        if (tabAdmin) tabAdmin.style.display = 'none';
-        if (navAnalyticsBtn) navAnalyticsBtn.classList.remove('active');
         if (navConfigBtn) navConfigBtn.classList.add('active');
-        if (navAdminBtn) navAdminBtn.classList.remove('active');
-        loadAgentConfigFromStorage();
+        loadAdminUserList();
     } else {
         if (tabAnalytics) tabAnalytics.style.display = 'block';
-        if (tabConfig) tabConfig.style.display = 'none';
         if (tabAdmin) tabAdmin.style.display = 'none';
         if (navAnalyticsBtn) navAnalyticsBtn.classList.add('active');
         if (navConfigBtn) navConfigBtn.classList.remove('active');
-        if (navAdminBtn) navAdminBtn.classList.remove('active');
     }
 
     // Auto close sidebar drawer on mobile after clicking
@@ -817,7 +803,6 @@ const VIDEOSDK_VOICES = [
 
 async function checkAdminAccess() {
     const navConfigBtn = document.getElementById('navConfigBtn');
-    const navAdminBtn = document.getElementById('navAdminBtn');
     const saveConfigBtn = document.getElementById('saveConfigBtn');
     const adminEmailNotice = document.getElementById('adminEmailNotice');
 
@@ -849,13 +834,11 @@ async function checkAdminAccess() {
     }
 
     if (isSuperAdmin) {
-        // Super Admin sees Admin Control tab and Agent Config tab
-        if (navAdminBtn) navAdminBtn.style.display = 'flex';
+        // Super Admin sees Agent Config tab
         if (navConfigBtn) navConfigBtn.style.display = 'flex';
         if (saveConfigBtn) saveConfigBtn.style.display = 'inline-block';
     } else {
-        // Normal user: HIDE configuration tabs from sidebar and page completely
-        if (navAdminBtn) navAdminBtn.style.display = 'none';
+        // Normal user: HIDE Agent Config tab from sidebar completely
         if (navConfigBtn) navConfigBtn.style.display = 'none';
         if (saveConfigBtn) saveConfigBtn.style.display = 'none';
         
@@ -869,29 +852,63 @@ async function loadAdminUserList() {
     if (!selectElem) return;
 
     selectElem.innerHTML = '<option value="">Loading registered users...</option>';
+    const userMap = new Map();
+
+    // 1. Add current business profile
+    if (currentBusiness && currentBusiness.id) {
+        userMap.set(currentBusiness.id, {
+            id: currentBusiness.id,
+            name: currentBusiness.business_name || 'My Business',
+            email: currentBusiness.email || ''
+        });
+    }
+
     try {
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-            const { data: users, error } = await supabaseClient
+            // 2. Query businesses table
+            const { data: businesses } = await supabaseClient
                 .from('businesses')
-                .select('*')
-                .order('created_at', { ascending: false });
+                .select('*');
 
-            if (!error && users && users.length > 0) {
-                selectElem.innerHTML = users.map(u => 
-                    `<option value="${u.id}">${u.business_name || 'Business'} (${u.email || u.contact_name || u.id})</option>`
-                ).join('');
-                onAdminTargetUserChange();
-                return;
+            if (businesses && businesses.length > 0) {
+                businesses.forEach(b => {
+                    userMap.set(b.id, {
+                        id: b.id,
+                        name: b.business_name || 'Business',
+                        email: b.email || b.contact_name || b.id
+                    });
+                });
+            }
+
+            // 3. Query agent_configs table
+            const { data: configs } = await supabaseClient
+                .from('agent_configs')
+                .select('business_id');
+
+            if (configs && configs.length > 0) {
+                configs.forEach(c => {
+                    if (c.business_id && !userMap.has(c.business_id)) {
+                        userMap.set(c.business_id, {
+                            id: c.business_id,
+                            name: 'User Account',
+                            email: c.business_id
+                        });
+                    }
+                });
             }
         }
     } catch (e) {
         console.warn('Error fetching users for Admin Panel:', e);
     }
-    
-    // Fallback if DB list empty
-    if (currentBusiness) {
-        selectElem.innerHTML = `<option value="${currentBusiness.id}">${currentBusiness.business_name} (${currentBusiness.email})</option>`;
+
+    const allUsers = Array.from(userMap.values());
+    if (allUsers.length > 0) {
+        selectElem.innerHTML = allUsers.map(u => 
+            `<option value="${u.id}">${u.name} (${u.email || u.id})</option>`
+        ).join('');
         onAdminTargetUserChange();
+    } else {
+        selectElem.innerHTML = '<option value="">No registered users found</option>';
     }
 }
 

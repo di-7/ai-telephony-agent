@@ -37,9 +37,12 @@ ALTER TABLE public.businesses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.call_logs ENABLE ROW LEVEL SECURITY;
 
 -- 4. RLS Policies for Businesses Table
-CREATE POLICY "Users can view own business" 
+DROP POLICY IF EXISTS "Users can view own business" ON public.businesses;
+DROP POLICY IF EXISTS "Allow public select businesses" ON public.businesses;
+
+CREATE POLICY "Allow public select businesses" 
   ON public.businesses FOR SELECT 
-  USING (auth.uid() = id);
+  USING (true);
 
 CREATE POLICY "Users can insert own business" 
   ON public.businesses FOR INSERT 
