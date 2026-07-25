@@ -971,7 +971,7 @@ async function onAdminTargetUserChange() {
                 if (sdkInput) sdkInput.value = cfg.video_sdk_agent_id;
             }
 
-            const currentVoice = cfg.gemini?.voice || cfg.kokoro?.voice || cfg.voice;
+            const currentVoice = cfg.kokoro?.voice || cfg.voice || 'am_adam';
             populateAdminVoiceOptions(provider, currentVoice);
 
             if (cfg.agent_name) {
@@ -1004,7 +1004,7 @@ async function saveAdminUserConfig() {
     const isVideoSdk = document.getElementById('adminRadioVideoSdk')?.checked;
     const provider = isVideoSdk ? 'videosdk' : 'kokoro';
     const videoSdkAgentId = isVideoSdk ? document.getElementById('adminVideoSdkAgentId')?.value.trim() : '';
-    const selectedVoice = document.getElementById('adminVoiceSelect')?.value || 'Aoede';
+    const selectedVoice = document.getElementById('adminVoiceSelect')?.value || 'am_adam';
     const agentName = document.getElementById('adminAgentName')?.value.trim() || 'Sarah';
     const greeting = document.getElementById('adminAgentGreeting')?.value.trim() || '';
     const systemPrompt = document.getElementById('adminSystemPrompt')?.value.trim() || '';
@@ -1015,11 +1015,6 @@ async function saveAdminUserConfig() {
         agent_name: agentName,
         greeting: greeting,
         system_instruction: systemPrompt,
-        gemini: {
-            model: 'models/gemini-3.1-flash-live-preview',
-            voice: selectedVoice,
-            vad_silence_ms: 200
-        },
         kokoro: {
             voice: selectedVoice,
             speed: 1.0
@@ -1174,12 +1169,7 @@ async function loadAgentConfigFromStorage() {
     // 3. Fallback defaults if still empty
     if (!config) {
         config = {
-            provider: 'gemini',
-            gemini: {
-                model: 'models/gemini-3.1-flash-live-preview',
-                voice: 'Aoede',
-                vad_silence_ms: 200
-            },
+            provider: 'kokoro',
             kokoro: {
                 voice: 'am_adam',
                 speed: 1.0
