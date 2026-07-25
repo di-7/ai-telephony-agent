@@ -121,6 +121,8 @@ function renderBusinessInfo(business) {
     if (contactEl) contactEl.innerText = business.contact_name || 'Admin';
     if (emailEl) emailEl.innerText = business.email || '';
     if (phoneEl) phoneEl.innerText = (business.phone && business.phone.trim() !== '') ? business.phone : 'No phone set';
+
+    checkAdminAccess();
 }
 
 // ========================================
@@ -743,26 +745,294 @@ function escapeHtml(text) {
 function switchDashboardTab(tabName) {
     const tabAnalytics = document.getElementById('tabAnalytics');
     const tabConfig = document.getElementById('tabConfig');
+    const tabAdmin = document.getElementById('tabAdmin');
     const navAnalyticsBtn = document.getElementById('navAnalyticsBtn');
     const navConfigBtn = document.getElementById('navConfigBtn');
+    const navAdminBtn = document.getElementById('navAdminBtn');
 
-    if (tabName === 'config') {
+    if (tabName === 'admin') {
+        if (tabAnalytics) tabAnalytics.style.display = 'none';
+        if (tabConfig) tabConfig.style.display = 'none';
+        if (tabAdmin) tabAdmin.style.display = 'block';
+        if (navAnalyticsBtn) navAnalyticsBtn.classList.remove('active');
+        if (navConfigBtn) navConfigBtn.classList.remove('active');
+        if (navAdminBtn) navAdminBtn.classList.add('active');
+        loadAdminUserList();
+    } else if (tabName === 'config') {
         if (tabAnalytics) tabAnalytics.style.display = 'none';
         if (tabConfig) tabConfig.style.display = 'block';
+        if (tabAdmin) tabAdmin.style.display = 'none';
         if (navAnalyticsBtn) navAnalyticsBtn.classList.remove('active');
         if (navConfigBtn) navConfigBtn.classList.add('active');
+        if (navAdminBtn) navAdminBtn.classList.remove('active');
         loadAgentConfigFromStorage();
     } else {
         if (tabAnalytics) tabAnalytics.style.display = 'block';
         if (tabConfig) tabConfig.style.display = 'none';
+        if (tabAdmin) tabAdmin.style.display = 'none';
         if (navAnalyticsBtn) navAnalyticsBtn.classList.add('active');
         if (navConfigBtn) navConfigBtn.classList.remove('active');
+        if (navAdminBtn) navAdminBtn.classList.remove('active');
     }
 
     // Auto close sidebar drawer on mobile after clicking
     if (window.innerWidth <= 768) {
         toggleSidebarDrawer();
     }
+}
+
+// ========================================
+// SUPER ADMIN CONTROL PANEL LOGIC
+// ========================================
+
+const KOKORO_GEMINI_VOICES = [
+    { value: 'Aoede', label: 'Aoede — Warm, Conversational Female (Default)' },
+    { value: 'am_adam', label: 'Adam — Deep Male (Kokoro Native)' },
+    { value: 'af_bella', label: 'Bella — Expressive Female (Kokoro Native)' },
+    { value: 'am_michael', label: 'Michael — Professional Male (Kokoro Native)' },
+    { value: 'af_heart', label: 'Heart — Warm Female (Kokoro Native)' },
+    { value: 'Callirrhoe', label: 'Callirrhoe — Clear, Expressive Female / Neutral' },
+    { value: 'Laomedeia', label: 'Laomedeia — Smooth, Melodic Female' },
+    { value: 'Leda', label: 'Leda — Warm, Professional Female' },
+    { value: 'Algenib', label: 'Algenib — Crisp, Articulate Neutral' },
+    { value: 'Fenrir', label: 'Fenrir — Deep, Smooth Male' },
+    { value: 'Charon', label: 'Charon — Professional, Authoritative Male' },
+    { value: 'Iapetus', label: 'Iapetus — Deep, Warm Male' },
+    { value: 'Gacrux', label: 'Gacrux — Resonant, Steady Male' },
+    { value: 'Sulafat', label: 'Sulafat — Expressive, Dynamic Female' },
+    { value: 'Kore', label: 'Kore — Calm, Relaxed Female' },
+    { value: 'Puck', label: 'Puck — Energetic, Playful Male' }
+];
+
+const VIDEOSDK_VOICES = [
+    { value: 'Callirrhoe', label: 'Callirrhoe — Clear, Expressive Neutral / Female' },
+    { value: 'Laomedeia', label: 'Laomedeia — Smooth, Melodic Female' },
+    { value: 'Aoede', label: 'Aoede — Warm, Conversational Female' },
+    { value: 'Leda', label: 'Leda — Warm, Professional Female' },
+    { value: 'Algenib', label: 'Algenib — Crisp, Articulate Neutral' },
+    { value: 'Fenrir', label: 'Fenrir — Deep, Smooth Male' },
+    { value: 'Charon', label: 'Charon — Professional, Authoritative Male' },
+    { value: 'Iapetus', label: 'Iapetus — Deep, Warm Male' },
+    { value: 'Gacrux', label: 'Gacrux — Resonant, Steady Male' },
+    { value: 'Sulafat', label: 'Sulafat — Expressive, Dynamic Female' },
+    { value: 'Kore', label: 'Kore — Calm, Relaxed Female' },
+    { value: 'Puck', label: 'Puck — Energetic, Playful Male' }
+];
+
+function checkAdminAccess() {
+    const navAdminBtn = document.getElementById('navAdminBtn');
+    const saveConfigBtn = document.getElementById('saveConfigBtn');
+    const isSuperAdmin = currentBusiness && currentBusiness.email === 'dukeindustries7@gmail.com';
+
+    if (navAdminBtn) {
+        navAdminBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+    }
+
+    if (!isSuperAdmin) {
+        // Non-admin users: make config tab read-only
+        if (saveConfigBtn) saveConfigBtn.style.display = 'none';
+        const cfgSaveStatus = document.getElementById('configSaveStatus');
+        if (cfgSaveStatus) {
+            cfgSaveStatus.style.display = 'inline-flex';
+            cfgSaveStatus.style.background = 'rgba(239, 68, 68, 0.1)';
+            cfgSaveStatus.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+            cfgSaveStatus.style.color = '#dc2626';
+            cfgSaveStatus.innerHTML = '🔒 Managed Configuration (Read Only)';
+        }
+    } else {
+        if (saveConfigBtn) saveConfigBtn.style.display = 'inline-block';
+    }
+}
+
+async function loadAdminUserList() {
+    const selectElem = document.getElementById('adminTargetUserSelect');
+    if (!selectElem) return;
+
+    selectElem.innerHTML = '<option value="">Loading registered users...</option>';
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            const { data: users, error } = await supabaseClient
+                .from('businesses')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (!error && users && users.length > 0) {
+                selectElem.innerHTML = users.map(u => 
+                    `<option value="${u.id}">${u.business_name || 'Business'} (${u.email || u.contact_name || u.id})</option>`
+                ).join('');
+                onAdminTargetUserChange();
+                return;
+            }
+        }
+    } catch (e) {
+        console.warn('Error fetching users for Admin Panel:', e);
+    }
+    
+    // Fallback if DB list empty
+    if (currentBusiness) {
+        selectElem.innerHTML = `<option value="${currentBusiness.id}">${currentBusiness.business_name} (${currentBusiness.email})</option>`;
+        onAdminTargetUserChange();
+    }
+}
+
+function selectAdminEngineProvider(provider) {
+    const adminCardKokoro = document.getElementById('adminCardKokoro');
+    const adminCardVideoSdk = document.getElementById('adminCardVideoSdk');
+    const adminRadioKokoro = document.getElementById('adminRadioKokoro');
+    const adminRadioVideoSdk = document.getElementById('adminRadioVideoSdk');
+    const adminVideoSdkIdWrap = document.getElementById('adminVideoSdkIdWrap');
+
+    if (provider === 'videosdk') {
+        if (adminCardKokoro) adminCardKokoro.classList.remove('active');
+        if (adminCardVideoSdk) adminCardVideoSdk.classList.add('active');
+        if (adminRadioKokoro) adminRadioKokoro.checked = false;
+        if (adminRadioVideoSdk) adminRadioVideoSdk.checked = true;
+        if (adminVideoSdkIdWrap) adminVideoSdkIdWrap.style.display = 'block';
+        populateAdminVoiceOptions('videosdk');
+    } else {
+        if (adminCardKokoro) adminCardKokoro.classList.add('active');
+        if (adminCardVideoSdk) adminCardVideoSdk.classList.remove('active');
+        if (adminRadioKokoro) adminRadioKokoro.checked = true;
+        if (adminRadioVideoSdk) adminRadioVideoSdk.checked = false;
+        if (adminVideoSdkIdWrap) adminVideoSdkIdWrap.style.display = 'none';
+        populateAdminVoiceOptions('kokoro');
+    }
+}
+
+function populateAdminVoiceOptions(provider, selectedVoice = null) {
+    const voiceSelect = document.getElementById('adminVoiceSelect');
+    if (!voiceSelect) return;
+
+    const voices = provider === 'videosdk' ? VIDEOSDK_VOICES : KOKORO_GEMINI_VOICES;
+    voiceSelect.innerHTML = voices.map(v => 
+        `<option value="${v.value}" ${selectedVoice === v.value ? 'selected' : ''}>${v.label}</option>`
+    ).join('');
+
+    if (!selectedVoice && voices.length > 0) {
+        voiceSelect.value = voices[0].value;
+    }
+}
+
+async function onAdminTargetUserChange() {
+    const targetBusinessId = document.getElementById('adminTargetUserSelect')?.value;
+    if (!targetBusinessId || typeof supabaseClient === 'undefined' || !supabaseClient) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('agent_configs')
+            .select('*')
+            .eq('business_id', targetBusinessId)
+            .maybeSingle();
+
+        if (!error && data && data.config) {
+            const cfg = typeof data.config === 'string' ? JSON.parse(data.config) : data.config;
+            const provider = cfg.provider === 'videosdk' ? 'videosdk' : 'kokoro';
+            selectAdminEngineProvider(provider);
+
+            if (cfg.video_sdk_agent_id) {
+                const sdkInput = document.getElementById('adminVideoSdkAgentId');
+                if (sdkInput) sdkInput.value = cfg.video_sdk_agent_id;
+            }
+
+            const currentVoice = cfg.gemini?.voice || cfg.kokoro?.voice || cfg.voice;
+            populateAdminVoiceOptions(provider, currentVoice);
+
+            if (cfg.agent_name) {
+                const nameInput = document.getElementById('adminAgentName');
+                if (nameInput) nameInput.value = cfg.agent_name;
+            }
+            if (cfg.greeting) {
+                const greetInput = document.getElementById('adminAgentGreeting');
+                if (greetInput) greetInput.value = cfg.greeting;
+            }
+            if (cfg.system_instruction) {
+                const promptInput = document.getElementById('adminSystemPrompt');
+                if (promptInput) promptInput.value = cfg.system_instruction;
+            }
+        } else {
+            selectAdminEngineProvider('kokoro');
+        }
+    } catch (e) {
+        console.warn('Error loading admin target user config:', e);
+    }
+}
+
+async function saveAdminUserConfig() {
+    const targetBusinessId = document.getElementById('adminTargetUserSelect')?.value;
+    if (!targetBusinessId) {
+        alert('Please select a target user account.');
+        return;
+    }
+
+    const isVideoSdk = document.getElementById('adminRadioVideoSdk')?.checked;
+    const provider = isVideoSdk ? 'videosdk' : 'kokoro';
+    const videoSdkAgentId = isVideoSdk ? document.getElementById('adminVideoSdkAgentId')?.value.trim() : '';
+    const selectedVoice = document.getElementById('adminVoiceSelect')?.value || 'Aoede';
+    const agentName = document.getElementById('adminAgentName')?.value.trim() || 'Sarah';
+    const greeting = document.getElementById('adminAgentGreeting')?.value.trim() || '';
+    const systemPrompt = document.getElementById('adminSystemPrompt')?.value.trim() || '';
+
+    const payload = {
+        provider: provider,
+        video_sdk_agent_id: videoSdkAgentId,
+        agent_name: agentName,
+        greeting: greeting,
+        system_instruction: systemPrompt,
+        gemini: {
+            model: 'models/gemini-3.1-flash-live-preview',
+            voice: selectedVoice,
+            vad_silence_ms: 200
+        },
+        kokoro: {
+            voice: selectedVoice,
+            speed: 1.0
+        }
+    };
+
+    // 1. Save directly to Supabase agent_configs table under target business_id
+    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        try {
+            await supabaseClient.from('agent_configs').upsert({
+                business_id: targetBusinessId,
+                provider: provider,
+                config: payload,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'business_id' });
+        } catch (err) {
+            console.warn('Error saving admin config to Supabase agent_configs table:', err);
+        }
+    }
+
+    // 2. Post to backend API
+    try {
+        await fetch(getBackendUrl('/api/config'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...payload, business_id: targetBusinessId })
+        });
+    } catch (e) {}
+
+    // Show success button animation
+    const saveBtn = document.querySelector('button[onclick="saveAdminUserConfig()"]');
+    const originalBtnHtml = saveBtn ? saveBtn.innerHTML : 'Save & Attach Config to User';
+
+    if (saveBtn) {
+        saveBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        saveBtn.innerHTML = `✓ User Configuration Saved & Attached!`;
+    }
+
+    const statusElem = document.getElementById('adminSaveStatus');
+    if (statusElem) {
+        statusElem.style.display = 'inline-flex';
+    }
+
+    setTimeout(() => {
+        if (statusElem) statusElem.style.display = 'none';
+        if (saveBtn) {
+            saveBtn.style.background = 'linear-gradient(135deg, #ff5065, #ff7a59)';
+            saveBtn.innerHTML = originalBtnHtml;
+        }
+    }, 3000);
 }
 
 function selectEngineProvider(provider) {

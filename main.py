@@ -505,16 +505,18 @@ class HealthHandler(BaseHTTPRequestHandler):
 
                 # --- 1. VideoSDK Outbound SIP Call API ---
                 call_url = "https://api.videosdk.live/v2/sip/call"
-                agent_cfg = load_agent_config()
+                agent_cfg = (load_agent_config_from_supabase(business_id=business_id) or load_agent_config())
+                provider = agent_cfg.get("provider", "gemini")
                 target_agent_id = data.get("agent_id") or agent_cfg.get("video_sdk_agent_id")
                 
                 call_body = {
                     "gatewayId": gateway_id,
                     "sipCallTo": phone_number
                 }
-                if target_agent_id and target_agent_id.strip() and target_agent_id.strip() != "MyTelephonyAgent":
-                    call_body["agentId"] = target_agent_id.strip()
-                    logging.info(f"Routing call to VideoSDK Cloud Agent ID: {target_agent_id.strip()}")
+                if provider == "videosdk" or (target_agent_id and target_agent_id.strip() and target_agent_id.strip() != "MyTelephonyAgent"):
+                    sdk_id = target_agent_id.strip() if (target_agent_id and target_agent_id.strip()) else "ag_rajwdl"
+                    call_body["agentId"] = sdk_id
+                    logging.info(f"Routing call for business {business_id} to VideoSDK Cloud Agent ID: {sdk_id}")
 
                 call_payload = json_module.dumps(call_body).encode('utf-8')
 
@@ -706,8 +708,9 @@ async def start_session(context: JobContext):
         else:
             logging.warning("No pending call entry found (neither in-memory nor Supabase). Transcript will still be captured.")
 
-    # Load dynamic configuration from dashboard settings
-    agent_cfg = load_agent_config()
+    # Load dynamic configuration from dashboard settings (per business_id)
+    b_id = call_entry.get('business_id') if call_entry else None
+    agent_cfg = (load_agent_config_from_supabase(business_id=b_id) if b_id else load_agent_config())
     provider = agent_cfg.get("provider", "gemini")
 
     if provider == "kokoro":
