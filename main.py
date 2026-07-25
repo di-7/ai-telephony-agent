@@ -505,10 +505,18 @@ class HealthHandler(BaseHTTPRequestHandler):
 
                 # --- 1. VideoSDK Outbound SIP Call API ---
                 call_url = "https://api.videosdk.live/v2/sip/call"
-                call_payload = json_module.dumps({
+                agent_cfg = load_agent_config()
+                target_agent_id = data.get("agent_id") or agent_cfg.get("video_sdk_agent_id")
+                
+                call_body = {
                     "gatewayId": gateway_id,
                     "sipCallTo": phone_number
-                }).encode('utf-8')
+                }
+                if target_agent_id and target_agent_id.strip() and target_agent_id.strip() != "MyTelephonyAgent":
+                    call_body["agentId"] = target_agent_id.strip()
+                    logging.info(f"Routing call to VideoSDK Cloud Agent ID: {target_agent_id.strip()}")
+
+                call_payload = json_module.dumps(call_body).encode('utf-8')
 
                 req = urllib.request.Request(call_url, data=call_payload, method="POST")
                 req.add_header("Authorization", str(videosdk_token))

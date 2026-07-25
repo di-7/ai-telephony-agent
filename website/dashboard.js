@@ -926,6 +926,11 @@ function populateConfigUI(config) {
     if (cfgAgentGreeting && config.greeting) {
         cfgAgentGreeting.value = config.greeting;
     }
+
+    const cfgVideoSdkAgentId = document.getElementById('cfgVideoSdkAgentId');
+    if (cfgVideoSdkAgentId && config.video_sdk_agent_id !== undefined) {
+        cfgVideoSdkAgentId.value = config.video_sdk_agent_id;
+    }
 }
 
 async function saveAgentConfig() {
@@ -939,6 +944,7 @@ async function saveAgentConfig() {
     const cfgKokoroVoice = document.getElementById('cfgKokoroVoice');
     const cfgKokoroSpeed = document.getElementById('cfgKokoroSpeed');
 
+    const cfgVideoSdkAgentId = document.getElementById('cfgVideoSdkAgentId');
     const cfgAgentName = document.getElementById('cfgAgentName');
     const cfgAgentGreeting = document.getElementById('cfgAgentGreeting');
     const cfgSystemPrompt = document.getElementById('cfgSystemPrompt');
@@ -948,6 +954,7 @@ async function saveAgentConfig() {
 
     const payload = {
         provider: provider,
+        video_sdk_agent_id: cfgVideoSdkAgentId ? cfgVideoSdkAgentId.value.trim() : '',
         agent_name: cfgAgentName ? cfgAgentName.value.trim() : 'Sarah',
         greeting: cfgAgentGreeting ? cfgAgentGreeting.value.trim() : "Hi! Thanks for checking out our site. I'm an AI assistant. Should I have my human team reach out to schedule a full demo?",
         gemini: {
