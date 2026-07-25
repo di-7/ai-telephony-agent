@@ -711,16 +711,6 @@ function setupEvents() {
             e.target.classList.add('active');
         });
     });
-
-    // Auto-save agent config on any dropdown or input change
-    ['cfgGeminiVoice', 'cfgGeminiModel', 'cfgGeminiVad', 'cfgKokoroVoice', 'cfgKokoroSpeed', 'cfgSystemPrompt'].forEach(id => {
-        const elem = document.getElementById(id);
-        if (elem) {
-            elem.addEventListener('change', () => {
-                saveAgentConfig();
-            });
-        }
-    });
 }
 
 function getTimeAgo(timestamp) {
@@ -811,6 +801,18 @@ function getBackendUrl(path) {
 async function loadAgentConfigFromSupabase() {
     if (typeof supabaseClient === 'undefined' || !supabaseClient) return null;
     try {
+        // 1. Query dedicated agent_configs table first
+        const { data: acData, error: acErr } = await supabaseClient
+            .from('agent_configs')
+            .select('*')
+            .limit(1);
+
+        if (!acErr && acData && acData.length > 0 && acData[0].config) {
+            const cfg = typeof acData[0].config === 'string' ? JSON.parse(acData[0].config) : acData[0].config;
+            if (cfg && Object.keys(cfg).length > 0) return cfg;
+        }
+
+        // 2. Fallback to call_logs table
         const { data, error } = await supabaseClient
             .from('call_logs')
             .select('*')
@@ -900,8 +902,14 @@ function populateConfigUI(config) {
         const cfgKokoroVoice = document.getElementById('cfgKokoroVoice');
         const cfgKokoroSpeed = document.getElementById('cfgKokoroSpeed');
 
-        if (cfgKokoroVoice && config.kokoro.voice) cfgKokoroVoice.value = config.kokoro.voice;
-        if (cfgKokoroSpeed && config.kokoro.speed) cfgKokoroSpeed.value = config.kokoro.speed;
+        if (cfgKokoroVoice && config.kokoro.voice) {
+            cfgKokoroVoice.value = config.kokoro.voice;
+        }
+        if (cfgKokoroSpeed) {
+            const rawSpeed = config.kokoro.speed;
+            const parsedSpeed = (rawSpeed !== null && rawSpeed !== undefined && !isNaN(parseFloat(rawSpeed))) ? parseFloat(rawSpeed).toFixed(1) : "1.0";
+            cfgKokoroSpeed.value = parsedSpeed;
+        }
     }
 
     const cfgPrompt = document.getElementById('cfgSystemPrompt');
@@ -916,23 +924,26 @@ async function saveAgentConfig() {
 
     const cfgGeminiVoice = document.getElementById('cfgGeminiVoice');
     const cfgGeminiModel = document.getElementById('cfgGeminiModel');
-    const cfgVad = document.getElementById('cfgGeminiVad');
+    const cfgGeminiVad = document.getElementById('cfgGeminiVad');
 
     const cfgKokoroVoice = document.getElementById('cfgKokoroVoice');
     const cfgKokoroSpeed = document.getElementById('cfgKokoroSpeed');
 
     const cfgSystemPrompt = document.getElementById('cfgSystemPrompt');
 
+    const rawSpeed = cfgKokoroSpeed ? parseFloat(cfgKokoroSpeed.value) : 1.0;
+    const speedVal = isNaN(rawSpeed) ? 1.0 : rawSpeed;
+
     const payload = {
         provider: provider,
         gemini: {
             model: cfgGeminiModel ? cfgGeminiModel.value : 'models/gemini-3.1-flash-live-preview',
             voice: cfgGeminiVoice ? cfgGeminiVoice.value : 'Aoede',
-            vad_silence_ms: cfgVad ? parseInt(cfgVad.value, 10) : 200
+            vad_silence_ms: cfgGeminiVad ? parseInt(cfgGeminiVad.value, 10) : 200
         },
         kokoro: {
-            voice: cfgKokoroVoice ? cfgKokoroVoice.value : 'af_bella',
-            speed: cfgKokoroSpeed ? parseFloat(cfgKokoroSpeed.value) : 1.0
+            voice: cfgKokoroVoice ? cfgKokoroVoice.value : 'am_adam',
+            speed: speedVal
         },
         system_instruction: cfgSystemPrompt ? cfgSystemPrompt.value.trim() : ''
     };
@@ -940,41 +951,41 @@ async function saveAgentConfig() {
     // 1. Save to localStorage
     localStorage.setItem('mixup_agent_config', JSON.stringify(payload));
 
-    // 2. Save to Supabase Cloud Database directly
-    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
-        const bId = currentBusiness?.id || 'c16fc8ab-3bb2-44fe-88ed-560f950c8069';
+    // 2. Save directly to Supabase agent_configs table
+    if (typeof supabaseClient !== 'undefined' && supabaseClient && currentBusiness) {
         try {
-            const { error } = await supabaseClient.from('agent_configs').upsert([{
-                business_id: bId,
+            await supabaseClient.from('agent_configs').upsert({
+                business_id: currentBusiness.id,
                 provider: provider,
                 config: payload,
                 updated_at: new Date().toISOString()
-            }], { onConflict: 'business_id' });
-
-            if (error) {
-                // Fallback insert to call_logs table
-                await supabaseClient.from('call_logs').insert([{
-                    business_id: bId,
-                    caller_name: 'SYSTEM_AGENT_CONFIG',
-                    status: 'config',
-                    source: 'agent_config',
-                    transcript: JSON.stringify(payload)
-                }]);
-            }
+            }, { onConflict: 'business_id' });
         } catch (err) {
-            console.warn('Error saving config to Supabase:', err);
+            console.warn('Error saving config to Supabase agent_configs table:', err);
         }
     }
 
     // 3. Send to backend API
     try {
-        await fetch(getBackendUrl('/api/config'), {
+        const resp = await fetch(getBackendUrl('/api/config'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+        if (resp.ok) {
+            console.log('Configuration saved to backend API successfully');
+        }
     } catch (e) {
         console.warn('Failed to post config to backend API:', e);
+    }
+
+    // Show status indicator
+    const statusElem = document.getElementById('configSaveStatus');
+    if (statusElem) {
+        statusElem.style.display = 'inline';
+        setTimeout(() => {
+            statusElem.style.display = 'none';
+        }, 3000);
     }
 }
 
