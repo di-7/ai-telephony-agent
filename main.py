@@ -699,9 +699,13 @@ async def start_session(context: JobContext):
     provider = agent_cfg.get("provider", "gemini")
 
     if provider == "kokoro":
-        kokoro_cfg = agent_cfg.get("kokoro", {})
-        kokoro_voice = kokoro_cfg.get("voice", "am_adam")
-        speed = float(kokoro_cfg.get("speed", 1.0))
+        kokoro_cfg = agent_cfg.get("kokoro") or {}
+        kokoro_voice = kokoro_cfg.get("voice") or "am_adam"
+        raw_speed = kokoro_cfg.get("speed")
+        try:
+            speed = float(raw_speed) if raw_speed is not None else 1.0
+        except (ValueError, TypeError):
+            speed = 1.0
         
         # Initialize native Kokoro ONNX engine
         engine = get_kokoro_engine()
@@ -715,13 +719,17 @@ async def start_session(context: JobContext):
             "af_heart": "Aoede",      # Heart Female -> Warm Female
             "af_bella": "Sulafat"     # Bella Female -> Expressive Female
         }
-        selected_voice = KOKORO_PERSONA_MAP.get(kokoro_voice, "Fenrir" if "am_" in kokoro_voice else "Aoede")
+        selected_voice = KOKORO_PERSONA_MAP.get(kokoro_voice, "Fenrir" if "am_" in str(kokoro_voice) else "Aoede")
         logging.info(f"Kokoro Engine Active | Voice={kokoro_voice} -> Streaming Voice={selected_voice} | Speed={speed}x")
     else:
-        gemini_cfg = agent_cfg.get("gemini", {})
-        selected_voice = gemini_cfg.get("voice", "Aoede")
-        selected_model = gemini_cfg.get("model", "models/gemini-3.1-flash-live-preview")
-        vad_silence = int(gemini_cfg.get("vad_silence_ms", 200))
+        gemini_cfg = agent_cfg.get("gemini") or {}
+        selected_voice = gemini_cfg.get("voice") or "Aoede"
+        selected_model = gemini_cfg.get("model") or "models/gemini-3.1-flash-live-preview"
+        raw_vad = gemini_cfg.get("vad_silence_ms")
+        try:
+            vad_silence = int(raw_vad) if raw_vad is not None else 200
+        except (ValueError, TypeError):
+            vad_silence = 200
 
     system_inst = agent_cfg.get("system_instruction", "")
 
