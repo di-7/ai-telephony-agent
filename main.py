@@ -535,7 +535,7 @@ def fetch_and_update_final_transcript_async(call_id, room_id):
     if not token:
         return
         
-    duration_str = '1m 15s'
+    duration_str = '--'
     parsed = None
     
     if room_id:
@@ -560,10 +560,10 @@ def fetch_and_update_final_transcript_async(call_id, room_id):
         parsed = fetch_videosdk_session_transcript_from_api(room_id=room_id, session_id=call_id)
         
     if parsed and len(parsed) > 0:
-        update_call_log_status_in_supabase(call_id=call_id, status='completed', duration=duration_str, sentiment='Interested', transcript=parsed)
+        update_call_log_status_in_supabase(call_id=call_id, status='completed', duration=duration_str, sentiment='Completed', transcript=parsed)
         logging.info(f"Successfully updated call {call_id} with exact duration {duration_str} and {len(parsed)} transcript turns!")
 
-def update_call_log_status_in_supabase(call_id=None, status='completed', duration='0m 45s', sentiment='Interested', transcript=None):
+def update_call_log_status_in_supabase(call_id=None, status='completed', duration='--', sentiment='Completed', transcript=None):
     """Find and update matching call log entry in Supabase with specific status and transcript."""
     try:
         target_id = call_id
@@ -884,8 +884,8 @@ class HealthHandler(BaseHTTPRequestHandler):
                     update_call_log_status_in_supabase(
                         call_id=call_id,
                         status='completed',
-                        duration='1m 15s',
-                        sentiment='Interested',
+                        duration='--',
+                        sentiment='Completed',
                         transcript=parsed if parsed else None
                     )
 
