@@ -371,9 +371,9 @@ def handle_videosdk_cloud_call_logging(entry, agent_cfg):
         greeting = agent_cfg.get('greeting') or 'Hello! This is Anna calling regarding your account. How can I help you today?'
         
         sample_transcript = [
-            {'speaker': agent_name, 'text': greeting},
-            {'speaker': entry.get('name') or 'Caller', 'text': 'Hi, I received a call regarding my account.'},
-            {'speaker': agent_name, 'text': 'Thank you for connecting. I am ready to assist you with your account inquiry.'}
+            {'speaker': 'agent', 'name': agent_name, 'text': greeting},
+            {'speaker': 'user', 'name': entry.get('name') or 'Caller', 'text': 'Hi, I received a call regarding my account.'},
+            {'speaker': 'agent', 'name': agent_name, 'text': 'Thank you for connecting. I am ready to assist you with your account inquiry.'}
         ]
         
         time.sleep(12)
