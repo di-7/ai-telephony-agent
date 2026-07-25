@@ -422,30 +422,34 @@ def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None):
             logging.debug(f"VideoSDK REST API transcript fetch attempt skipped for {url}: {e}")
     return None
 
-def update_recent_videosdk_call_log(room_id=None, session_id=None, parsed_transcript=None):
-    """Find and update matching recent call log entry in Supabase with VideoSDK transcript."""
-    if not parsed_transcript:
-        return
+def update_call_log_status_in_supabase(call_id=None, status='completed', duration='0m 45s', sentiment='Interested', transcript=None):
+    """Find and update matching recent call log entry in Supabase with specific status and transcript."""
     try:
-        url = f"{SUPABASE_URL}/rest/v1/call_logs?select=id&order=created_at.desc&limit=1"
-        req = urllib.request.Request(url, method='GET')
-        req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
-        req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
-        with urllib.request.urlopen(req) as resp:
-            recent_logs = json_module.loads(resp.read().decode('utf-8'))
-            if recent_logs and len(recent_logs) > 0:
-                target_id = recent_logs[0]['id']
-                update_entry = {
-                    'id': target_id,
-                    'status': 'completed',
-                    'duration': '0m 45s',
-                    'sentiment': 'Interested',
-                    'transcript': parsed_transcript
-                }
-                update_call_log_in_supabase(update_entry)
-                logging.info(f"Updated call {target_id} in Supabase with {len(parsed_transcript)} VideoSDK transcript turns")
+        target_id = call_id
+        if not target_id:
+            url = f"{SUPABASE_URL}/rest/v1/call_logs?select=id&order=created_at.desc&limit=1"
+            req = urllib.request.Request(url, method='GET')
+            req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
+            req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
+            with urllib.request.urlopen(req) as resp:
+                recent_logs = json_module.loads(resp.read().decode('utf-8'))
+                if recent_logs and len(recent_logs) > 0:
+                    target_id = recent_logs[0]['id']
+        
+        if target_id:
+            update_entry = {
+                'id': target_id,
+                'status': status,
+                'duration': duration,
+                'sentiment': sentiment
+            }
+            if transcript is not None:
+                update_entry['transcript'] = transcript
+
+            update_call_log_in_supabase(update_entry)
+            logging.info(f"Updated call log status to '{status}' for call {target_id} in Supabase")
     except Exception as e:
-        logging.error(f"Error updating call log from VideoSDK transcript: {e}")
+        logging.error(f"Error updating call log status in Supabase: {e}")
 
 def handle_videosdk_cloud_call_logging(entry, agent_cfg):
     """Background logger to complete and populate transcript for VideoSDK Cloud Agent calls."""
@@ -698,13 +702,37 @@ class HealthHandler(BaseHTTPRequestHandler):
                 wb_data = json_module.loads(post_data.decode('utf-8'))
                 logging.info(f"Received Webhook notification: {wb_data}")
                 
-                room_id = wb_data.get("roomId") or (wb_data.get("data") or {}).get("roomId")
-                session_id = wb_data.get("sessionId") or (wb_data.get("data") or {}).get("sessionId")
-                parsed = parse_videosdk_transcript_payload(wb_data)
-                
-                if parsed:
-                    logging.info(f"Successfully extracted {len(parsed)} transcript turns from VideoSDK Webhook payload!")
-                    update_recent_videosdk_call_log(room_id, session_id, parsed)
+                webhook_type = str(wb_data.get("webhookType") or wb_data.get("event") or "").lower()
+                wb_payload = wb_data.get("data") if isinstance(wb_data.get("data"), dict) else {}
+                call_id = wb_payload.get("callId") or wb_data.get("callId")
+                status = str(wb_payload.get("status") or wb_data.get("status") or "").lower()
+
+                if webhook_type == 'call-missed' or status == 'missed':
+                    logging.info("VideoSDK Webhook reported call-missed. Updating call log to missed.")
+                    update_call_log_status_in_supabase(
+                        call_id=call_id,
+                        status='missed',
+                        duration='0m 00s',
+                        sentiment='Unanswered',
+                        transcript=[{'speaker': 'system', 'name': 'System', 'text': 'Call was missed or unanswered by recipient.'}]
+                    )
+                elif webhook_type == 'call-answered' or status == 'answered':
+                    update_call_log_status_in_supabase(
+                        call_id=call_id,
+                        status='in-progress',
+                        duration='--',
+                        sentiment=''
+                    )
+                elif webhook_type == 'call-hangup' or status == 'ended':
+                    parsed = parse_videosdk_transcript_payload(wb_data)
+                    if parsed:
+                        update_call_log_status_in_supabase(
+                            call_id=call_id,
+                            status='completed',
+                            duration='0m 45s',
+                            sentiment='Interested',
+                            transcript=parsed
+                        )
 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
@@ -717,7 +745,6 @@ class HealthHandler(BaseHTTPRequestHandler):
                 self._send_cors_headers()
                 self.end_headers()
                 self.wfile.write(b'{"status":"ok"}')
-                self.wfile.write(b"Bad Request")
 
     def log_message(self, format, *args):
         pass  # Suppress generic request logs
