@@ -371,17 +371,26 @@ def add_call_log(phone_number, name='', email='', company='', source='instant_ca
 
 def parse_videosdk_transcript_payload(wb_data):
     """Dynamically parse transcript items from VideoSDK Webhook or REST API responses."""
-    if not wb_data or not isinstance(wb_data, dict):
+    if not wb_data:
         return []
 
-    raw_list = (
-        wb_data.get('transcript') or 
-        wb_data.get('transcripts') or 
-        (wb_data.get('data') or {}).get('transcript') or 
-        (wb_data.get('data') or {}).get('transcripts') or
-        (wb_data.get('payload') or {}).get('transcript') or []
-    )
-    
+    raw_list = []
+    if isinstance(wb_data, dict):
+        data_val = wb_data.get('data')
+        if isinstance(data_val, list) and len(data_val) > 0 and isinstance(data_val[0], dict):
+            raw_list = data_val[0].get('transcripts') or data_val[0].get('transcript') or []
+        elif isinstance(data_val, dict):
+            raw_list = data_val.get('transcripts') or data_val.get('transcript') or []
+        
+        if not raw_list:
+            raw_list = (
+                wb_data.get('transcript') or 
+                wb_data.get('transcripts') or 
+                (wb_data.get('payload') or {}).get('transcript') or []
+            )
+    elif isinstance(wb_data, list):
+        raw_list = wb_data
+
     parsed_transcript = []
     if isinstance(raw_list, list):
         for item in raw_list:
@@ -412,6 +421,7 @@ def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None):
         candidate_urls.append(f"https://api.videosdk.live/ai/v1/realtime-transcriptions/?sessionId={session_id}")
         candidate_urls.append(f"https://api.videosdk.live/v2/sessions/{session_id}")
     if room_id:
+        candidate_urls.append(f"https://api.videosdk.live/v2/sessions?roomId={room_id}")
         candidate_urls.append(f"https://api.videosdk.live/ai/v1/realtime-transcriptions/?roomId={room_id}")
 
     for url in candidate_urls:
@@ -427,6 +437,15 @@ def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None):
         except Exception as e:
             logging.debug(f"VideoSDK REST API transcript fetch attempt skipped for {url}: {e}")
     return None
+
+def fetch_and_update_final_transcript_async(call_id, room_id):
+    """Background task to poll VideoSDK API 5s after call ends to fetch the finalized transcript."""
+    import time
+    time.sleep(5)
+    parsed = fetch_videosdk_session_transcript_from_api(room_id=room_id, session_id=call_id)
+    if parsed and len(parsed) > 0:
+        update_call_log_status_in_supabase(call_id=call_id, status='completed', duration='1m 15s', sentiment='Interested', transcript=parsed)
+        logging.info(f"Successfully updated call {call_id} with {len(parsed)} VideoSDK transcript turns after call hangup!")
 
 def update_call_log_status_in_supabase(call_id=None, status='completed', duration='0m 45s', sentiment='Interested', transcript=None):
     """Find and update matching call log entry in Supabase with specific status and transcript."""
@@ -745,6 +764,9 @@ class HealthHandler(BaseHTTPRequestHandler):
                         sentiment='Interested',
                         transcript=parsed if parsed else None
                     )
+
+                    # Trigger asynchronous 5-second delayed poll to catch late-indexed VideoSDK transcripts
+                    threading.Thread(target=fetch_and_update_final_transcript_async, args=(call_id, room_id)).start()
 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
