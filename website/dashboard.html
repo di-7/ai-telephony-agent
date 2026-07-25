@@ -330,9 +330,13 @@
 
                         <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(0,0,0,0.06);">
                             <label class="form-label-custom">VideoSDK Cloud Agent Builder ID (Optional)</label>
-                            <input type="text" id="cfgVideoSdkAgentId" class="form-control-custom" placeholder="e.g. ag_rajwdl (Leave blank to use Custom Python Agent)">
+                            <input type="text" id="cfgVideoSdkAgentId" oninput="updateVideoSdkNotice()" class="form-control-custom" placeholder="e.g. ag_rajwdl (Leave blank to use Custom Python Agent)">
                             <div style="font-size: 11px; color: var(--color-slate); margin-top: 4px;">Enter your VideoSDK Agent Builder ID (e.g. ag_rajwdl) to route calls to your VideoSDK Cloud Agent (Anna / Debt Collection). Leave blank to use your Custom Python Agent.</div>
                         </div>
+                    </div>
+
+                    <!-- VideoSDK Cloud Agent Notice Banner -->
+                    <div id="videoSdkCloudNotice" style="display: none; margin-bottom: 20px; padding: 14px 18px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; font-size: 13px; color: #1e40af; line-height: 1.5;">
                     </div>
 
                     <!-- Section 2: Gemini Voice Controls -->

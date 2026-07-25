@@ -931,6 +931,23 @@ function populateConfigUI(config) {
     if (cfgVideoSdkAgentId && config.video_sdk_agent_id !== undefined) {
         cfgVideoSdkAgentId.value = config.video_sdk_agent_id;
     }
+
+    updateVideoSdkNotice();
+}
+
+function updateVideoSdkNotice() {
+    const agentIdElem = document.getElementById('cfgVideoSdkAgentId');
+    const noticeElem = document.getElementById('videoSdkCloudNotice');
+    const agentIdVal = agentIdElem ? agentIdElem.value.trim() : '';
+
+    if (noticeElem) {
+        if (agentIdVal !== '') {
+            noticeElem.style.display = 'block';
+            noticeElem.innerHTML = `<strong>ℹ️ VideoSDK Cloud Agent Active (${agentIdVal})</strong><br>Phone calls will route to your VideoSDK Cloud Agent. Its pipeline model, voice, system prompt, and tools are configured directly inside your <a href="https://console.videosdk.live" target="_blank" style="color: #2563eb; font-weight: 700; text-decoration: underline;">VideoSDK Agent Builder console</a>.<br><br>💡 <em>To configure voices for your Custom Python Agent instead, clear the VideoSDK Cloud Agent Builder ID field above.</em>`;
+        } else {
+            noticeElem.style.display = 'none';
+        }
+    }
 }
 
 async function saveAgentConfig() {
