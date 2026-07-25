@@ -154,3 +154,26 @@ CREATE POLICY "Allow public insert and update agent_configs"
   WITH CHECK (true);
 
 
+-- ================================================================
+-- 10. Create Admin Users Table (Dynamic Admin Role Management)
+-- ================================================================
+CREATE TABLE IF NOT EXISTS public.admin_users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE NOT NULL,
+  role TEXT NOT NULL DEFAULT 'super_admin',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS for Admin Users Table
+ALTER TABLE public.admin_users ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public select admin_users" 
+  ON public.admin_users FOR SELECT 
+  USING (true);
+
+-- Insert initial super admin email
+INSERT INTO public.admin_users (email, role)
+VALUES ('dukeindustries7@gmail.com', 'super_admin')
+ON CONFLICT (email) DO NOTHING;
+
+

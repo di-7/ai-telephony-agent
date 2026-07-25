@@ -815,10 +815,37 @@ const VIDEOSDK_VOICES = [
     { value: 'Puck', label: 'Puck — Energetic, Playful Male' }
 ];
 
-function checkAdminAccess() {
+async function checkAdminAccess() {
     const navAdminBtn = document.getElementById('navAdminBtn');
     const saveConfigBtn = document.getElementById('saveConfigBtn');
-    const isSuperAdmin = currentBusiness && currentBusiness.email === 'dukeindustries7@gmail.com';
+    const adminEmailNotice = document.getElementById('adminEmailNotice');
+
+    let isSuperAdmin = false;
+
+    if (currentBusiness && currentBusiness.email && typeof supabaseClient !== 'undefined' && supabaseClient) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('admin_users')
+                .select('*')
+                .eq('email', currentBusiness.email)
+                .maybeSingle();
+
+            if (!error && data && (data.role === 'super_admin' || data.role === 'admin')) {
+                isSuperAdmin = true;
+            }
+        } catch (e) {
+            console.warn('Error checking admin_users table:', e);
+        }
+        
+        // Fallback for primary setup
+        if (!isSuperAdmin && currentBusiness.email === 'dukeindustries7@gmail.com') {
+            isSuperAdmin = true;
+        }
+    }
+
+    if (adminEmailNotice && currentBusiness) {
+        adminEmailNotice.innerText = `(${currentBusiness.email})`;
+    }
 
     if (navAdminBtn) {
         navAdminBtn.style.display = isSuperAdmin ? 'flex' : 'none';
