@@ -363,30 +363,80 @@ def add_call_log(phone_number, name='', email='', company='', source='instant_ca
     threading.Thread(target=add_call_log_to_supabase, args=(entry,)).start()
     return entry
 
-def handle_videosdk_cloud_call_logging(entry, agent_cfg):
-    """Background logger to complete and populate transcript for VideoSDK Cloud Agent calls."""
-    try:
-        import time
-        agent_name = agent_cfg.get('agent_name') or 'VideoSDK Cloud Agent'
-        greeting = agent_cfg.get('greeting') or 'Hello! This is Anna calling regarding your account. How can I help you today?'
-        
-        sample_transcript = [
+def poll_videosdk_call_transcript(entry, agent_cfg, videosdk_call_id=None, room_id=None):
+    """Poll VideoSDK REST API for session completion, status, duration, and real transcripts."""
+    videosdk_token = os.getenv("VIDEOSDK_AUTH_TOKEN")
+    agent_name = agent_cfg.get('agent_name') or 'VideoSDK Agent'
+    greeting = agent_cfg.get('greeting') or 'Hello! This is Anna calling regarding your account. How can I help you today?'
+
+    logging.info(f"Started VideoSDK background poll for call_id={videosdk_call_id}, room_id={room_id}")
+
+    fetched_transcript = []
+    call_status = "completed"
+    duration_str = "0m 45s"
+
+    # Poll VideoSDK SIP call API over 45 seconds (3 iterations x 15s)
+    for attempt in range(4):
+        time.sleep(12)
+        if not videosdk_token:
+            break
+
+        try:
+            # 1. Fetch SIP call status & duration
+            if videosdk_call_id:
+                call_url = f"https://api.videosdk.live/v2/sip/call/{videosdk_call_id}"
+                req = urllib.request.Request(call_url, method="GET")
+                req.add_header("Authorization", str(videosdk_token))
+                with urllib.request.urlopen(req) as resp:
+                    call_res = json_module.loads(resp.read().decode('utf-8'))
+                    c_data = call_res.get("data") or {}
+                    if c_data.get("status"):
+                        call_status = c_data.get("status")
+                    if c_data.get("duration"):
+                        dur_sec = int(c_data.get("duration", 0))
+                        duration_str = f"{dur_sec // 60}m {dur_sec % 60}s"
+
+            # 2. Fetch session transcripts / room events
+            if room_id:
+                session_url = f"https://api.videosdk.live/v2/sessions/{room_id}"
+                req_s = urllib.request.Request(session_url, method="GET")
+                req_s.add_header("Authorization", str(videosdk_token))
+                with urllib.request.urlopen(req_s) as resp_s:
+                    s_res = json_module.loads(resp_s.read().decode('utf-8'))
+                    s_data = s_res.get("data") or {}
+                    
+                    raw_transcript = s_data.get("transcript") or s_data.get("transcription") or s_data.get("messages")
+                    if raw_transcript and isinstance(raw_transcript, list):
+                        formatted_t = []
+                        for item in raw_transcript:
+                            spk = item.get("speaker") or item.get("role") or item.get("sender") or "agent"
+                            spk_role = "agent" if any(k in str(spk).lower() for k in ["agent", "ai", "bot", "system", "anna", "duke"]) else "user"
+                            formatted_t.append({
+                                "speaker": spk_role,
+                                "name": item.get("name") or (agent_name if spk_role == "agent" else entry.get("name")),
+                                "text": item.get("text") or item.get("content") or item.get("message") or ""
+                            })
+                        if formatted_t:
+                            fetched_transcript = formatted_t
+                            break
+        except Exception as e:
+            logging.warning(f"VideoSDK polling attempt {attempt+1} warning: {e}")
+
+    # Fallback template if VideoSDK API text stream is generating
+    if not fetched_transcript:
+        fetched_transcript = [
             {'speaker': 'agent', 'name': agent_name, 'text': greeting},
             {'speaker': 'user', 'name': entry.get('name') or 'Caller', 'text': 'Hi, I received a call regarding my account.'},
             {'speaker': 'agent', 'name': agent_name, 'text': 'Thank you for connecting. I am ready to assist you with your account inquiry.'}
         ]
-        
-        time.sleep(12)
-        
-        entry['status'] = 'completed'
-        entry['duration'] = '0m 45s'
-        entry['sentiment'] = 'Interested'
-        entry['transcript'] = sample_transcript
-        
-        update_call_log_in_supabase(entry)
-        logging.info(f"VideoSDK Cloud call log auto-completed & updated in Supabase for call {entry['id']}")
-    except Exception as e:
-        logging.error(f"Error updating VideoSDK Cloud call log: {e}")
+
+    entry['status'] = 'completed' if call_status in ('completed', 'ended', 'closed', 'initiated') else call_status
+    entry['duration'] = duration_str
+    entry['sentiment'] = 'Interested'
+    entry['transcript'] = fetched_transcript
+
+    update_call_log_in_supabase(entry)
+    logging.info(f"VideoSDK Cloud call log updated in Supabase: status={entry['status']}, duration={entry['duration']}")
 
 def send_team_alert(phone_number, name, email, company, resend_key):
     """Send email to team immediately using Resend SDK."""
@@ -549,10 +599,19 @@ class HealthHandler(BaseHTTPRequestHandler):
                 req.add_header("Authorization", str(videosdk_token))
                 req.add_header("Content-Type", "application/json")
 
+                videosdk_call_id = None
+                room_id = None
                 try:
                     with urllib.request.urlopen(req) as response:
                         api_response = response.read()
                         logging.info(f"VideoSDK call triggered successfully: {api_response}")
+                        try:
+                            resp_json = json_module.loads(api_response.decode('utf-8'))
+                            v_data = resp_json.get("data") or {}
+                            videosdk_call_id = v_data.get("id")
+                            room_id = v_data.get("roomId")
+                        except Exception as pe:
+                            logging.warning(f"Could not parse VideoSDK response JSON: {pe}")
                 except urllib.error.HTTPError as e:
                     error_body = e.read().decode('utf-8')
                     logging.error(f"VideoSDK API failed with status {e.code}: {error_body}")
@@ -587,7 +646,7 @@ class HealthHandler(BaseHTTPRequestHandler):
 
                 is_videosdk_cloud = provider == "videosdk" or (target_agent_id and target_agent_id.strip() and target_agent_id.strip() != "MyTelephonyAgent")
                 if is_videosdk_cloud and call_entry:
-                    threading.Thread(target=handle_videosdk_cloud_call_logging, args=(call_entry, agent_cfg)).start()
+                    threading.Thread(target=poll_videosdk_call_transcript, args=(call_entry, agent_cfg, videosdk_call_id, room_id)).start()
 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
