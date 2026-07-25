@@ -452,34 +452,26 @@ def update_call_log_status_in_supabase(call_id=None, status='completed', duratio
         logging.error(f"Error updating call log status in Supabase: {e}")
 
 def handle_videosdk_cloud_call_logging(entry, agent_cfg):
-    """Background logger to complete and populate transcript for VideoSDK Cloud Agent calls."""
+    """Background logger for VideoSDK Cloud Agent calls — updates ONLY if real transcript is received."""
     try:
         import time
-        agent_name = agent_cfg.get('agent_name') or 'VideoSDK Cloud Agent'
-        greeting = agent_cfg.get('greeting') or 'Hello! This is Anna calling regarding your account. How can I help you today?'
+        # Wait 20 seconds to allow cloud session to complete
+        time.sleep(20)
         
-        # Wait 15 seconds to allow cloud session to take place
-        time.sleep(15)
-        
-        # 1. Try fetching real transcript from VideoSDK REST API
+        # Try fetching real transcript from VideoSDK REST API
         real_transcript = fetch_videosdk_session_transcript_from_api(session_id=entry.get('id'))
         
-        if not real_transcript:
-            real_transcript = [
-                {'speaker': 'agent', 'name': agent_name, 'text': greeting},
-                {'speaker': 'user', 'name': entry.get('name') or 'Caller', 'text': 'Hello.'},
-                {'speaker': 'agent', 'name': agent_name, 'text': 'Thank you for connecting. I am ready to assist you with your account inquiry.'}
-            ]
-        
-        entry['status'] = 'completed'
-        entry['duration'] = '0m 45s'
-        entry['sentiment'] = 'Interested'
-        entry['transcript'] = real_transcript
-        
-        update_call_log_in_supabase(entry)
-        logging.info(f"VideoSDK Cloud call log auto-completed & updated in Supabase for call {entry['id']}")
+        if real_transcript:
+            entry['status'] = 'completed'
+            entry['duration'] = '0m 45s'
+            entry['sentiment'] = 'Interested'
+            entry['transcript'] = real_transcript
+            update_call_log_in_supabase(entry)
+            logging.info(f"VideoSDK Cloud call log updated with real transcript for call {entry['id']}")
+        else:
+            logging.info(f"No VideoSDK cloud transcript returned for call {entry['id']} (call was missed or unanswered). No dummy text generated.")
     except Exception as e:
-        logging.error(f"Error updating VideoSDK Cloud call log: {e}")
+        logging.error(f"Error checking VideoSDK Cloud call log: {e}")
 
 def send_team_alert(phone_number, name, email, company, resend_key):
     """Send email to team immediately using Resend SDK."""
