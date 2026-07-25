@@ -707,8 +707,8 @@ async def start_session(context: JobContext):
         except (ValueError, TypeError):
             speed = 1.0
         
-        # Initialize native Kokoro ONNX engine
-        engine = get_kokoro_engine()
+        # Initialize native Kokoro ONNX engine in background so SIP connection is instant
+        threading.Thread(target=get_kokoro_engine, daemon=True).start()
         selected_model = "models/gemini-3.1-flash-live-preview"
         vad_silence = 200
 
