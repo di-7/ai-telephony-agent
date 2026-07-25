@@ -197,6 +197,32 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv(
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1eGpkYnJnZndwcGhzd2d4a2l3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDQ4MjU1NCwiZXhwIjoyMTAwMDU4NTU0fQ.JfvwYSf8S8L5TCjYc7i2jdkNKVA-SrZsYGviiA5yt7A'
 )
 
+def get_videosdk_token():
+    """Dynamically generate a valid JWT VideoSDK token on-the-fly using API Key and Secret."""
+    api_key = os.getenv("VIDEOSDK_API_KEY")
+    secret = os.getenv("VIDEOSDK_SECRET_KEY")
+    
+    # Fallback to static auth token if API key or Secret is missing
+    if not api_key or not secret or api_key.startswith('your_') or secret.startswith('your_'):
+        return os.getenv("VIDEOSDK_AUTH_TOKEN")
+        
+    try:
+        import jwt
+        import time
+        payload = {
+            'apikey': api_key,
+            'permissions': ['allow_join', 'allow_mod'],
+            'version': 2,
+            'roles': ['crawler'],
+            'iat': int(time.time()),
+            'exp': int(time.time()) + 86400  # valid for 24 hours
+        }
+        token = jwt.encode(payload, secret, algorithm='HS256')
+        return token
+    except Exception as e:
+        logging.error(f"Failed to generate dynamic VideoSDK JWT token: {e}")
+        return os.getenv("VIDEOSDK_AUTH_TOKEN")
+
 # Pending calls tracking for pairing sessions with API call requests
 PENDING_CALLS = []
 PENDING_CALLS_LOCK = threading.Lock()
@@ -412,8 +438,8 @@ def parse_videosdk_transcript_payload(wb_data):
 
 def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None):
     """Fetch live transcript directly from VideoSDK Cloud REST API."""
-    token = os.getenv("VIDEOSDK_AUTH_TOKEN")
-    if not token or token == 'your_videosdk_auth_token_here':
+    token = get_videosdk_token()
+    if not token:
         return None
         
     candidate_urls = []
@@ -442,8 +468,8 @@ def fetch_and_update_final_transcript_async(call_id, room_id):
     """Background task to poll VideoSDK API 5s after call ends to fetch finalized transcript and exact duration."""
     import time
     time.sleep(5)
-    token = os.getenv("VIDEOSDK_AUTH_TOKEN")
-    if not token or token == 'your_videosdk_auth_token_here':
+    token = get_videosdk_token()
+    if not token:
         return
         
     duration_str = '1m 15s'
@@ -659,16 +685,16 @@ class HealthHandler(BaseHTTPRequestHandler):
                 
                 logging.info(f"Received request to call: {phone_number} from {name} ({visitor_email}), business_id: {business_id}")
                 
-                videosdk_token = os.getenv("VIDEOSDK_AUTH_TOKEN")
+                videosdk_token = get_videosdk_token()
                 gateway_id = os.getenv("SIP_GATEWAY_ID")
                 resend_key = os.getenv("RESEND_API_KEY")
 
                 if not videosdk_token or not gateway_id:
-                    logging.error("Missing VIDEOSDK_AUTH_TOKEN or SIP_GATEWAY_ID in .env")
+                    logging.error("Missing VideoSDK credentials or SIP_GATEWAY_ID in environment")
                     self.send_response(500)
                     self._send_cors_headers()
                     self.end_headers()
-                    self.wfile.write(b'{"error": "Server misconfiguration. Missing API keys or Gateway ID."}')
+                    self.wfile.write(b'{"error": "Server misconfiguration. Missing API credentials or Gateway ID."}')
                     return
 
                 # --- 1. VideoSDK Outbound SIP Call API ---
