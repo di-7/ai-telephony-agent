@@ -711,7 +711,7 @@ async def start_session(context: JobContext):
     # Load dynamic configuration from dashboard settings (per business_id)
     b_id = call_entry.get('business_id') if call_entry else None
     agent_cfg = (load_agent_config_from_supabase(business_id=b_id) if b_id else load_agent_config())
-    provider = agent_cfg.get("provider", "gemini")
+    provider = agent_cfg.get("provider", "kokoro")
 
     if provider == "kokoro":
         kokoro_cfg = agent_cfg.get("kokoro") or {}

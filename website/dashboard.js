@@ -785,23 +785,19 @@ function switchDashboardTab(tabName) {
 // SUPER ADMIN CONTROL PANEL LOGIC
 // ========================================
 
-const KOKORO_GEMINI_VOICES = [
-    { value: 'Aoede', label: 'Aoede — Warm, Conversational Female (Default)' },
-    { value: 'am_adam', label: 'Adam — Deep Male (Kokoro Native)' },
-    { value: 'af_bella', label: 'Bella — Expressive Female (Kokoro Native)' },
-    { value: 'am_michael', label: 'Michael — Professional Male (Kokoro Native)' },
-    { value: 'af_heart', label: 'Heart — Warm Female (Kokoro Native)' },
-    { value: 'Callirrhoe', label: 'Callirrhoe — Clear, Expressive Female / Neutral' },
-    { value: 'Laomedeia', label: 'Laomedeia — Smooth, Melodic Female' },
-    { value: 'Leda', label: 'Leda — Warm, Professional Female' },
-    { value: 'Algenib', label: 'Algenib — Crisp, Articulate Neutral' },
-    { value: 'Fenrir', label: 'Fenrir — Deep, Smooth Male' },
-    { value: 'Charon', label: 'Charon — Professional, Authoritative Male' },
-    { value: 'Iapetus', label: 'Iapetus — Deep, Warm Male' },
-    { value: 'Gacrux', label: 'Gacrux — Resonant, Steady Male' },
-    { value: 'Sulafat', label: 'Sulafat — Expressive, Dynamic Female' },
-    { value: 'Kore', label: 'Kore — Calm, Relaxed Female' },
-    { value: 'Puck', label: 'Puck — Energetic, Playful Male' }
+const KOKORO_VOICES = [
+    { value: 'am_adam', label: 'Adam — Deep Male (US English)' },
+    { value: 'af_bella', label: 'Bella — Expressive Female (US English)' },
+    { value: 'am_michael', label: 'Michael — Professional Male (US English)' },
+    { value: 'af_heart', label: 'Heart — Warm Female (US English)' },
+    { value: 'af_nicole', label: 'Nicole — Clear Female (US English)' },
+    { value: 'af_sky', label: 'Sky — Lively Female (US English)' },
+    { value: 'af_sarah', label: 'Sarah — Warm Receptionist Female (US English)' },
+    { value: 'af_alloy', label: 'Alloy — Balanced Female (US English)' },
+    { value: 'am_echo', label: 'Echo — Smooth Male (US English)' },
+    { value: 'am_eric', label: 'Eric — Friendly Male (US English)' },
+    { value: 'bf_emma', label: 'Emma — British Female (UK English)' },
+    { value: 'bm_george', label: 'George — British Male (UK English)' }
 ];
 
 const VIDEOSDK_VOICES = [
@@ -903,7 +899,7 @@ function populateAdminVoiceOptions(provider, selectedVoice = null) {
     const voiceSelect = document.getElementById('adminVoiceSelect');
     if (!voiceSelect) return;
 
-    const voices = provider === 'videosdk' ? VIDEOSDK_VOICES : KOKORO_GEMINI_VOICES;
+    const voices = provider === 'videosdk' ? VIDEOSDK_VOICES : KOKORO_VOICES;
     voiceSelect.innerHTML = voices.map(v => 
         `<option value="${v.value}" ${selectedVoice === v.value ? 'selected' : ''}>${v.label}</option>`
     ).join('');
