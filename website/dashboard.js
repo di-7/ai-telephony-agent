@@ -576,18 +576,22 @@ function openModal(call) {
         chatList.innerHTML = transcript.map(msg => {
             const rawSpeaker = (msg.speaker || '').toLowerCase();
             const rawName = (msg.name || '').toLowerCase();
-            const isAgent = rawSpeaker === 'agent' || 
-                            rawSpeaker === 'ai' || 
-                            rawSpeaker === 'system' || 
-                            rawSpeaker === 'assistant' ||
-                            rawName.includes('agent') ||
-                            rawName.includes('sarah') ||
-                            rawName.includes('duke') ||
-                            rawName.includes('anna');
+            const callerNameClean = (name || call.caller_name || '').toLowerCase();
+
+            // Dynamic agent check — zero hardcoded names
+            const isUserRole = rawSpeaker === 'user' || rawSpeaker === 'caller' || rawSpeaker === 'customer' || (rawName && rawName === callerNameClean);
+            const isAgentRole = rawSpeaker === 'agent' || rawSpeaker === 'ai' || rawSpeaker === 'system' || rawSpeaker === 'assistant' || rawSpeaker === 'bot';
+            
+            const isAgent = isAgentRole || (!isUserRole && rawSpeaker !== '');
+
             const speakerIcon = isAgent
                 ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
                 : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
-            const speakerName = msg.name || (isAgent ? 'AI Agent' : name);
+            
+            const speakerName = isAgent 
+                ? (msg.name || 'AI Agent')
+                : (msg.name || name || 'Caller');
+
             return `
                 <div class="dash-bubble ${isAgent ? 'agent' : 'customer'}">
                     <span class="dash-bubble-speaker">${speakerIcon} ${escapeHtml(speakerName)}</span>
