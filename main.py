@@ -222,6 +222,35 @@ def get_videosdk_token():
         logging.error(f"Failed to generate dynamic VideoSDK JWT token: {e}")
         return os.getenv("VIDEOSDK_AUTH_TOKEN")
 
+def create_videosdk_room_with_transcription(token, custom_id=None):
+    """Create a new VideoSDK room with autoStartConfig enabling recording and transcription."""
+    url = "https://api.videosdk.live/v2/rooms"
+    body = {
+        "autoStartConfig": {
+            "recording": {
+                "transcription": {
+                    "enabled": True,
+                    "summary": {"enabled": True}
+                }
+            }
+        }
+    }
+    if custom_id:
+        body["customMeetingId"] = custom_id
+        
+    try:
+        req = urllib.request.Request(url, data=json_module.dumps(body).encode('utf-8'), method='POST')
+        req.add_header('Authorization', token)
+        req.add_header('Content-Type', 'application/json')
+        with urllib.request.urlopen(req) as resp:
+            resp_data = json_module.loads(resp.read().decode('utf-8'))
+            room_id = resp_data.get("roomId")
+            logging.info(f"Created VideoSDK room {room_id} with transcription enabled.")
+            return room_id
+    except Exception as e:
+        logging.error(f"Failed to create VideoSDK room with transcription: {e}")
+        return None
+
 # Pending calls tracking for pairing sessions with API call requests
 PENDING_CALLS = []
 PENDING_CALLS_LOCK = threading.Lock()
@@ -444,10 +473,12 @@ def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None):
     candidate_urls = []
     if session_id:
         candidate_urls.append(f"https://api.videosdk.live/ai/v1/realtime-transcriptions/?sessionId={session_id}")
+        candidate_urls.append(f"https://api.videosdk.live/ai/v1/post-transcriptions?sessionId={session_id}")
         candidate_urls.append(f"https://api.videosdk.live/v2/sessions/{session_id}")
     if room_id:
         candidate_urls.append(f"https://api.videosdk.live/v2/sessions?roomId={room_id}")
         candidate_urls.append(f"https://api.videosdk.live/ai/v1/realtime-transcriptions/?roomId={room_id}")
+        candidate_urls.append(f"https://api.videosdk.live/ai/v1/post-transcriptions?roomId={room_id}")
 
     for url in candidate_urls:
         try:
@@ -455,6 +486,39 @@ def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None):
             req.add_header('Authorization', token)
             with urllib.request.urlopen(req) as resp:
                 data = json_module.loads(resp.read().decode('utf-8'))
+                
+                # Check if it is a post-transcriptions response listing files
+                transcriptions = data.get('transcriptions')
+                if isinstance(transcriptions, list) and len(transcriptions) > 0:
+                    for t in transcriptions:
+                        file_paths = t.get('transcriptionFilePaths') or {}
+                        txt_url = file_paths.get('json') or file_paths.get('txt')
+                        if txt_url:
+                            try:
+                                file_req = urllib.request.Request(txt_url, method='GET')
+                                with urllib.request.urlopen(file_req) as file_resp:
+                                    content = file_resp.read().decode('utf-8')
+                                    if txt_url.endswith('.json'):
+                                        json_data = json_module.loads(content)
+                                        parsed = parse_videosdk_transcript_payload(json_data)
+                                        if parsed:
+                                            return parsed
+                                    else:
+                                        parsed = []
+                                        for line in content.split('\n'):
+                                            if ':' in line:
+                                                spk, txt = line.split(':', 1)
+                                                is_agent = any(w in spk.lower() for w in ['agent', 'ai', 'assistant', 'bot', 'system'])
+                                                parsed.append({
+                                                    'speaker': 'agent' if is_agent else 'user',
+                                                    'name': spk.strip(),
+                                                    'text': txt.strip()
+                                                })
+                                        if parsed:
+                                            return parsed
+                            except Exception as fe:
+                                logging.error(f"Failed to fetch transcript file from url {txt_url}: {fe}")
+
                 parsed = parse_videosdk_transcript_payload(data)
                 if parsed:
                     logging.info(f"Fetched {len(parsed)} transcript turns directly from VideoSDK REST API: {url}")
@@ -702,14 +766,22 @@ class HealthHandler(BaseHTTPRequestHandler):
                 provider = agent_cfg.get("provider", "gemini")
                 target_agent_id = data.get("agent_id") or agent_cfg.get("video_sdk_agent_id")
                 
+                # Pre-create a VideoSDK room with automatic recording/transcription enabled
+                import time
+                custom_meeting_id = f"{phone_number.replace('+', '')}-{int(time.time())}"
+                room_id = create_videosdk_room_with_transcription(videosdk_token, custom_meeting_id)
+                
                 call_body = {
                     "gatewayId": gateway_id,
                     "sipCallTo": phone_number
                 }
+                if room_id:
+                    call_body["destinationRoomId"] = room_id
+                    
                 if provider == "videosdk" or (target_agent_id and target_agent_id.strip() and target_agent_id.strip() != "MyTelephonyAgent"):
                     sdk_id = target_agent_id.strip() if (target_agent_id and target_agent_id.strip()) else "ag_rajwdl"
                     call_body["agentId"] = sdk_id
-                    logging.info(f"Routing call for business {business_id} to VideoSDK Cloud Agent ID: {sdk_id}")
+                    logging.info(f"Routing call for business {business_id} to VideoSDK Cloud Agent ID: {sdk_id} bridged in room {room_id}")
 
                 call_payload = json_module.dumps(call_body).encode('utf-8')
 
