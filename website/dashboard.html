@@ -423,8 +423,20 @@
                             </div>
                         </div>
 
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-top: 16px;">
+                            <div>
+                                <label class="form-label-custom">Agent Persona Name</label>
+                                <input type="text" id="cfgAgentName" class="form-control-custom" value="Sarah" placeholder="e.g. Sarah">
+                            </div>
+
+                            <div>
+                                <label class="form-label-custom">Initial Opening Greeting (spoken first)</label>
+                                <textarea id="cfgAgentGreeting" class="form-control-custom" rows="2" style="resize: vertical; font-family: inherit;" placeholder="e.g. Hi! Thanks for calling Mixup AI. How can I help you today?">Hi! Thanks for checking out our site. I'm an AI assistant. Should I have my human team reach out to schedule a full demo?</textarea>
+                            </div>
+                        </div>
+
                         <div style="margin-top: 16px;">
-                            <label class="form-label-custom">System Prompt / Instructions</label>
+                            <label class="form-label-custom">System Prompt / Receptionist Behavior Instructions</label>
                             <textarea id="cfgSystemPrompt" class="form-control-custom" rows="4" style="resize: vertical; font-family: inherit;">You are a warm, helpful sales receptionist for Mixup AI. Greet the caller nicely, answer questions naturally, and collect their name and company to schedule a demo.</textarea>
                         </div>
                     </div>

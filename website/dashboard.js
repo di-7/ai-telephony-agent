@@ -916,6 +916,16 @@ function populateConfigUI(config) {
     if (cfgPrompt && config.system_instruction) {
         cfgPrompt.value = config.system_instruction;
     }
+
+    const cfgAgentName = document.getElementById('cfgAgentName');
+    if (cfgAgentName && config.agent_name) {
+        cfgAgentName.value = config.agent_name;
+    }
+
+    const cfgAgentGreeting = document.getElementById('cfgAgentGreeting');
+    if (cfgAgentGreeting && config.greeting) {
+        cfgAgentGreeting.value = config.greeting;
+    }
 }
 
 async function saveAgentConfig() {
@@ -929,6 +939,8 @@ async function saveAgentConfig() {
     const cfgKokoroVoice = document.getElementById('cfgKokoroVoice');
     const cfgKokoroSpeed = document.getElementById('cfgKokoroSpeed');
 
+    const cfgAgentName = document.getElementById('cfgAgentName');
+    const cfgAgentGreeting = document.getElementById('cfgAgentGreeting');
     const cfgSystemPrompt = document.getElementById('cfgSystemPrompt');
 
     const rawSpeed = cfgKokoroSpeed ? parseFloat(cfgKokoroSpeed.value) : 1.0;
@@ -936,6 +948,8 @@ async function saveAgentConfig() {
 
     const payload = {
         provider: provider,
+        agent_name: cfgAgentName ? cfgAgentName.value.trim() : 'Sarah',
+        greeting: cfgAgentGreeting ? cfgAgentGreeting.value.trim() : "Hi! Thanks for checking out our site. I'm an AI assistant. Should I have my human team reach out to schedule a full demo?",
         gemini: {
             model: cfgGeminiModel ? cfgGeminiModel.value : 'models/gemini-3.1-flash-live-preview',
             voice: cfgGeminiVoice ? cfgGeminiVoice.value : 'Aoede',

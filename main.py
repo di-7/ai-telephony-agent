@@ -576,13 +576,17 @@ def start_health_server():
 
 # --- Agent definition ---
 class MyVoiceAgent(Agent):
-    def __init__(self):
-        super().__init__(
-            instructions="You are an AI assistant for Mixup. You are doing a 1-minute live demo. Your goal is to briefly take their general info (name, company) so our human team can revert back with a full demo. Keep responses extremely short and conversational. After about 50 seconds or when you have their info, wrap up by saying: That wraps up our quick demo! Our team will reach out to you soon. Thanks for your time!",
-        )
+    def __init__(self, instructions=None, greeting=None, agent_name=None):
+        self.agent_name = agent_name or "Sarah"
+        self.greeting = greeting if greeting is not None else "Hi! Thanks for checking out our site. I'm an AI assistant. Should I have my human team reach out to schedule a full demo?"
+        
+        default_inst = "You are an AI assistant for Mixup. You are doing a 1-minute live demo. Your goal is to briefly take their general info (name, company) so our human team can revert back with a full demo. Keep responses extremely short and conversational."
+        final_inst = (instructions.strip() if instructions and instructions.strip() else default_inst)
+        super().__init__(instructions=final_inst)
 
     async def on_enter(self) -> None:
-        await self.session.say("Hi! Thanks for checking out our site. I'm an AI assistant. Should I have my human team reach out to schedule a full demo?")
+        if self.greeting and self.greeting.strip():
+            await self.session.say(self.greeting.strip())
 
     async def on_exit(self) -> None:
         pass
@@ -730,8 +734,10 @@ async def start_session(context: JobContext):
             vad_silence = 200
 
     system_inst = agent_cfg.get("system_instruction", "")
+    agent_name = agent_cfg.get("agent_name", "Sarah")
+    greeting = agent_cfg.get("greeting", "Hi! Thanks for checking out our site. I'm an AI assistant. Should I have my human team reach out to schedule a full demo?")
 
-    logging.info(f"Starting agent session | provider={provider} | model={selected_model} | voice={selected_voice} | vad={vad_silence}ms")
+    logging.info(f"Starting agent session | provider={provider} | agent_name={agent_name} | model={selected_model} | voice={selected_voice} | vad={vad_silence}ms")
 
     # Configure the Gemini model for real-time voice with dynamic config settings
     model = GeminiRealtime(
@@ -769,7 +775,7 @@ async def start_session(context: JobContext):
                     if is_final:
                         speaker_role = "agent" if role == "agent" else "customer"
                         caller_name = (call_entry.get('name') if call_entry and call_entry.get('name') else "Caller")
-                        speaker_name = "Sarah (Mixup AI)" if role == "agent" else caller_name
+                        speaker_name = f"{agent_name} (Mixup AI)" if role == "agent" else caller_name
                         transcript_list.append({
                             "speaker": speaker_role,
                             "name": speaker_name,
@@ -821,14 +827,17 @@ async def start_session(context: JobContext):
                 if not any(t['text'] == text and t['speaker'] == 'agent' for t in transcript_list):
                     transcript_list.append({
                         "speaker": "agent",
-                        "name": "Sarah (Mixup AI)",
+                        "name": f"{agent_name} (Mixup AI)",
                         "text": text
                     })
                     logging.info(f"Pipeline hook captured agent turn: {text}")
         except Exception as e:
             logging.error(f"Error in on_agent_turn_end hook: {e}")
 
-    session = AgentSession(agent=MyVoiceAgent(), pipeline=pipeline)
+    session = AgentSession(
+        agent=MyVoiceAgent(instructions=system_inst, greeting=greeting, agent_name=agent_name),
+        pipeline=pipeline
+    )
 
     start_time = time.time()
 
