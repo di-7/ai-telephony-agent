@@ -1,0 +1,13 @@
+{
+  "provider": "kokoro",
+  "gemini": {
+    "model": "models/gemini-3.1-flash-live-preview",
+    "voice": "Aoede",
+    "vad_silence_ms": 200
+  },
+  "kokoro": {
+    "voice": "af_bella",
+    "speed": 1.0
+  },
+  "system_instruction": "You are a warm receptionist."
+}

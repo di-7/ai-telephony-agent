@@ -557,21 +557,44 @@ function openModal(call) {
     const chatList = document.getElementById('modalChatList');
     const transcript = call.transcript;
 
-    // Only show real transcripts — no mock data
+    // Only show real transcripts — auto-poll if call completed recently without transcript
     if (!transcript || !Array.isArray(transcript) || transcript.length === 0) {
         chatList.innerHTML = `
             <div style="text-align: center; padding: 40px 20px; color: #7a7b7c;">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; opacity: 0.4;">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
-                <p style="font-weight: 600; margin-bottom: 4px;">No transcript available</p>
-                <p style="font-size: 12px;">
+                <p style="font-weight: 600; margin-bottom: 4px; id="modalTranscriptTitle">No transcript available</p>
+                <p style="font-size: 12px;" id="modalTranscriptSubtitle">
                     ${status === 'initiated' || status === 'ringing' 
                         ? 'This call was initiated but no conversation was recorded. The call may not have been answered.' 
-                        : 'Transcript data is not available for this call.'}
+                        : 'Transcript processing... VideoSDK Cloud indexes post-call audio within 20 seconds.'}
                 </p>
             </div>
         `;
+
+        // If call was recently completed but transcript is missing, auto-poll Supabase after 5s
+        if (call.id && (status === 'completed' || status === 'ended')) {
+            setTimeout(async () => {
+                try {
+                    const { data: updated } = await supabaseClient
+                        .from('call_logs')
+                        .select('*')
+                        .eq('id', call.id)
+                        .maybeSingle();
+
+                    if (updated && Array.isArray(updated.transcript) && updated.transcript.length > 0) {
+                        call.transcript = updated.transcript;
+                        call.duration = updated.duration || call.duration;
+                        call.status = updated.status || call.status;
+                        openModal(call); // Re-render with new transcript
+                        fetchBusinessDashboardData(); // Refresh feed
+                    }
+                } catch (e) {
+                    console.warn('Auto-poll transcript error:', e);
+                }
+            }, 5000);
+        }
     } else {
         chatList.innerHTML = transcript.map(msg => {
             const rawSpeaker = (msg.speaker || '').toLowerCase();
@@ -931,6 +954,8 @@ function selectAdminEngineProvider(provider) {
     const adminRadioKokoro = document.getElementById('adminRadioKokoro');
     const adminRadioVideoSdk = document.getElementById('adminRadioVideoSdk');
     const adminVideoSdkIdWrap = document.getElementById('adminVideoSdkIdWrap');
+    const adminSecVoice = document.getElementById('adminSecVoice');
+    const adminSecIdentity = document.getElementById('adminSecIdentity');
 
     if (provider === 'videosdk') {
         if (adminCardKokoro) adminCardKokoro.classList.remove('active');
@@ -938,13 +963,16 @@ function selectAdminEngineProvider(provider) {
         if (adminRadioKokoro) adminRadioKokoro.checked = false;
         if (adminRadioVideoSdk) adminRadioVideoSdk.checked = true;
         if (adminVideoSdkIdWrap) adminVideoSdkIdWrap.style.display = 'block';
-        populateAdminVoiceOptions('videosdk');
+        if (adminSecVoice) adminSecVoice.style.display = 'none';
+        if (adminSecIdentity) adminSecIdentity.style.display = 'none';
     } else {
         if (adminCardKokoro) adminCardKokoro.classList.add('active');
         if (adminCardVideoSdk) adminCardVideoSdk.classList.remove('active');
         if (adminRadioKokoro) adminRadioKokoro.checked = true;
         if (adminRadioVideoSdk) adminRadioVideoSdk.checked = false;
         if (adminVideoSdkIdWrap) adminVideoSdkIdWrap.style.display = 'none';
+        if (adminSecVoice) adminSecVoice.style.display = 'block';
+        if (adminSecIdentity) adminSecIdentity.style.display = 'block';
         populateAdminVoiceOptions('kokoro');
     }
 }

@@ -353,12 +353,12 @@
                     </div>
                 </div>
 
-                <!-- Admin Card 3: Voice Persona Selection -->
-                <div class="dash-card" style="margin-bottom: 24px;">
+                <!-- Admin Card 3: Voice Persona Selection (Kokoro only) -->
+                <div class="dash-card" id="adminSecVoice" style="margin-bottom: 24px;">
                     <div class="dash-card-header">
                         <div>
                             <div class="dash-card-title">3. Select Voice Persona for Selected User</div>
-                            <div class="dash-card-sub">Available voice personas for the chosen engine model</div>
+                            <div class="dash-card-sub">Available voice personas for the Kokoro TTS engine model</div>
                         </div>
                     </div>
                     <div style="margin-top: 16px;">
@@ -369,8 +369,8 @@
                     </div>
                 </div>
 
-                <!-- Admin Card 4: Agent Instructions & Persona Settings -->
-                <div class="dash-card" style="margin-bottom: 24px;">
+                <!-- Admin Card 4: Agent Instructions & Persona Settings (Kokoro only) -->
+                <div class="dash-card" id="adminSecIdentity" style="margin-bottom: 24px;">
                     <div class="dash-card-header">
                         <div>
                             <div class="dash-card-title">4. Agent Identity & System Prompt</div>
@@ -394,16 +394,16 @@
                         <label class="form-label-custom">System Prompt / Receptionist Instructions</label>
                         <textarea id="adminSystemPrompt" class="form-control-custom" rows="4" style="resize: vertical; font-family: inherit;">You are a warm, helpful sales receptionist for Mixup AI. Greet the caller nicely, answer questions naturally, and collect their name and company to schedule a demo.</textarea>
                     </div>
+                </div>
 
-                    <!-- Save Action Bar -->
-                    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 16px; margin-top: 20px;">
-                        <span id="adminSaveStatus" style="font-size: 13px; font-weight: 600; color: #10b981; display: none;">
-                            User configuration attached and saved successfully!
-                        </span>
-                        <button class="btn btn-primary" onclick="saveAdminUserConfig()" style="padding: 12px 32px; font-size: 15px; font-weight: 700; background: linear-gradient(135deg, #ff5065, #ff7a59); color: white; border: none; border-radius: 100px; cursor: pointer; box-shadow: 0 4px 14px rgba(255, 80, 101, 0.3);">
-                            Save & Attach Config to User
-                        </button>
-                    </div>
+                <!-- Save Action Bar -->
+                <div style="display: flex; justify-content: flex-end; align-items: center; gap: 16px; margin-bottom: 24px;">
+                    <span id="adminSaveStatus" style="font-size: 13px; font-weight: 600; color: #10b981; display: none;">
+                        User configuration attached and saved successfully!
+                    </span>
+                    <button class="btn btn-primary" onclick="saveAdminUserConfig()" style="padding: 12px 32px; font-size: 15px; font-weight: 700; background: linear-gradient(135deg, #ff5065, #ff7a59); color: white; border: none; border-radius: 100px; cursor: pointer; box-shadow: 0 4px 14px rgba(255, 80, 101, 0.3);">
+                        Save & Attach Config to User
+                    </button>
                 </div>
             </div>
 
