@@ -816,6 +816,7 @@ const VIDEOSDK_VOICES = [
 ];
 
 async function checkAdminAccess() {
+    const navConfigBtn = document.getElementById('navConfigBtn');
     const navAdminBtn = document.getElementById('navAdminBtn');
     const saveConfigBtn = document.getElementById('saveConfigBtn');
     const adminEmailNotice = document.getElementById('adminEmailNotice');
@@ -847,23 +848,19 @@ async function checkAdminAccess() {
         adminEmailNotice.innerText = `(${currentBusiness.email})`;
     }
 
-    if (navAdminBtn) {
-        navAdminBtn.style.display = isSuperAdmin ? 'flex' : 'none';
-    }
-
-    if (!isSuperAdmin) {
-        // Non-admin users: make config tab read-only
-        if (saveConfigBtn) saveConfigBtn.style.display = 'none';
-        const cfgSaveStatus = document.getElementById('configSaveStatus');
-        if (cfgSaveStatus) {
-            cfgSaveStatus.style.display = 'inline-flex';
-            cfgSaveStatus.style.background = 'rgba(239, 68, 68, 0.1)';
-            cfgSaveStatus.style.border = '1px solid rgba(239, 68, 68, 0.3)';
-            cfgSaveStatus.style.color = '#dc2626';
-            cfgSaveStatus.innerHTML = '🔒 Managed Configuration (Read Only)';
-        }
-    } else {
+    if (isSuperAdmin) {
+        // Super Admin sees Admin Control tab and Agent Config tab
+        if (navAdminBtn) navAdminBtn.style.display = 'flex';
+        if (navConfigBtn) navConfigBtn.style.display = 'flex';
         if (saveConfigBtn) saveConfigBtn.style.display = 'inline-block';
+    } else {
+        // Normal user: HIDE configuration tabs from sidebar and page completely
+        if (navAdminBtn) navAdminBtn.style.display = 'none';
+        if (navConfigBtn) navConfigBtn.style.display = 'none';
+        if (saveConfigBtn) saveConfigBtn.style.display = 'none';
+        
+        // Switch normal user to Analytics tab
+        switchDashboardTab('analytics');
     }
 }
 
