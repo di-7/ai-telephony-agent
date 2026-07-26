@@ -1073,6 +1073,18 @@ async function onAdminTargetUserChange() {
                 const promptInput = document.getElementById('adminSystemPrompt');
                 if (promptInput) promptInput.value = cfg.system_instruction;
             }
+            if (cfg.end_call_enabled !== undefined) {
+                const endToggle = document.getElementById('adminEndCallToggle');
+                if (endToggle) endToggle.checked = !!cfg.end_call_enabled;
+            }
+            if (cfg.end_call_conditions) {
+                const condInput = document.getElementById('adminEndCallConditions');
+                if (condInput) condInput.value = cfg.end_call_conditions;
+            }
+            if (cfg.end_call_final_response) {
+                const respInput = document.getElementById('adminEndCallFinalResponse');
+                if (respInput) respInput.value = cfg.end_call_final_response;
+            }
         } else {
             selectAdminEngineProvider('kokoro');
         }
@@ -1095,6 +1107,9 @@ async function saveAdminUserConfig() {
     const agentName = document.getElementById('adminAgentName')?.value.trim() || 'Sarah';
     const greeting = document.getElementById('adminAgentGreeting')?.value.trim() || '';
     const systemPrompt = document.getElementById('adminSystemPrompt')?.value.trim() || '';
+    const endCallEnabled = document.getElementById('adminEndCallToggle')?.checked ?? true;
+    const endCallConditions = document.getElementById('adminEndCallConditions')?.value.trim() || '';
+    const endCallFinalResponse = document.getElementById('adminEndCallFinalResponse')?.value.trim() || '';
 
     const payload = {
         provider: provider,
@@ -1102,6 +1117,9 @@ async function saveAdminUserConfig() {
         agent_name: agentName,
         greeting: greeting,
         system_instruction: systemPrompt,
+        end_call_enabled: endCallEnabled,
+        end_call_conditions: endCallConditions,
+        end_call_final_response: endCallFinalResponse,
         kokoro: {
             voice: selectedVoice,
             speed: 1.0

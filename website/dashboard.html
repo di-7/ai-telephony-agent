@@ -534,6 +534,44 @@
                     </div>
                 </div>
 
+                <!-- Admin Card 5: Call Ending Settings -->
+                <div class="dash-card" id="adminSecCallEnding" style="margin-bottom: 24px;">
+                    <div class="dash-card-header" style="display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <div class="dash-card-title" style="display: flex; align-items: center; gap: 8px;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="22" y1="2" x2="2" y2="22"/></svg>
+                                5. Call Ending Settings
+                            </div>
+                            <div class="dash-card-sub">Configure end-call conditions and final agent summary message</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 13px; font-weight: 600; color: #475569;">End Call Tool</span>
+                            <label style="position: relative; display: inline-block; width: 44px; height: 24px;">
+                                <input type="checkbox" id="adminEndCallToggle" style="opacity: 0; width: 0; height: 0;" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
+                        <div>
+                            <label class="form-label-custom" style="display: flex; align-items: center; justify-content: space-between;">
+                                <span>Conditions *</span>
+                                <span style="font-size: 12px; color: #64748b; font-weight: normal;">Conditions that trigger call termination</span>
+                            </label>
+                            <textarea id="adminEndCallConditions" class="form-control-custom" rows="3" style="resize: vertical; font-family: inherit;" placeholder="End the call when the primary objective/task of the conversation has been fulfilled, when the customer confirms they have no further questions or are satisfied, or when the user says goodbye.">End the call when the primary objective/task of the conversation has been fulfilled, when the customer confirms they have no further questions or are satisfied, or when the user says goodbye.</textarea>
+                        </div>
+
+                        <div>
+                            <label class="form-label-custom" style="display: flex; align-items: center; justify-content: space-between;">
+                                <span>Final Response *</span>
+                                <span style="font-size: 12px; color: #64748b; font-weight: normal;">The message the agent says before ending the call</span>
+                            </label>
+                            <textarea id="adminEndCallFinalResponse" class="form-control-custom" rows="2" style="resize: vertical; font-family: inherit;" placeholder="Thank you for reaching out to today. I'm glad I could help! Have a wonderful day ahead, goodbye.">Thank you for reaching out to today. I'm glad I could help! Have a wonderful day ahead, goodbye.</textarea>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Save Action Bar -->
                 <div style="display: flex; justify-content: flex-end; align-items: center; gap: 16px; margin-bottom: 24px;">
                     <span id="adminSaveStatus" style="font-size: 13px; font-weight: 600; color: #10b981; display: none;">

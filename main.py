@@ -1458,17 +1458,23 @@ async def start_session(context: JobContext, custom_variables=None):
             vad_silence = int(raw_vad) if raw_vad is not None else 200
         except (ValueError, TypeError):
             vad_silence = 200
-
     system_inst = agent_cfg.get("system_instruction", "")
     agent_name = agent_cfg.get("agent_name", "Sarah")
     greeting = agent_cfg.get("greeting", "Hi! Thanks for checking out our site. I'm an AI assistant. Should I have my human team reach out to schedule a full demo?")
+
+    end_call_enabled = agent_cfg.get("end_call_enabled", True)
+    end_call_conditions = agent_cfg.get("end_call_conditions") or "End the call when the primary objective/task of the conversation has been fulfilled, when the customer confirms they have no further questions or are satisfied, or when the user says goodbye."
+    end_call_final_response = agent_cfg.get("end_call_final_response") or "Thank you for reaching out today. I'm glad I could help! Have a wonderful day ahead, goodbye."
 
     if custom_variables and isinstance(custom_variables, dict):
         var_str = "\n".join([f"- {k}: {v}" for k, v in custom_variables.items() if v])
         if var_str:
             system_inst += f"\n\n[DYNAMIC PROSPECT VARIABLES & CONTEXT FOR THIS CALL]:\n{var_str}\nUse these details naturally when speaking with the caller."
 
-    logging.info(f"Starting agent session | provider={provider} | agent_name={agent_name} | model={selected_model} | voice={selected_voice} | vad={vad_silence}ms")
+    if end_call_enabled:
+        system_inst += f"\n\n[AUTOMATIC CALL ENDING POLICY & INSTRUCTION]:\nCall Termination Conditions: {end_call_conditions}\nWhen these conditions are met or when the customer indicates they have no further questions, are satisfied, or say goodbye, speak your final farewell message ('{end_call_final_response}') and append '[END_CALL]' to the end of your response to signal session completion."
+
+    logging.info(f"Starting agent session | provider={provider} | agent_name={agent_name} | model={selected_model} | voice={selected_voice} | vad={vad_silence}ms | end_call={end_call_enabled}")
 
     # Configure the Gemini model for real-time voice with dynamic config settings
     model = GeminiRealtime(
@@ -1492,9 +1498,19 @@ async def start_session(context: JobContext, custom_variables=None):
         model._instructions = system_inst
 
     transcript_list = []
+    session_should_end_event = asyncio.Event()
+
+    def trigger_auto_end_call(delay_sec=3.5):
+        async def _end():
+            await asyncio.sleep(delay_sec)
+            session_should_end_event.set()
+        try:
+            asyncio.create_task(_end())
+        except Exception:
+            pass
 
     def on_transcription_event(data):
-        """Capture transcription events from the Gemini realtime model."""
+        """Capture transcription events from the Gemini realtime model and detect auto end-call triggers."""
         try:
             logging.info(f"RAW transcription event received: {data}")
             if isinstance(data, dict):
@@ -1503,6 +1519,7 @@ async def start_session(context: JobContext, custom_variables=None):
                 role = data.get("role", "unknown")
                 
                 if text:
+                    clean_text = text.replace('[END_CALL]', '').strip()
                     if is_final:
                         speaker_role = "agent" if role == "agent" else "customer"
                         caller_name = (call_entry.get('name') if call_entry and call_entry.get('name') else "Caller")
@@ -1510,78 +1527,48 @@ async def start_session(context: JobContext, custom_variables=None):
                         transcript_list.append({
                             "speaker": speaker_role,
                             "name": speaker_name,
-                            "text": text
+                            "text": clean_text
                         })
-                        logging.info(f"FINAL transcript [{speaker_role}]: {text}")
+                        logging.info(f"FINAL transcript [{speaker_role}]: {clean_text}")
+
+                        # Check auto end call triggers
+                        if end_call_enabled and role == "agent":
+                            text_lower = text.lower()
+                            resp_sample = (end_call_final_response.lower()[:20] if end_call_final_response else 'thank you')
+                            if '[end_call]' in text_lower or 'goodbye' in text_lower or 'have a wonderful day' in text_lower or resp_sample in text_lower:
+                                logging.info("Auto Call Ending condition detected in agent response! Scheduling session end in 3.5 seconds...")
+                                trigger_auto_end_call(delay_sec=3.5)
+
                     else:
-                        logging.debug(f"Interim transcript [{role}]: {text}")
+                        logging.debug(f"Interim transcript [{role}]: {clean_text}")
             elif isinstance(data, str) and data.strip():
-                # Some SDK versions emit plain strings
+                clean_text = data.replace('[END_CALL]', '').strip()
                 transcript_list.append({
                     "speaker": "unknown",
                     "name": "Speaker",
-                    "text": data.strip()
+                    "text": clean_text
                 })
-                logging.info(f"FINAL transcript [string]: {data.strip()}")
+                logging.info(f"FINAL transcript [string]: {clean_text}")
         except Exception as e:
             logging.error(f"Error processing transcription event: {e}", exc_info=True)
 
     # Register transcription listener on the model
     model.on("realtime_model_transcription", on_transcription_event)
 
-    pipeline = Pipeline(llm=model)
-    context._set_pipeline_internal(pipeline)
-
-    # Also register pipeline-level hooks as a fallback for transcript capture
-    @pipeline.on("on_user_turn_end")
-    def on_user_turn_end(turn_text):
-        try:
-            if turn_text and str(turn_text).strip():
-                text = str(turn_text).strip()
-                caller_name = (call_entry.get('name') if call_entry and call_entry.get('name') else "Caller")
-                # Avoid duplicates if model event already captured this
-                if not any(t['text'] == text and t['speaker'] == 'customer' for t in transcript_list):
-                    transcript_list.append({
-                        "speaker": "customer",
-                        "name": caller_name,
-                        "text": text
-                    })
-                    logging.info(f"Pipeline hook captured user turn: {text}")
-        except Exception as e:
-            logging.error(f"Error in on_user_turn_end hook: {e}")
-
-    @pipeline.on("on_agent_turn_end")
-    def on_agent_turn_end(turn_text):
-        try:
-            if turn_text and str(turn_text).strip():
-                text = str(turn_text).strip()
-                # Avoid duplicates if model event already captured this
-                if not any(t['text'] == text and t['speaker'] == 'agent' for t in transcript_list):
-                    transcript_list.append({
-                        "speaker": "agent",
-                        "name": f"AI Agent ({agent_name})",
-                        "text": text
-                    })
-                    logging.info(f"Pipeline hook captured agent turn: {text}")
-        except Exception as e:
-            logging.error(f"Error in on_agent_turn_end hook: {e}")
-
-    session = AgentSession(
-        agent=MyVoiceAgent(instructions=system_inst, greeting=greeting, agent_name=agent_name),
-        pipeline=pipeline
-    )
-
+    # Connect worker to VideoSDK room
+    session = AgentSession(model=model)
+    
     start_time = time.time()
-
     try:
-        await context.connect()
+        await session.start(context)
         logging.info("Agent connected to room. Starting session...")
-        await session.start()
-        logging.info("Agent session started. Waiting up to 60 seconds...")
         
-        # Hard limit: disconnect after 60 seconds
-        await asyncio.sleep(60)
-        logging.info("1 minute demo time limit reached. Closing session.")
+        logging.info("Agent session started. Monitoring session until completion or timeout...")
+        try:
+            await asyncio.wait_for(session_should_end_event.wait(), timeout=90.0)
+            logging.info("Auto Call Ending trigger reached. Closing call session cleanly.")
+        except asyncio.TimeoutError:
+            logging.info("90 second max call duration limit reached. Closing session.")
             
     except Exception as e:
         logging.error(f"Error during agent session: {e}", exc_info=True)
