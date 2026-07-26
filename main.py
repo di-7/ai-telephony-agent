@@ -1246,6 +1246,7 @@ async def start_session(context: JobContext):
     model.on("realtime_model_transcription", on_transcription_event)
 
     pipeline = Pipeline(llm=model)
+    context._set_pipeline_internal(pipeline)
 
     # Also register pipeline-level hooks as a fallback for transcript capture
     @pipeline.on("on_user_turn_end")
