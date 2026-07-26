@@ -423,18 +423,38 @@ def add_call_log(phone_number, name='', email='', company='', source='instant_ca
     threading.Thread(target=add_call_log_to_supabase, args=(entry,)).start()
     return entry
 
-def refine_dialogue_transcript(transcript, caller_name='Caller'):
+def get_agent_name_for_call(call_id=None, business_id=None):
+    """Retrieve configured agent_name for a given call or business from Supabase/config."""
+    b_id = business_id
+    if not b_id and call_id:
+        try:
+            url = f"{SUPABASE_URL}/rest/v1/call_logs?id=eq.{call_id}&select=business_id"
+            req = urllib.request.Request(url, headers={"apikey": SUPABASE_SERVICE_ROLE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                d = json_module.loads(resp.read().decode('utf-8'))
+                if d and len(d) > 0:
+                    b_id = d[0].get('business_id')
+        except Exception:
+            pass
+    try:
+        cfg = (load_agent_config_from_supabase(business_id=b_id) if b_id else load_agent_config()) or {}
+        name = (cfg.get("agent_name") or "Duke").strip()
+        return name if name else "Duke"
+    except Exception:
+        return "Duke"
+
+def refine_dialogue_transcript(transcript, caller_name='Caller', agent_name='Duke'):
     """Refine transcript speaker attributions and merge consecutive turns by the same speaker."""
     if not transcript or not isinstance(transcript, list):
         return transcript
 
     agent_keywords = [
-        "this is anna", "calling from", "overdue balance", "balance",
+        "this is anna", "this is duke", "calling from", "overdue balance", "balance",
         "work something out", "thank you for reaching out", "glad to help",
         "my mistake", "apologize", "have a great day", "i understand",
         "make a payment", "propose a plan", "that's great", "how much are you",
         "promising to pay", "processed?", "am i speaking with", "thanks for taking my call",
-        "how can i help"
+        "how can i help", "confirm your appointment", "cancelled your appointment"
     ]
     user_keywords = [
         "who told you my name", "my name is", "no no", "it's not",
@@ -442,6 +462,9 @@ def refine_dialogue_transcript(transcript, caller_name='Caller'):
         "we just need to set", "i need to log in", "cleaver", "audio balance",
         "how are you today"
     ]
+
+    a_name = agent_name if agent_name else 'Duke'
+    agent_display_name = f"AI Agent ({a_name})"
 
     refined_turns = []
     for i, turn in enumerate(transcript):
@@ -463,7 +486,7 @@ def refine_dialogue_transcript(transcript, caller_name='Caller'):
                     spk = 'user'
 
         c_name = caller_name if caller_name and caller_name != 'Caller' else 'Mukund Verma'
-        name = c_name if spk == 'user' else 'AI Agent (Anna)'
+        name = c_name if spk == 'user' else agent_display_name
         refined_turns.append({
             'speaker': spk,
             'name': name,
@@ -483,10 +506,13 @@ def refine_dialogue_transcript(transcript, caller_name='Caller'):
                 
     return merged
 
-def parse_videosdk_transcript_payload(wb_data, caller_name='Caller'):
+def parse_videosdk_transcript_payload(wb_data, caller_name='Caller', agent_name='Duke'):
     """Dynamically parse transcript items from VideoSDK Webhook or REST API responses."""
     if not wb_data:
         return []
+
+    a_name = agent_name if agent_name else 'Duke'
+    agent_display_name = f"AI Agent ({a_name})"
 
     raw_list = []
     if isinstance(wb_data, dict):
@@ -519,7 +545,7 @@ def parse_videosdk_transcript_payload(wb_data, caller_name='Caller'):
                     is_agent_role = not is_user_phone or any(w in speaker_val for w in ['agent', 'ai', 'assistant', 'bot', 'system', 'duke', 'anna'])
                     
                     speaker_type = 'agent' if is_agent_role else 'user'
-                    default_name = 'AI Agent (Anna)' if speaker_type == 'agent' else caller_name
+                    default_name = agent_display_name if speaker_type == 'agent' else caller_name
                     
                     parsed_transcript.append({
                         'speaker': speaker_type,
@@ -527,9 +553,9 @@ def parse_videosdk_transcript_payload(wb_data, caller_name='Caller'):
                         'text': text.strip()
                     })
     elif isinstance(raw_list, str) and raw_list.strip():
-        parsed_transcript.append({'speaker': 'agent', 'name': 'AI Agent (Anna)', 'text': raw_list.strip()})
+        parsed_transcript.append({'speaker': 'agent', 'name': agent_display_name, 'text': raw_list.strip()})
         
-    return refine_dialogue_transcript(parsed_transcript, caller_name=caller_name)
+    return refine_dialogue_transcript(parsed_transcript, caller_name=caller_name, agent_name=a_name)
 
 def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None):
     """Fetch live transcript directly from VideoSDK Cloud REST API."""
@@ -1222,7 +1248,7 @@ async def start_session(context: JobContext):
                     if is_final:
                         speaker_role = "agent" if role == "agent" else "customer"
                         caller_name = (call_entry.get('name') if call_entry and call_entry.get('name') else "Caller")
-                        speaker_name = f"{agent_name} (Mixup AI)" if role == "agent" else caller_name
+                        speaker_name = f"AI Agent ({agent_name})" if role == "agent" else caller_name
                         transcript_list.append({
                             "speaker": speaker_role,
                             "name": speaker_name,
@@ -1275,7 +1301,7 @@ async def start_session(context: JobContext):
                 if not any(t['text'] == text and t['speaker'] == 'agent' for t in transcript_list):
                     transcript_list.append({
                         "speaker": "agent",
-                        "name": f"{agent_name} (Mixup AI)",
+                        "name": f"AI Agent ({agent_name})",
                         "text": text
                     })
                     logging.info(f"Pipeline hook captured agent turn: {text}")
