@@ -200,6 +200,9 @@ CREATE TABLE IF NOT EXISTS public.scheduled_calls (
 -- Enable RLS for Scheduled Calls Table
 ALTER TABLE public.scheduled_calls ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow public select scheduled_calls" ON public.scheduled_calls;
+DROP POLICY IF EXISTS "Allow public all scheduled_calls" ON public.scheduled_calls;
+
 CREATE POLICY "Allow public select scheduled_calls" 
   ON public.scheduled_calls FOR SELECT 
   USING (true);
@@ -210,6 +213,8 @@ CREATE POLICY "Allow public all scheduled_calls"
   WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_scheduled_calls_status ON public.scheduled_calls(status, scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_scheduled_calls_business ON public.scheduled_calls(business_id);
+
 
 
 
