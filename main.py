@@ -856,6 +856,7 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     return {"success": True, "call_id": sdk_call_id, "room_id": room_id}
 
 IN_MEMORY_SCHEDULED_CALLS = []
+processed_sc_ids = set()
 
 def start_call_scheduler_loop():
     """Background daemon loop polling Supabase scheduled_calls and in-memory queue every 15s for due pending calls."""
@@ -868,6 +869,7 @@ def start_call_scheduler_loop():
                 now_iso = now_dt.isoformat()
 
                 due_calls = []
+                seen_ids = set()
 
                 # 1. Query Supabase scheduled_calls table
                 try:
@@ -880,16 +882,22 @@ def start_call_scheduler_loop():
                     with urllib.request.urlopen(req, timeout=5) as resp:
                         supa_due = json_module.loads(resp.read().decode('utf-8'))
                         if isinstance(supa_due, list):
-                            due_calls.extend(supa_due)
+                            for item in supa_due:
+                                item_id = item.get('id')
+                                if item_id and item_id not in seen_ids and item_id not in processed_sc_ids:
+                                    seen_ids.add(item_id)
+                                    due_calls.append(item)
                 except Exception:
                     pass
 
                 # 2. Check in-memory fallback queue
                 for sc in list(IN_MEMORY_SCHEDULED_CALLS):
-                    if sc.get('status') == 'pending':
+                    item_id = sc.get('id')
+                    if sc.get('status') == 'pending' and item_id not in seen_ids and item_id not in processed_sc_ids:
                         try:
                             sc_dt = datetime.fromisoformat(sc.get('scheduled_at').replace('Z', '+00:00'))
                             if sc_dt <= now_dt:
+                                seen_ids.add(item_id)
                                 due_calls.append(sc)
                         except Exception:
                             pass
@@ -898,6 +906,9 @@ def start_call_scheduler_loop():
                     logging.info(f"Scheduled Call Worker: Found {len(due_calls)} due call(s) to execute!")
                     for sc in due_calls:
                         sc_id = sc.get('id')
+                        if sc_id:
+                            processed_sc_ids.add(sc_id)
+                            
                         b_id = sc.get('business_id')
                         c_phone = sc.get('caller_phone')
                         c_name = sc.get('caller_name') or 'Scheduled Prospect'

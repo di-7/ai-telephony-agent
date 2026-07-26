@@ -1634,7 +1634,9 @@ async function submitScheduledCalls() {
             return;
         }
 
+        const scId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sc_' + Date.now());
         itemsToSchedule.push({
+            id: scId,
             business_id: bId,
             caller_name: name || 'Scheduled Prospect',
             caller_phone: phone.startsWith('+') ? phone : '+' + phone,
@@ -1655,6 +1657,7 @@ async function submitScheduledCalls() {
         }
 
         itemsToSchedule = currentBatchParsedContacts.map(c => ({
+            id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('sc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6)),
             business_id: bId,
             caller_name: c.name || 'Batch Lead',
             caller_phone: (c.phone || '').startsWith('+') ? c.phone : '+' + c.phone,
@@ -1674,20 +1677,27 @@ async function submitScheduledCalls() {
     }
 
     try {
+        let supaSuccess = false;
         // 1. Save directly to Supabase scheduled_calls table
         if (typeof supabaseClient !== 'undefined' && supabaseClient) {
             const { error } = await supabaseClient.from('scheduled_calls').insert(itemsToSchedule);
-            if (error) console.warn('Supabase scheduled_calls insert warning:', error);
+            if (!error) {
+                supaSuccess = true;
+            } else {
+                console.warn('Supabase scheduled_calls insert warning:', error);
+            }
         }
 
-        // 2. Post to backend API /api/schedule-call
-        try {
-            await fetch(getBackendUrl('/api/schedule-call'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ calls: itemsToSchedule, execute_now: isNow })
-            });
-        } catch (e) {}
+        // 2. Only post to backend API if Supabase insert failed or for instant call execution
+        if (!supaSuccess || isNow) {
+            try {
+                await fetch(getBackendUrl('/api/schedule-call'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ calls: itemsToSchedule, execute_now: isNow })
+                });
+            } catch (e) {}
+        }
 
         if (statusMsg) {
             statusMsg.style.color = '#10b981';
