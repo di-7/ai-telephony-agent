@@ -866,7 +866,7 @@ def start_call_scheduler_loop():
         while True:
             try:
                 now_dt = datetime.now(timezone.utc)
-                now_iso = now_dt.isoformat()
+                now_iso = urllib.parse.quote(now_dt.strftime('%Y-%m-%dT%H:%M:%SZ'))
 
                 due_calls = []
                 seen_ids = set()
@@ -887,8 +887,8 @@ def start_call_scheduler_loop():
                                 if item_id and item_id not in seen_ids and item_id not in processed_sc_ids:
                                     seen_ids.add(item_id)
                                     due_calls.append(item)
-                except Exception:
-                    pass
+                except Exception as se:
+                    logging.warning(f"Scheduler Supabase query warning: {se}")
 
                 # 2. Check in-memory fallback queue
                 for sc in list(IN_MEMORY_SCHEDULED_CALLS):
@@ -1643,6 +1643,9 @@ if __name__ == "__main__":
 
         # Pre-download Kokoro ONNX model files in background so call setup connects instantly
         threading.Thread(target=preload_kokoro_in_background, daemon=True).start()
+
+        # Start background scheduled call polling loop
+        start_call_scheduler_loop()
 
         # Register your custom Python agent worker with a unique ID
         options = Options(
