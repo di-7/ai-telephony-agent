@@ -1608,7 +1608,7 @@ async function submitScheduledCalls() {
             if (statusMsg) {
                 statusMsg.style.display = 'inline';
                 statusMsg.style.color = '#ef4444';
-                statusMsg.innerText = '❌ Please select both Date and Time (or check Execute Immediately).';
+                statusMsg.innerText = 'Please select both Date and Time (or check Execute Immediately).';
             }
             return;
         }
@@ -1629,7 +1629,7 @@ async function submitScheduledCalls() {
             if (statusMsg) {
                 statusMsg.style.display = 'inline';
                 statusMsg.style.color = '#ef4444';
-                statusMsg.innerText = '❌ Phone Number is required.';
+                statusMsg.innerText = 'Phone Number is required.';
             }
             return;
         }
@@ -1649,7 +1649,7 @@ async function submitScheduledCalls() {
             if (statusMsg) {
                 statusMsg.style.display = 'inline';
                 statusMsg.style.color = '#ef4444';
-                statusMsg.innerText = '❌ Please upload a valid CSV or Excel file with contact rows.';
+                statusMsg.innerText = 'Please upload a valid CSV or Excel file with contact rows.';
             }
             return;
         }
@@ -1691,7 +1691,7 @@ async function submitScheduledCalls() {
 
         if (statusMsg) {
             statusMsg.style.color = '#10b981';
-            statusMsg.innerText = `✓ Successfully scheduled ${itemsToSchedule.length} call(s)!`;
+            statusMsg.innerText = `Successfully scheduled ${itemsToSchedule.length} call(s)!`;
         }
 
         // Reset inputs
@@ -1716,7 +1716,7 @@ async function submitScheduledCalls() {
         console.error('Schedule calls error:', err);
         if (statusMsg) {
             statusMsg.style.color = '#ef4444';
-            statusMsg.innerText = '❌ Failed to schedule calls. Please try again.';
+            statusMsg.innerText = 'Failed to schedule calls. Please try again.';
         }
         if (submitBtn) submitBtn.disabled = false;
     }
