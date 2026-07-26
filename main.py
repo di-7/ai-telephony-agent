@@ -855,24 +855,46 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
 
     return {"success": True, "call_id": sdk_call_id, "room_id": room_id}
 
+IN_MEMORY_SCHEDULED_CALLS = []
+
 def start_call_scheduler_loop():
-    """Background daemon loop polling Supabase scheduled_calls every 15s for due pending calls."""
+    """Background daemon loop polling Supabase scheduled_calls and in-memory queue every 15s for due pending calls."""
     def scheduler_worker():
-        import time
+        import time, uuid
         logging.info("Background Scheduled Call Loop initialized...")
         while True:
             try:
-                now_iso = datetime.now(timezone.utc).isoformat()
-                url = f"{SUPABASE_URL}/rest/v1/scheduled_calls?status=eq.pending&scheduled_at=lte.{now_iso}&select=*"
-                headers = {
-                    'apikey': SUPABASE_SERVICE_ROLE_KEY,
-                    'Authorization': f'Bearer {SUPABASE_SERVICE_ROLE_KEY}'
-                }
-                req = urllib.request.Request(url, headers=headers)
-                with urllib.request.urlopen(req, timeout=5) as resp:
-                    due_calls = json_module.loads(resp.read().decode('utf-8'))
+                now_dt = datetime.now(timezone.utc)
+                now_iso = now_dt.isoformat()
 
-                if due_calls and isinstance(due_calls, list) and len(due_calls) > 0:
+                due_calls = []
+
+                # 1. Query Supabase scheduled_calls table
+                try:
+                    url = f"{SUPABASE_URL}/rest/v1/scheduled_calls?status=eq.pending&scheduled_at=lte.{now_iso}&select=*"
+                    headers = {
+                        'apikey': SUPABASE_SERVICE_ROLE_KEY,
+                        'Authorization': f'Bearer {SUPABASE_SERVICE_ROLE_KEY}'
+                    }
+                    req = urllib.request.Request(url, headers=headers)
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        supa_due = json_module.loads(resp.read().decode('utf-8'))
+                        if isinstance(supa_due, list):
+                            due_calls.extend(supa_due)
+                except Exception:
+                    pass
+
+                # 2. Check in-memory fallback queue
+                for sc in list(IN_MEMORY_SCHEDULED_CALLS):
+                    if sc.get('status') == 'pending':
+                        try:
+                            sc_dt = datetime.fromisoformat(sc.get('scheduled_at').replace('Z', '+00:00'))
+                            if sc_dt <= now_dt:
+                                due_calls.append(sc)
+                        except Exception:
+                            pass
+
+                if due_calls:
                     logging.info(f"Scheduled Call Worker: Found {len(due_calls)} due call(s) to execute!")
                     for sc in due_calls:
                         sc_id = sc.get('id')
@@ -883,13 +905,14 @@ def start_call_scheduler_loop():
                         c_company = sc.get('company') or ''
                         c_vars = sc.get('custom_variables') or {}
 
-                        # Mark status as calling to prevent double triggers
-                        patch_url = f"{SUPABASE_URL}/rest/v1/scheduled_calls?id=eq.{sc_id}"
-                        patch_req = urllib.request.Request(patch_url, data=json_module.dumps({'status': 'calling'}).encode('utf-8'), method='PATCH')
-                        patch_req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
-                        patch_req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
-                        patch_req.add_header('Content-Type', 'application/json')
+                        # Mark status as calling
+                        sc['status'] = 'calling'
                         try:
+                            patch_url = f"{SUPABASE_URL}/rest/v1/scheduled_calls?id=eq.{sc_id}"
+                            patch_req = urllib.request.Request(patch_url, data=json_module.dumps({'status': 'calling'}).encode('utf-8'), method='PATCH')
+                            patch_req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
+                            patch_req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
+                            patch_req.add_header('Content-Type', 'application/json')
                             urllib.request.urlopen(patch_req, timeout=5)
                         except Exception:
                             pass
@@ -904,17 +927,19 @@ def start_call_scheduler_loop():
                         )
 
                         new_status = 'completed' if res and res.get('success') else 'failed'
-                        patch_req2 = urllib.request.Request(patch_url, data=json_module.dumps({'status': new_status}).encode('utf-8'), method='PATCH')
-                        patch_req2.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
-                        patch_req2.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
-                        patch_req2.add_header('Content-Type', 'application/json')
+                        sc['status'] = new_status
                         try:
+                            patch_url2 = f"{SUPABASE_URL}/rest/v1/scheduled_calls?id=eq.{sc_id}"
+                            patch_req2 = urllib.request.Request(patch_url2, data=json_module.dumps({'status': new_status}).encode('utf-8'), method='PATCH')
+                            patch_req2.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
+                            patch_req2.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
+                            patch_req2.add_header('Content-Type', 'application/json')
                             urllib.request.urlopen(patch_req2, timeout=5)
                         except Exception:
                             pass
 
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"Scheduler worker tick error: {e}")
 
             time.sleep(15)
 
@@ -1097,6 +1122,10 @@ class HealthHandler(BaseHTTPRequestHandler):
                 execute_now = req_data.get('execute_now', False)
 
                 for c in calls_list:
+                    if 'id' not in c or not c['id']:
+                        import uuid
+                        c['id'] = str(uuid.uuid4())
+                    
                     if execute_now:
                         trigger_outbound_call(
                             phone_number=c.get('caller_phone'),
@@ -1107,6 +1136,7 @@ class HealthHandler(BaseHTTPRequestHandler):
                             custom_variables=c.get('custom_variables')
                         )
                     else:
+                        IN_MEMORY_SCHEDULED_CALLS.append(c)
                         url = f"{SUPABASE_URL}/rest/v1/scheduled_calls"
                         headers = {
                             'apikey': SUPABASE_SERVICE_ROLE_KEY,
