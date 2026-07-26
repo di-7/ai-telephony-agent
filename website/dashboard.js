@@ -1002,6 +1002,7 @@ function selectAdminEngineProvider(provider) {
     const adminVideoSdkIdWrap = document.getElementById('adminVideoSdkIdWrap');
     const adminSecVoice = document.getElementById('adminSecVoice');
     const adminSecIdentity = document.getElementById('adminSecIdentity');
+    const adminSecCallEnding = document.getElementById('adminSecCallEnding');
 
     if (provider === 'videosdk') {
         if (adminCardKokoro) adminCardKokoro.classList.remove('active');
@@ -1011,6 +1012,7 @@ function selectAdminEngineProvider(provider) {
         if (adminVideoSdkIdWrap) adminVideoSdkIdWrap.style.display = 'block';
         if (adminSecVoice) adminSecVoice.style.display = 'none';
         if (adminSecIdentity) adminSecIdentity.style.display = 'none';
+        if (adminSecCallEnding) adminSecCallEnding.style.display = 'none';
     } else {
         if (adminCardKokoro) adminCardKokoro.classList.add('active');
         if (adminCardVideoSdk) adminCardVideoSdk.classList.remove('active');
@@ -1019,6 +1021,7 @@ function selectAdminEngineProvider(provider) {
         if (adminVideoSdkIdWrap) adminVideoSdkIdWrap.style.display = 'none';
         if (adminSecVoice) adminSecVoice.style.display = 'block';
         if (adminSecIdentity) adminSecIdentity.style.display = 'block';
+        if (adminSecCallEnding) adminSecCallEnding.style.display = 'block';
         populateAdminVoiceOptions('kokoro');
     }
 }
