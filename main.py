@@ -621,7 +621,7 @@ def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None):
     return None
 
 def fetch_and_update_final_transcript_async(call_id, room_id):
-    """Background task to poll VideoSDK API every 5s for up to 60s to fetch finalized transcript and exact duration."""
+    """Background task to poll VideoSDK API for duration and only backfill transcript if missing in Supabase."""
     import time
     token = get_videosdk_token()
     if not token:
@@ -629,10 +629,23 @@ def fetch_and_update_final_transcript_async(call_id, room_id):
         
     logging.info(f"Starting async VideoSDK transcript polling loop for call_id={call_id}, room_id={room_id}...")
     
+    # Check if Supabase already has a live-captured transcript from Custom Python worker
+    has_existing_transcript = False
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/call_logs?id=eq.{call_id}&select=transcript"
+        req = urllib.request.Request(url, headers={"apikey": SUPABASE_SERVICE_ROLE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json_module.loads(resp.read().decode('utf-8'))
+            if data and len(data) > 0:
+                t = data[0].get('transcript')
+                if isinstance(t, list) and len(t) > 0:
+                    has_existing_transcript = True
+    except Exception:
+        pass
+
     for attempt in range(1, 13): # 12 attempts * 5s = 60 seconds total
         time.sleep(5)
         duration_str = '--'
-        parsed = None
 
         if room_id:
             url = f"https://api.videosdk.live/v2/sessions?roomId={room_id}"
@@ -661,12 +674,19 @@ def fetch_and_update_final_transcript_async(call_id, room_id):
             except Exception as e:
                 logging.debug(f"Async VideoSDK session duration fetch error (attempt {attempt}): {e}")
 
-        parsed = fetch_videosdk_session_transcript_from_api(room_id=room_id, session_id=call_id)
+        # If Supabase already has a live-captured Python transcript, preserve it and only update duration!
+        if has_existing_transcript:
+            if duration_str != '--':
+                update_call_log_in_supabase({'id': call_id, 'duration': duration_str})
+                logging.info(f"Updated duration ({duration_str}) for call {call_id} in Supabase (preserved live Python transcript).")
+                return
+            continue
 
+        parsed = fetch_videosdk_session_transcript_from_api(room_id=room_id, session_id=call_id)
         if parsed and len(parsed) > 0:
             final_dur = duration_str if duration_str != '--' else '1m 00s'
-            update_call_log_status_in_supabase(call_id=call_id, status='completed', duration=final_dur, sentiment='Completed', transcript=parsed)
-            logging.info(f"Successfully updated call {call_id} on attempt {attempt} with duration {final_dur} and {len(parsed)} transcript turns!")
+            update_call_log_in_supabase({'id': call_id, 'status': 'completed', 'duration': final_dur, 'sentiment': 'Completed', 'transcript': parsed})
+            logging.info(f"Successfully backfilled transcript for call {call_id} on attempt {attempt}!")
             return
         else:
             logging.debug(f"Attempt {attempt}/12: VideoSDK transcript not ready yet for call_id={call_id}")
