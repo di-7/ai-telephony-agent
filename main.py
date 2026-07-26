@@ -868,9 +868,7 @@ class HealthHandler(BaseHTTPRequestHandler):
                     logging.info(f"Routing call for business {business_id} to VideoSDK Cloud Agent ID: {sdk_id} bridged in room {room_id}")
                     is_videosdk_cloud = True
                 else:
-                    python_agent_id = os.getenv("AGENT_ID", "ag_rajwdl").strip()
-                    call_body["agentId"] = python_agent_id
-                    logging.info(f"Routing call for business {business_id} (provider={provider}) to Custom Python Worker Agent ID: {python_agent_id} bridged in room {room_id}")
+                    logging.info(f"Routing call for business {business_id} (provider={provider}) to Custom Python Worker bridged in room {room_id}")
                     is_videosdk_cloud = False
 
                 call_payload = json_module.dumps(call_body).encode('utf-8')
@@ -922,6 +920,26 @@ class HealthHandler(BaseHTTPRequestHandler):
 
                 if is_videosdk_cloud and call_entry:
                     threading.Thread(target=handle_videosdk_cloud_call_logging, args=(call_entry, agent_cfg)).start()
+                elif not is_videosdk_cloud and room_id and call_entry:
+                    def _run_custom_python_agent(r_id, token, entry):
+                        try:
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            
+                            ro = RoomOptions()
+                            ro.room_id = r_id
+                            ro.name = agent_cfg.get("agent_name", "AI Agent")
+                            
+                            ctx = JobContext(room_options=ro)
+                            ctx.videosdk_auth = token
+                            
+                            queue_pending_call(entry)
+                            logging.info(f"Connecting Custom Python Agent to VideoSDK room {r_id} for call {entry.get('id')}...")
+                            loop.run_until_complete(start_session(ctx))
+                        except Exception as e:
+                            logging.error(f"Error running Custom Python Agent in background thread: {e}", exc_info=True)
+
+                    threading.Thread(target=_run_custom_python_agent, args=(room_id, videosdk_token, call_entry), daemon=True).start()
 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
@@ -1363,7 +1381,7 @@ if __name__ == "__main__":
 
         # Register your custom Python agent worker with a unique ID
         options = Options(
-            agent_id=os.getenv("AGENT_ID", "ag_rajwdl"),  # Your custom Python agent worker ID
+            agent_id=os.getenv("AGENT_ID", "MyTelephonyAgent"),  # Your custom Python agent worker ID
             register=True,               # REQUIRED: Register with VideoSDK for telephony
             max_processes=1,             # Free tier: limited CPU/RAM, only 1 process
             num_idle_processes=0,        # Free tier RAM optimization (prevents Signal 15 OOM killer)
