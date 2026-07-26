@@ -848,7 +848,6 @@ class HealthHandler(BaseHTTPRequestHandler):
                 call_url = "https://api.videosdk.live/v2/sip/call"
                 agent_cfg = (load_agent_config_from_supabase(business_id=business_id) or load_agent_config())
                 provider = agent_cfg.get("provider", "gemini")
-                target_agent_id = data.get("agent_id") or agent_cfg.get("video_sdk_agent_id")
                 
                 # Pre-create a VideoSDK room with automatic recording/transcription enabled
                 import time
@@ -862,10 +861,17 @@ class HealthHandler(BaseHTTPRequestHandler):
                 if room_id:
                     call_body["destinationRoomId"] = room_id
                     
-                if provider == "videosdk" or (target_agent_id and target_agent_id.strip() and target_agent_id.strip() != "MyTelephonyAgent"):
-                    sdk_id = target_agent_id.strip() if (target_agent_id and target_agent_id.strip()) else "ag_rajwdl"
+                if provider == "videosdk":
+                    target_agent_id = data.get("agent_id") or agent_cfg.get("video_sdk_agent_id") or "ag_rajwdl"
+                    sdk_id = target_agent_id.strip() if target_agent_id and target_agent_id.strip() else "ag_rajwdl"
                     call_body["agentId"] = sdk_id
                     logging.info(f"Routing call for business {business_id} to VideoSDK Cloud Agent ID: {sdk_id} bridged in room {room_id}")
+                    is_videosdk_cloud = True
+                else:
+                    python_agent_id = os.getenv("AGENT_ID", "MyTelephonyAgent").strip()
+                    call_body["agentId"] = python_agent_id
+                    logging.info(f"Routing call for business {business_id} (provider={provider}) to Custom Python Worker Agent ID: {python_agent_id} bridged in room {room_id}")
+                    is_videosdk_cloud = False
 
                 call_payload = json_module.dumps(call_body).encode('utf-8')
 
@@ -914,7 +920,6 @@ class HealthHandler(BaseHTTPRequestHandler):
                 # Log the call for dashboard analytics with business_id and matching VideoSDK call_id
                 call_entry = add_call_log(phone_number, name, visitor_email, company, source='cta_form' if visitor_email else 'instant_call', business_id=business_id, custom_id=sdk_call_id)
 
-                is_videosdk_cloud = provider == "videosdk" or (target_agent_id and target_agent_id.strip() and target_agent_id.strip() != "MyTelephonyAgent")
                 if is_videosdk_cloud and call_entry:
                     threading.Thread(target=handle_videosdk_cloud_call_logging, args=(call_entry, agent_cfg)).start()
 
