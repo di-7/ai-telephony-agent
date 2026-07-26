@@ -312,11 +312,7 @@ async function fetchBusinessDashboardData() {
         });
 
         allCallLogs = logs;
-
-        updateKPIs(allCallLogs);
-        initChart(allCallLogs);
-        renderFeed(allCallLogs);
-        updateSourceBreakdown(allCallLogs);
+        applyTimeRangeFilter(selectedTimeRange);
 
     } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -742,11 +738,47 @@ function showEmptyStates() {
     if (feedEmpty) feedEmpty.style.display = 'flex';
 }
 
+let selectedTimeRange = '30d';
+
+function getFilteredCallLogs(logs, range) {
+    if (!logs || logs.length === 0) return [];
+    if (!range || range === 'all') return logs;
+
+    const now = new Date();
+    let startTime;
+
+    if (range === 'today') {
+        startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    } else if (range === '7d') {
+        startTime = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+    } else if (range === '30d') {
+        startTime = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+    } else {
+        return logs;
+    }
+
+    return logs.filter(l => {
+        const logDate = new Date(l.created_at || l.timestamp || 0);
+        return logDate >= startTime;
+    });
+}
+
+function applyTimeRangeFilter(range) {
+    selectedTimeRange = range;
+    const filtered = getFilteredCallLogs(allCallLogs, selectedTimeRange);
+    updateKPIs(filtered);
+    initChart(filtered);
+    renderFeed(filtered);
+}
+
 function setupEvents() {
     document.querySelectorAll('.dash-filter-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('.dash-filter-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
+            const target = e.currentTarget || e.target;
+            target.classList.add('active');
+            const range = target.getAttribute('data-range') || '30d';
+            applyTimeRangeFilter(range);
         });
     });
 }
@@ -781,19 +813,33 @@ function escapeHtml(text) {
 function switchDashboardTab(tabName) {
     const tabAnalytics = document.getElementById('tabAnalytics');
     const tabAdmin = document.getElementById('tabAdmin');
+    const tabSchedule = document.getElementById('tabSchedule');
     const navAnalyticsBtn = document.getElementById('navAnalyticsBtn');
+    const navScheduleBtn = document.getElementById('navScheduleBtn');
     const navConfigBtn = document.getElementById('navConfigBtn');
 
-    if (tabName === 'config' || tabName === 'admin') {
+    if (tabName === 'schedule') {
+        if (tabAnalytics) tabAnalytics.style.display = 'none';
+        if (tabAdmin) tabAdmin.style.display = 'none';
+        if (tabSchedule) tabSchedule.style.display = 'block';
+        if (navAnalyticsBtn) navAnalyticsBtn.classList.remove('active');
+        if (navScheduleBtn) navScheduleBtn.classList.add('active');
+        if (navConfigBtn) navConfigBtn.classList.remove('active');
+        loadScheduledCallsQueue();
+    } else if (tabName === 'config' || tabName === 'admin') {
         if (tabAnalytics) tabAnalytics.style.display = 'none';
         if (tabAdmin) tabAdmin.style.display = 'block';
+        if (tabSchedule) tabSchedule.style.display = 'none';
         if (navAnalyticsBtn) navAnalyticsBtn.classList.remove('active');
+        if (navScheduleBtn) navScheduleBtn.classList.remove('active');
         if (navConfigBtn) navConfigBtn.classList.add('active');
         loadAdminUserList();
     } else {
         if (tabAnalytics) tabAnalytics.style.display = 'block';
         if (tabAdmin) tabAdmin.style.display = 'none';
+        if (tabSchedule) tabSchedule.style.display = 'none';
         if (navAnalyticsBtn) navAnalyticsBtn.classList.add('active');
+        if (navScheduleBtn) navScheduleBtn.classList.remove('active');
         if (navConfigBtn) navConfigBtn.classList.remove('active');
     }
 
@@ -1385,4 +1431,390 @@ async function saveAgentConfig() {
         }
     }, 3000);
 }
+
+// ========================================
+// CALL SCHEDULING & BATCH CAMPAIGN LOGIC
+// ========================================
+
+let currentSchedMode = 'single';
+let currentBatchParsedContacts = [];
+
+function setSchedMode(mode) {
+    currentSchedMode = mode;
+    const singleBtn = document.getElementById('schedModeSingleBtn');
+    const batchBtn = document.getElementById('schedModeBatchBtn');
+    const singleForm = document.getElementById('singleLeadForm');
+    const batchForm = document.getElementById('batchUploadForm');
+
+    if (mode === 'batch') {
+        if (singleBtn) singleBtn.classList.remove('active');
+        if (batchBtn) batchBtn.classList.add('active');
+        if (singleForm) singleForm.style.display = 'none';
+        if (batchForm) batchForm.style.display = 'block';
+    } else {
+        if (singleBtn) singleBtn.classList.add('active');
+        if (batchBtn) batchBtn.classList.remove('active');
+        if (singleForm) singleForm.style.display = 'block';
+        if (batchForm) batchForm.style.display = 'none';
+    }
+}
+
+function toggleSchedNow(isNow) {
+    const dateInput = document.getElementById('schedInputDate');
+    const timeInput = document.getElementById('schedInputTime');
+    if (isNow) {
+        const now = new Date();
+        if (dateInput) {
+            dateInput.value = now.toISOString().split('T')[0];
+            dateInput.disabled = true;
+        }
+        if (timeInput) {
+            const hours = String(now.getHours()).padStart(2, '0');
+            const mins = String(now.getMinutes()).padStart(2, '0');
+            timeInput.value = `${hours}:${mins}`;
+            timeInput.disabled = true;
+        }
+    } else {
+        if (dateInput) dateInput.disabled = false;
+        if (timeInput) timeInput.disabled = false;
+    }
+}
+
+function addCustomVariableRow(key = '', val = '') {
+    const list = document.getElementById('customVarList');
+    if (!list) return;
+
+    const rowId = 'cvar_' + Math.random().toString(36).substr(2, 9);
+    const rowDiv = document.createElement('div');
+    rowDiv.id = rowId;
+    rowDiv.style.cssText = 'display: flex; gap: 10px; align-items: center;';
+
+    rowDiv.innerHTML = `
+        <input type="text" class="cvar-key" placeholder="Variable Key (e.g. appointment_date)" value="${escapeHtml(key)}" style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13px;">
+        <input type="text" class="cvar-val" placeholder="Value (e.g. Tomorrow 10am)" value="${escapeHtml(val)}" style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13px;">
+        <button type="button" onclick="document.getElementById('${rowId}').remove()" style="background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer; padding: 4px 8px;" title="Remove Variable">✕</button>
+    `;
+
+    list.appendChild(rowDiv);
+}
+
+function getCustomVariablesFromForm() {
+    const vars = {};
+    document.querySelectorAll('#customVarList > div').forEach(row => {
+        const keyInput = row.querySelector('.cvar-key');
+        const valInput = row.querySelector('.cvar-val');
+        if (keyInput && valInput) {
+            const k = keyInput.value.trim();
+            const v = valInput.value.trim();
+            if (k) vars[k] = v;
+        }
+    });
+    return vars;
+}
+
+function handleBatchFileUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+        const text = evt.target.result;
+        parseCSVOrExcelText(text, file.name);
+    };
+    reader.readAsText(file);
+}
+
+function parseCSVOrExcelText(text, fileName) {
+    const lines = text.split(/\r\n|\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) return;
+
+    const headers = lines[0].split(',').map(h => h.replace(/^["']|["']$/g, '').trim());
+    const contacts = [];
+
+    for (let i = 1; i < lines.length; i++) {
+        const rowVals = lines[i].split(',').map(v => v.replace(/^["']|["']$/g, '').trim());
+        if (rowVals.length === 0 || !rowVals.some(v => v.length > 0)) continue;
+
+        const rowObj = {};
+        const customVars = {};
+
+        headers.forEach((h, idx) => {
+            const val = rowVals[idx] || '';
+            const lowerH = h.toLowerCase();
+            if (lowerH.includes('name')) rowObj.name = val;
+            else if (lowerH.includes('phone') || lowerH.includes('mobile') || lowerH.includes('number')) rowObj.phone = val;
+            else if (lowerH.includes('email')) rowObj.email = val;
+            else if (lowerH.includes('company')) rowObj.company = val;
+            else if (h) customVars[h] = val;
+        });
+
+        if (rowObj.phone || rowObj.name) {
+            rowObj.custom_variables = customVars;
+            contacts.push(rowObj);
+        }
+    }
+
+    currentBatchParsedContacts = contacts;
+    renderBatchPreview(headers, contacts, fileName);
+}
+
+function renderBatchPreview(headers, contacts, fileName) {
+    const container = document.getElementById('batchPreviewContainer');
+    const title = document.getElementById('batchPreviewTitle');
+    const headTr = document.getElementById('batchPreviewHeader');
+    const bodyTb = document.getElementById('batchPreviewBody');
+
+    if (!container || !headTr || !bodyTb) return;
+
+    title.innerText = `Parsed ${contacts.length} Contacts from ${fileName}`;
+    headTr.innerHTML = headers.map(h => `<th style="padding: 10px 12px; font-weight: 600; color: #475569; border-bottom: 1px solid #cbd5e1;">${escapeHtml(h)}</th>`).join('');
+
+    bodyTb.innerHTML = contacts.slice(0, 50).map(c => {
+        return `<tr style="border-bottom: 1px solid #f1f5f9;">` +
+            headers.map(h => {
+                const lowerH = h.toLowerCase();
+                let val = '';
+                if (lowerH.includes('name')) val = c.name || '';
+                else if (lowerH.includes('phone')) val = c.phone || '';
+                else if (lowerH.includes('email')) val = c.email || '';
+                else if (lowerH.includes('company')) val = c.company || '';
+                else val = (c.custom_variables || {})[h] || '';
+                return `<td style="padding: 8px 12px; color: #334155;">${escapeHtml(val)}</td>`;
+            }).join('') +
+            `</tr>`;
+    }).join('');
+
+    container.style.display = 'block';
+}
+
+function clearBatchFile() {
+    currentBatchParsedContacts = [];
+    const fileInput = document.getElementById('batchFileInput');
+    const container = document.getElementById('batchPreviewContainer');
+    if (fileInput) fileInput.value = '';
+    if (container) container.style.display = 'none';
+}
+
+async function submitScheduledCalls() {
+    const statusMsg = document.getElementById('schedStatusMsg');
+    const submitBtn = document.getElementById('btnSubmitSched');
+    const isNow = document.getElementById('schedNowCheckbox')?.checked;
+
+    let scheduledAt = new Date().toISOString();
+    if (!isNow) {
+        const dateVal = document.getElementById('schedInputDate')?.value;
+        const timeVal = document.getElementById('schedInputTime')?.value;
+        if (!dateVal || !timeVal) {
+            if (statusMsg) {
+                statusMsg.style.display = 'inline';
+                statusMsg.style.color = '#ef4444';
+                statusMsg.innerText = '❌ Please select both Date and Time (or check Execute Immediately).';
+            }
+            return;
+        }
+        scheduledAt = new Date(`${dateVal}T${timeVal}`).toISOString();
+    }
+
+    let itemsToSchedule = [];
+    const bId = currentBusiness ? currentBusiness.id : null;
+
+    if (currentSchedMode === 'single') {
+        const name = document.getElementById('singleSchedName')?.value.trim();
+        const phone = document.getElementById('singleSchedPhone')?.value.trim();
+        const email = document.getElementById('singleSchedEmail')?.value.trim();
+        const company = document.getElementById('singleSchedCompany')?.value.trim();
+        const customVars = getCustomVariablesFromForm();
+
+        if (!phone) {
+            if (statusMsg) {
+                statusMsg.style.display = 'inline';
+                statusMsg.style.color = '#ef4444';
+                statusMsg.innerText = '❌ Phone Number is required.';
+            }
+            return;
+        }
+
+        itemsToSchedule.push({
+            business_id: bId,
+            caller_name: name || 'Scheduled Prospect',
+            caller_phone: phone.startsWith('+') ? phone : '+' + phone,
+            caller_email: email,
+            company: company,
+            custom_variables: customVars,
+            scheduled_at: scheduledAt,
+            status: isNow ? 'calling' : 'pending'
+        });
+    } else {
+        if (currentBatchParsedContacts.length === 0) {
+            if (statusMsg) {
+                statusMsg.style.display = 'inline';
+                statusMsg.style.color = '#ef4444';
+                statusMsg.innerText = '❌ Please upload a valid CSV or Excel file with contact rows.';
+            }
+            return;
+        }
+
+        itemsToSchedule = currentBatchParsedContacts.map(c => ({
+            business_id: bId,
+            caller_name: c.name || 'Batch Lead',
+            caller_phone: (c.phone || '').startsWith('+') ? c.phone : '+' + c.phone,
+            caller_email: c.email || '',
+            company: c.company || '',
+            custom_variables: c.custom_variables || {},
+            scheduled_at: scheduledAt,
+            status: isNow ? 'calling' : 'pending'
+        }));
+    }
+
+    if (submitBtn) submitBtn.disabled = true;
+    if (statusMsg) {
+        statusMsg.style.display = 'inline';
+        statusMsg.style.color = '#0284c7';
+        statusMsg.innerText = `Scheduling ${itemsToSchedule.length} call(s)...`;
+    }
+
+    try {
+        // 1. Save directly to Supabase scheduled_calls table
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            const { error } = await supabaseClient.from('scheduled_calls').insert(itemsToSchedule);
+            if (error) console.warn('Supabase scheduled_calls insert warning:', error);
+        }
+
+        // 2. Post to backend API /api/schedule-call
+        try {
+            await fetch(getBackendUrl('/api/schedule-call'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ calls: itemsToSchedule, execute_now: isNow })
+            });
+        } catch (e) {}
+
+        if (statusMsg) {
+            statusMsg.style.color = '#10b981';
+            statusMsg.innerText = `✓ Successfully scheduled ${itemsToSchedule.length} call(s)!`;
+        }
+
+        // Reset inputs
+        if (currentSchedMode === 'single') {
+            document.getElementById('singleSchedName').value = '';
+            document.getElementById('singleSchedPhone').value = '';
+            document.getElementById('singleSchedEmail').value = '';
+            document.getElementById('singleSchedCompany').value = '';
+            document.getElementById('customVarList').innerHTML = '';
+        } else {
+            clearBatchFile();
+        }
+
+        setTimeout(() => {
+            if (statusMsg) statusMsg.style.display = 'none';
+            if (submitBtn) submitBtn.disabled = false;
+        }, 3000);
+
+        loadScheduledCallsQueue();
+
+    } catch (err) {
+        console.error('Schedule calls error:', err);
+        if (statusMsg) {
+            statusMsg.style.color = '#ef4444';
+            statusMsg.innerText = '❌ Failed to schedule calls. Please try again.';
+        }
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
+
+async function loadScheduledCallsQueue() {
+    const tbody = document.getElementById('schedQueueTableBody');
+    const emptyState = document.getElementById('schedEmptyState');
+    if (!tbody) return;
+
+    try {
+        let items = [];
+
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            const query = supabaseClient.from('scheduled_calls').select('*').order('scheduled_at', { ascending: true });
+            if (currentBusiness && currentBusiness.id) {
+                query.eq('business_id', currentBusiness.id);
+            }
+            const { data, error } = await query;
+            if (!error && data) items = data;
+        }
+
+        if (items.length === 0) {
+            try {
+                const resp = await fetch(getBackendUrl('/api/scheduled-calls'));
+                if (resp.ok) items = await resp.json();
+            } catch (e) {}
+        }
+
+        if (!items || items.length === 0) {
+            tbody.innerHTML = '';
+            if (emptyState) emptyState.style.display = 'flex';
+            return;
+        }
+
+        if (emptyState) emptyState.style.display = 'none';
+
+        tbody.innerHTML = items.map(item => {
+            const dt = new Date(item.scheduled_at);
+            const dtStr = dt.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            
+            const varsObj = item.custom_variables || {};
+            const varsBadges = Object.keys(varsObj).map(k => `<span style="background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 4px;">${escapeHtml(k)}: ${escapeHtml(varsObj[k])}</span>`).join('') || '<span style="color: #94a3b8; font-size: 12px;">--</span>';
+
+            let statusBadge = '<span class="dash-tag-initiated">Pending</span>';
+            if (item.status === 'completed') statusBadge = '<span class="dash-tag-completed">Completed</span>';
+            else if (item.status === 'calling') statusBadge = '<span class="dash-tag-interested">Calling Now</span>';
+            else if (item.status === 'cancelled') statusBadge = '<span style="background: #fee2e2; color: #ef4444; padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 700;">Cancelled</span>';
+            else if (item.status === 'failed') statusBadge = '<span style="background: #fee2e2; color: #ef4444; padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 700;">Failed</span>';
+
+            return `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 12px 16px; font-weight: 600; color: #1e293b;">${escapeHtml(dtStr)}</td>
+                    <td style="padding: 12px 16px; font-weight: 700; color: #0f172a;">${escapeHtml(item.caller_name || 'Prospect')}</td>
+                    <td style="padding: 12px 16px; font-family: 'JetBrains Mono', monospace; color: #334155;">${escapeHtml(item.caller_phone)}</td>
+                    <td style="padding: 12px 16px;">${varsBadges}</td>
+                    <td style="padding: 12px 16px;">${statusBadge}</td>
+                    <td style="padding: 12px 16px; text-align: right;">
+                        ${item.status === 'pending' ? `
+                            <button onclick="triggerScheduledNow('${item.id}')" style="background: #10b981; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; margin-right: 6px;">Call Now</button>
+                            <button onclick="cancelScheduledCall('${item.id}')" style="background: none; border: 1px solid #cbd5e1; color: #ef4444; border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 600; cursor: pointer;">Cancel</button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error('Load scheduled calls error:', err);
+    }
+}
+
+async function triggerScheduledNow(id) {
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            await supabaseClient.from('scheduled_calls').update({ status: 'calling', scheduled_at: new Date().toISOString() }).eq('id', id);
+        }
+        await fetch(getBackendUrl('/api/trigger-scheduled-now'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id })
+        });
+        loadScheduledCallsQueue();
+    } catch (e) {}
+}
+
+async function cancelScheduledCall(id) {
+    try {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            await supabaseClient.from('scheduled_calls').update({ status: 'cancelled' }).eq('id', id);
+        }
+        await fetch(getBackendUrl('/api/scheduled-calls'), {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id })
+        });
+        loadScheduledCallsQueue();
+    } catch (e) {}
+}
+
 

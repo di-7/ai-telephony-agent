@@ -760,6 +760,169 @@ def send_team_alert(phone_number, name, email, company, resend_key):
     except Exception as e:
         logging.error(f"Failed to send team email via Resend: {e}")
 
+def trigger_outbound_call(phone_number, name="there", email="", company="", business_id=None, custom_variables=None):
+    """Core function to trigger outbound SIP call via VideoSDK & bridge custom Python worker or VideoSDK agent."""
+    if not phone_number:
+        return {"success": False, "error": "Phone number is required"}
+
+    if not phone_number.startswith('+'):
+        phone_number = '+' + phone_number
+
+    logging.info(f"Triggering outbound call: {phone_number} for {name} ({email}), business_id: {business_id}, custom_vars: {custom_variables}")
+
+    videosdk_token = get_videosdk_token()
+    gateway_id = os.getenv("SIP_GATEWAY_ID")
+    resend_key = os.getenv("RESEND_API_KEY")
+
+    if not videosdk_token or not gateway_id:
+        logging.error("Missing VideoSDK credentials or SIP_GATEWAY_ID in environment")
+        return {"success": False, "error": "Server misconfiguration. Missing API credentials or Gateway ID."}
+
+    call_url = "https://api.videosdk.live/v2/sip/call"
+    agent_cfg = (load_agent_config_from_supabase(business_id=business_id) or load_agent_config())
+    provider = agent_cfg.get("provider", "gemini")
+
+    import time
+    custom_meeting_id = f"{phone_number.replace('+', '')}-{int(time.time())}"
+    room_id = create_videosdk_room_with_transcription(videosdk_token, custom_meeting_id)
+
+    call_body = {
+        "gatewayId": gateway_id,
+        "sipCallTo": phone_number
+    }
+    if room_id:
+        call_body["destinationRoomId"] = room_id
+
+    if provider == "videosdk":
+        target_agent_id = agent_cfg.get("video_sdk_agent_id") or "ag_rajwdl"
+        sdk_id = target_agent_id.strip() if target_agent_id and target_agent_id.strip() else "ag_rajwdl"
+        call_body["agentId"] = sdk_id
+        is_videosdk_cloud = True
+    else:
+        is_videosdk_cloud = False
+
+    call_payload = json_module.dumps(call_body).encode('utf-8')
+    req = urllib.request.Request(call_url, data=call_payload, method="POST")
+    req.add_header("Authorization", str(videosdk_token))
+    req.add_header("Content-Type", "application/json")
+
+    sdk_call_id = None
+    try:
+        with urllib.request.urlopen(req) as response:
+            api_response = response.read()
+            logging.info(f"VideoSDK call triggered successfully: {api_response}")
+            try:
+                resp_json = json_module.loads(api_response.decode('utf-8'))
+                sdk_call_id = (resp_json.get("data") or {}).get("id")
+            except Exception:
+                pass
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode('utf-8')
+        logging.error(f"VideoSDK API failed with status {e.code}: {error_body}")
+        return {"success": False, "error": error_body}
+    except Exception as e:
+        logging.error(f"VideoSDK API failed: {e}")
+        return {"success": False, "error": str(e)}
+
+    # Send team alert email
+    threading.Thread(target=send_team_alert, args=(phone_number, name, email, company, resend_key)).start()
+
+    # Add call log
+    call_entry = add_call_log(phone_number, name, email, company, source='cta_form' if email else 'instant_call', business_id=business_id, custom_id=sdk_call_id)
+
+    if is_videosdk_cloud and call_entry:
+        threading.Thread(target=handle_videosdk_cloud_call_logging, args=(call_entry, agent_cfg)).start()
+    elif not is_videosdk_cloud and room_id and call_entry:
+        def _run_custom_python_agent(r_id, token, entry, vars_dict):
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+                ro = RoomOptions()
+                ro.room_id = r_id
+                ro.name = agent_cfg.get("agent_name", "AI Agent")
+
+                ctx = JobContext(room_options=ro)
+                ctx.videosdk_auth = token
+
+                queue_pending_call(entry)
+                logging.info(f"Connecting Custom Python Agent to VideoSDK room {r_id} for call {entry.get('id')}...")
+                loop.run_until_complete(start_session(ctx, custom_variables=vars_dict))
+            except Exception as e:
+                logging.error(f"Error running Custom Python Agent in background thread: {e}", exc_info=True)
+
+        threading.Thread(target=_run_custom_python_agent, args=(room_id, videosdk_token, call_entry, custom_variables), daemon=True).start()
+
+    return {"success": True, "call_id": sdk_call_id, "room_id": room_id}
+
+def start_call_scheduler_loop():
+    """Background daemon loop polling Supabase scheduled_calls every 15s for due pending calls."""
+    def scheduler_worker():
+        import time
+        logging.info("Background Scheduled Call Loop initialized...")
+        while True:
+            try:
+                now_iso = datetime.now(timezone.utc).isoformat()
+                url = f"{SUPABASE_URL}/rest/v1/scheduled_calls?status=eq.pending&scheduled_at=lte.{now_iso}&select=*"
+                headers = {
+                    'apikey': SUPABASE_SERVICE_ROLE_KEY,
+                    'Authorization': f'Bearer {SUPABASE_SERVICE_ROLE_KEY}'
+                }
+                req = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    due_calls = json_module.loads(resp.read().decode('utf-8'))
+
+                if due_calls and isinstance(due_calls, list) and len(due_calls) > 0:
+                    logging.info(f"Scheduled Call Worker: Found {len(due_calls)} due call(s) to execute!")
+                    for sc in due_calls:
+                        sc_id = sc.get('id')
+                        b_id = sc.get('business_id')
+                        c_phone = sc.get('caller_phone')
+                        c_name = sc.get('caller_name') or 'Scheduled Prospect'
+                        c_email = sc.get('caller_email') or ''
+                        c_company = sc.get('company') or ''
+                        c_vars = sc.get('custom_variables') or {}
+
+                        # Mark status as calling to prevent double triggers
+                        patch_url = f"{SUPABASE_URL}/rest/v1/scheduled_calls?id=eq.{sc_id}"
+                        patch_req = urllib.request.Request(patch_url, data=json_module.dumps({'status': 'calling'}).encode('utf-8'), method='PATCH')
+                        patch_req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
+                        patch_req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
+                        patch_req.add_header('Content-Type', 'application/json')
+                        try:
+                            urllib.request.urlopen(patch_req, timeout=5)
+                        except Exception:
+                            pass
+
+                        res = trigger_outbound_call(
+                            phone_number=c_phone,
+                            name=c_name,
+                            email=c_email,
+                            company=c_company,
+                            business_id=b_id,
+                            custom_variables=c_vars
+                        )
+
+                        new_status = 'completed' if res and res.get('success') else 'failed'
+                        patch_req2 = urllib.request.Request(patch_url, data=json_module.dumps({'status': new_status}).encode('utf-8'), method='PATCH')
+                        patch_req2.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
+                        patch_req2.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
+                        patch_req2.add_header('Content-Type', 'application/json')
+                        try:
+                            urllib.request.urlopen(patch_req2, timeout=5)
+                        except Exception:
+                            pass
+
+            except Exception:
+                pass
+
+            time.sleep(15)
+
+    threading.Thread(target=scheduler_worker, daemon=True).start()
+
+# Start background scheduler thread
+start_call_scheduler_loop()
+
 # --- Health check server (keeps Render free tier alive) ---
 class HealthHandler(BaseHTTPRequestHandler):
     def _send_cors_headers(self):
@@ -782,6 +945,24 @@ class HealthHandler(BaseHTTPRequestHandler):
             self.end_headers()
             logs = load_call_logs()
             self.wfile.write(json_module.dumps(logs).encode())
+        elif self.path.startswith('/api/scheduled-calls'):
+            try:
+                url = f"{SUPABASE_URL}/rest/v1/scheduled_calls?select=*&order=scheduled_at.asc"
+                headers = {'apikey': SUPABASE_SERVICE_ROLE_KEY, 'Authorization': f'Bearer {SUPABASE_SERVICE_ROLE_KEY}'}
+                s_req = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(s_req) as resp:
+                    data = resp.read()
+                    self.send_response(200)
+                    self._send_cors_headers()
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(data)
+            except Exception as e:
+                self.send_response(200)
+                self._send_cors_headers()
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(b'[]')
         elif self.path == '/api/analytics':
             self.send_response(200)
             self._send_cors_headers()
@@ -817,6 +998,34 @@ class HealthHandler(BaseHTTPRequestHandler):
             self._send_cors_headers()
             self.end_headers()
 
+    def do_DELETE(self):
+        if self.path.startswith('/api/scheduled-calls'):
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length) if content_length > 0 else b'{}'
+            try:
+                data = json_module.loads(post_data.decode('utf-8'))
+                sc_id = data.get('id')
+                if sc_id:
+                    patch_url = f"{SUPABASE_URL}/rest/v1/scheduled_calls?id=eq.{sc_id}"
+                    patch_req = urllib.request.Request(patch_url, data=json_module.dumps({'status': 'cancelled'}).encode('utf-8'), method='PATCH')
+                    patch_req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
+                    patch_req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
+                    patch_req.add_header('Content-Type', 'application/json')
+                    try:
+                        urllib.request.urlopen(patch_req)
+                    except Exception:
+                        pass
+                self.send_response(200)
+                self._send_cors_headers()
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(b'{"status":"success"}')
+            except Exception as e:
+                self.send_response(400)
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json_module.dumps({"error": str(e)}).encode())
+
     def do_OPTIONS(self):
         self.send_response(200, "OK")
         self._send_cors_headers()
@@ -843,7 +1052,6 @@ class HealthHandler(BaseHTTPRequestHandler):
         elif self.path == '/api/make-call':
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
-            
             try:
                 data = json_module.loads(post_data)
                 phone_number = data.get("to_number", "").strip()
@@ -851,133 +1059,117 @@ class HealthHandler(BaseHTTPRequestHandler):
                 visitor_email = data.get("email", "")
                 company = data.get("company", "")
                 business_id = data.get("business_id", None)
-                
-                # Ensure E.164 format (must start with +)
-                if phone_number and not phone_number.startswith('+'):
-                    phone_number = '+' + phone_number
-                
-                logging.info(f"Received request to call: {phone_number} from {name} ({visitor_email}), business_id: {business_id}")
-                
-                videosdk_token = get_videosdk_token()
-                gateway_id = os.getenv("SIP_GATEWAY_ID")
-                resend_key = os.getenv("RESEND_API_KEY")
+                custom_vars = data.get("custom_variables", None)
 
-                if not videosdk_token or not gateway_id:
-                    logging.error("Missing VideoSDK credentials or SIP_GATEWAY_ID in environment")
-                    self.send_response(500)
+                res = trigger_outbound_call(
+                    phone_number=phone_number,
+                    name=name,
+                    email=visitor_email,
+                    company=company,
+                    business_id=business_id,
+                    custom_variables=custom_vars
+                )
+
+                if res.get("success"):
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
                     self._send_cors_headers()
                     self.end_headers()
-                    self.wfile.write(b'{"error": "Server misconfiguration. Missing API credentials or Gateway ID."}')
-                    return
-
-                # --- 1. VideoSDK Outbound SIP Call API ---
-                call_url = "https://api.videosdk.live/v2/sip/call"
-                agent_cfg = (load_agent_config_from_supabase(business_id=business_id) or load_agent_config())
-                provider = agent_cfg.get("provider", "gemini")
-                
-                # Pre-create a VideoSDK room with automatic recording/transcription enabled
-                import time
-                custom_meeting_id = f"{phone_number.replace('+', '')}-{int(time.time())}"
-                room_id = create_videosdk_room_with_transcription(videosdk_token, custom_meeting_id)
-                
-                call_body = {
-                    "gatewayId": gateway_id,
-                    "sipCallTo": phone_number
-                }
-                if room_id:
-                    call_body["destinationRoomId"] = room_id
-                    
-                if provider == "videosdk":
-                    target_agent_id = data.get("agent_id") or agent_cfg.get("video_sdk_agent_id") or "ag_rajwdl"
-                    sdk_id = target_agent_id.strip() if target_agent_id and target_agent_id.strip() else "ag_rajwdl"
-                    call_body["agentId"] = sdk_id
-                    logging.info(f"Routing call for business {business_id} to VideoSDK Cloud Agent ID: {sdk_id} bridged in room {room_id}")
-                    is_videosdk_cloud = True
+                    self.wfile.write(json_module.dumps({"status": "success", "message": f"Calling {phone_number}..."}).encode())
                 else:
-                    logging.info(f"Routing call for business {business_id} (provider={provider}) to Custom Python Worker bridged in room {room_id}")
-                    is_videosdk_cloud = False
-
-                call_payload = json_module.dumps(call_body).encode('utf-8')
-
-                req = urllib.request.Request(call_url, data=call_payload, method="POST")
-                req.add_header("Authorization", str(videosdk_token))
-                req.add_header("Content-Type", "application/json")
-
-                try:
-                    with urllib.request.urlopen(req) as response:
-                        api_response = response.read()
-                        logging.info(f"VideoSDK call triggered successfully: {api_response}")
-                        try:
-                            resp_json = json_module.loads(api_response.decode('utf-8'))
-                            sdk_call_id = (resp_json.get("data") or {}).get("id")
-                        except Exception:
-                            sdk_call_id = None
-                except urllib.error.HTTPError as e:
-                    error_body = e.read().decode('utf-8')
-                    logging.error(f"VideoSDK API failed with status {e.code}: {error_body}")
-                    
                     self.send_response(400)
-                    self._send_cors_headers()
                     self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    
-                    if e.code == 400 and "unverified" in error_body.lower():
-                        error_msg = {"error": "This number is unverified. Please verify it in your VideoSDK dashboard or upgrade your account."}
-                    else:
-                        error_msg = {"error": f"Call failed: {error_body}"}
-                    
-                    self.wfile.write(json_module.dumps(error_msg).encode())
-                    return
-                except urllib.error.URLError as e:
-                    logging.error(f"VideoSDK API failed: {e}")
-                    self.send_response(500)
                     self._send_cors_headers()
-                    self.send_header('Content-Type', 'application/json')
                     self.end_headers()
-                    self.wfile.write(json_module.dumps({"error": "Network error occurred"}).encode())
-                    return
-                    
-                # Send team alert email immediately
-                email_thread = threading.Thread(target=send_team_alert, args=(phone_number, name, visitor_email, company, resend_key))
-                email_thread.start()
-
-                # Log the call for dashboard analytics with business_id and matching VideoSDK call_id
-                call_entry = add_call_log(phone_number, name, visitor_email, company, source='cta_form' if visitor_email else 'instant_call', business_id=business_id, custom_id=sdk_call_id)
-
-                if is_videosdk_cloud and call_entry:
-                    threading.Thread(target=handle_videosdk_cloud_call_logging, args=(call_entry, agent_cfg)).start()
-                elif not is_videosdk_cloud and room_id and call_entry:
-                    def _run_custom_python_agent(r_id, token, entry):
-                        try:
-                            loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(loop)
-                            
-                            ro = RoomOptions()
-                            ro.room_id = r_id
-                            ro.name = agent_cfg.get("agent_name", "AI Agent")
-                            
-                            ctx = JobContext(room_options=ro)
-                            ctx.videosdk_auth = token
-                            
-                            queue_pending_call(entry)
-                            logging.info(f"Connecting Custom Python Agent to VideoSDK room {r_id} for call {entry.get('id')}...")
-                            loop.run_until_complete(start_session(ctx))
-                        except Exception as e:
-                            logging.error(f"Error running Custom Python Agent in background thread: {e}", exc_info=True)
-
-                    threading.Thread(target=_run_custom_python_agent, args=(room_id, videosdk_token, call_entry), daemon=True).start()
-
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self._send_cors_headers()
-                self.end_headers()
-                
-                response_data = {"status": "success", "message": f"Calling {phone_number}..."}
-                self.wfile.write(json_module.dumps(response_data).encode())
-
+                    self.wfile.write(json_module.dumps({"error": res.get("error", "Call failed")}).encode())
             except Exception as e:
                 logging.error(f"Failed to parse request: {e}")
                 self.send_response(400)
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(b'{"error": "Invalid request body"}')
+        elif self.path == '/api/schedule-call':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                req_data = json_module.loads(post_data.decode('utf-8'))
+                calls_list = req_data.get('calls') or []
+                execute_now = req_data.get('execute_now', False)
+
+                for c in calls_list:
+                    if execute_now:
+                        trigger_outbound_call(
+                            phone_number=c.get('caller_phone'),
+                            name=c.get('caller_name'),
+                            email=c.get('caller_email'),
+                            company=c.get('company'),
+                            business_id=c.get('business_id'),
+                            custom_variables=c.get('custom_variables')
+                        )
+                    else:
+                        url = f"{SUPABASE_URL}/rest/v1/scheduled_calls"
+                        headers = {
+                            'apikey': SUPABASE_SERVICE_ROLE_KEY,
+                            'Authorization': f'Bearer {SUPABASE_SERVICE_ROLE_KEY}',
+                            'Content-Type': 'application/json'
+                        }
+                        sc_payload = json_module.dumps(c).encode('utf-8')
+                        s_req = urllib.request.Request(url, data=sc_payload, method='POST', headers=headers)
+                        try:
+                            urllib.request.urlopen(s_req)
+                        except Exception as se:
+                            logging.warning(f"Error saving scheduled call to Supabase: {se}")
+
+                self.send_response(200)
+                self._send_cors_headers()
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json_module.dumps({"status": "success", "scheduled_count": len(calls_list)}).encode())
+            except Exception as e:
+                self.send_response(400)
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json_module.dumps({"error": str(e)}).encode())
+        elif self.path == '/api/trigger-scheduled-now':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                req_data = json_module.loads(post_data.decode('utf-8'))
+                sc_id = req_data.get('id')
+                if sc_id:
+                    url = f"{SUPABASE_URL}/rest/v1/scheduled_calls?id=eq.{sc_id}&select=*"
+                    headers = {'apikey': SUPABASE_SERVICE_ROLE_KEY, 'Authorization': f'Bearer {SUPABASE_SERVICE_ROLE_KEY}'}
+                    s_req = urllib.request.Request(url, headers=headers)
+                    with urllib.request.urlopen(s_req) as resp:
+                        data = json_module.loads(resp.read().decode('utf-8'))
+                        if data and len(data) > 0:
+                            sc = data[0]
+                            trigger_outbound_call(
+                                phone_number=sc.get('caller_phone'),
+                                name=sc.get('caller_name'),
+                                email=sc.get('caller_email'),
+                                company=sc.get('company'),
+                                business_id=sc.get('business_id'),
+                                custom_variables=sc.get('custom_variables')
+                            )
+                            patch_url = f"{SUPABASE_URL}/rest/v1/scheduled_calls?id=eq.{sc_id}"
+                            patch_req = urllib.request.Request(patch_url, data=json_module.dumps({'status': 'completed'}).encode('utf-8'), method='PATCH')
+                            patch_req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
+                            patch_req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
+                            patch_req.add_header('Content-Type', 'application/json')
+                            try:
+                                urllib.request.urlopen(patch_req)
+                            except Exception:
+                                pass
+                self.send_response(200)
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(b'{"status":"success"}')
+            except Exception as e:
+                self.send_response(400)
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(json_module.dumps({"error": str(e)}).encode())
                 self._send_cors_headers()
                 self.end_headers()
         elif self.path == '/api/webhook':
@@ -1156,7 +1348,7 @@ def synthesize_kokoro_speech(text: str, voice: str = "am_adam", speed: float = 1
         logging.error(f"Error in Kokoro ONNX speech synthesis: {e}")
         return b""
 
-async def start_session(context: JobContext):
+async def start_session(context: JobContext, custom_variables=None):
     # Try in-memory queue first (works when same process), then fall back to Supabase query
     call_entry = pop_recent_pending_call()
     if call_entry:
@@ -1209,6 +1401,11 @@ async def start_session(context: JobContext):
     system_inst = agent_cfg.get("system_instruction", "")
     agent_name = agent_cfg.get("agent_name", "Sarah")
     greeting = agent_cfg.get("greeting", "Hi! Thanks for checking out our site. I'm an AI assistant. Should I have my human team reach out to schedule a full demo?")
+
+    if custom_variables and isinstance(custom_variables, dict):
+        var_str = "\n".join([f"- {k}: {v}" for k, v in custom_variables.items() if v])
+        if var_str:
+            system_inst += f"\n\n[DYNAMIC PROSPECT VARIABLES & CONTEXT FOR THIS CALL]:\n{var_str}\nUse these details naturally when speaking with the caller."
 
     logging.info(f"Starting agent session | provider={provider} | agent_name={agent_name} | model={selected_model} | voice={selected_voice} | vad={vad_silence}ms")
 

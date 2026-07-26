@@ -181,3 +181,35 @@ VALUES ('dukeindustries7@gmail.com', 'super_admin')
 ON CONFLICT (email) DO UPDATE SET role = 'super_admin';
 
 
+-- ================================================================
+-- 11. Create Scheduled Calls Table (Queue for Scheduled & Batch AI Calls)
+-- ================================================================
+CREATE TABLE IF NOT EXISTS public.scheduled_calls (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id UUID REFERENCES public.businesses(id) ON DELETE CASCADE,
+  caller_name TEXT,
+  caller_phone TEXT NOT NULL,
+  caller_email TEXT,
+  company TEXT,
+  custom_variables JSONB DEFAULT '{}'::jsonb,
+  scheduled_at TIMESTAMPTZ NOT NULL,
+  status TEXT DEFAULT 'pending', -- pending, calling, completed, failed, cancelled
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS for Scheduled Calls Table
+ALTER TABLE public.scheduled_calls ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public select scheduled_calls" 
+  ON public.scheduled_calls FOR SELECT 
+  USING (true);
+
+CREATE POLICY "Allow public all scheduled_calls" 
+  ON public.scheduled_calls FOR ALL 
+  USING (true)
+  WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_scheduled_calls_status ON public.scheduled_calls(status, scheduled_at);
+
+
+
