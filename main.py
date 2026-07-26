@@ -868,7 +868,7 @@ class HealthHandler(BaseHTTPRequestHandler):
                     logging.info(f"Routing call for business {business_id} to VideoSDK Cloud Agent ID: {sdk_id} bridged in room {room_id}")
                     is_videosdk_cloud = True
                 else:
-                    python_agent_id = os.getenv("AGENT_ID", "MyTelephonyAgent").strip()
+                    python_agent_id = os.getenv("AGENT_ID", "ag_rajwdl").strip()
                     call_body["agentId"] = python_agent_id
                     logging.info(f"Routing call for business {business_id} (provider={provider}) to Custom Python Worker Agent ID: {python_agent_id} bridged in room {room_id}")
                     is_videosdk_cloud = False
@@ -1363,7 +1363,7 @@ if __name__ == "__main__":
 
         # Register your custom Python agent worker with a unique ID
         options = Options(
-            agent_id=os.getenv("AGENT_ID", "MyTelephonyAgent"),  # Your custom Python agent worker ID
+            agent_id=os.getenv("AGENT_ID", "ag_rajwdl"),  # Your custom Python agent worker ID
             register=True,               # REQUIRED: Register with VideoSDK for telephony
             max_processes=1,             # Free tier: limited CPU/RAM, only 1 process
             num_idle_processes=0,        # Free tier RAM optimization (prevents Signal 15 OOM killer)
