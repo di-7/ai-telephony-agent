@@ -192,11 +192,8 @@ def save_agent_config(config_data):
     save_agent_config_to_supabase(config_data)
 
 # --- Supabase Configuration ---
-SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://zuxjdbrgfwpphswgxkiw.supabase.co')
-SUPABASE_SERVICE_ROLE_KEY = os.getenv(
-    'SUPABASE_SERVICE_ROLE_KEY',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1eGpkYnJnZndwcGhzd2d4a2l3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDQ4MjU1NCwiZXhwIjoyMTAwMDU4NTU0fQ.JfvwYSf8S8L5TCjYc7i2jdkNKVA-SrZsYGviiA5yt7A'
-)
+SUPABASE_URL = os.getenv('SUPABASE_URL', '')
+SUPABASE_SERVICE_ROLE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY', '')
 
 def get_videosdk_token():
     """Dynamically generate a valid JWT VideoSDK token on-the-fly using API Key and Secret."""
