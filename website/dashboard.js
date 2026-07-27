@@ -1381,7 +1381,7 @@ async function saveAgentConfig() {
         agent_name: cfgAgentName ? cfgAgentName.value.trim() : 'Sarah',
         greeting: cfgAgentGreeting ? cfgAgentGreeting.value.trim() : "Hi! Thanks for checking out our site. I'm an AI assistant. Should I have my human team reach out to schedule a full demo?",
         gemini: {
-            model: cfgGeminiModel ? cfgGeminiModel.value : 'models/gemini-3.1-flash-live-preview',
+            model: cfgGeminiModel ? cfgGeminiModel.value : 'gemini-2.0-flash-exp',
             voice: cfgGeminiVoice ? cfgGeminiVoice.value : 'Aoede',
             vad_silence_ms: cfgGeminiVad ? parseInt(cfgGeminiVad.value, 10) : 200
         },

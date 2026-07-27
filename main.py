@@ -65,7 +65,7 @@ CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'agent_co
 DEFAULT_AGENT_CONFIG = {
     "provider": "gemini",
     "gemini": {
-        "model": "models/gemini-3.1-flash-live-preview",
+        "model": "gemini-2.0-flash-exp",
         "voice": "Aoede",
         "vad_silence_ms": 200
     },
@@ -1414,6 +1414,58 @@ def synthesize_kokoro_speech(text: str, voice: str = "am_adam", speed: float = 1
         logging.error(f"Error in Kokoro ONNX speech synthesis: {e}")
         return b""
 
+from videosdk.agents.stt import STT, STTResponse, SpeechEventType, SpeechData
+import wave
+import io
+try:
+    from groq import Groq
+except ImportError:
+    Groq = None
+
+def pcm_to_wav(pcm_data: bytes, sample_rate: int = 16000, num_channels: int = 1, sample_width: int = 2) -> bytes:
+    buf = io.BytesIO()
+    with wave.open(buf, 'wb') as wf:
+        wf.setnchannels(num_channels)
+        wf.setsampwidth(sample_width)
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm_data)
+    return buf.getvalue()
+
+class GroqWhisperSTT(STT):
+    """Groq Whisper-large-v3-turbo Speech-to-Text Engine for VideoSDK Agent"""
+    def __init__(self, api_key: typing.Optional[str] = None, model: str = "whisper-large-v3-turbo", sample_rate: int = 16000):
+        super().__init__()
+        self.api_key = api_key or os.getenv("GROQ_API_KEY")
+        self.model = model
+        self.sample_rate = sample_rate
+        self.client = Groq(api_key=self.api_key) if (Groq and self.api_key) else None
+        if self.client:
+            logging.info(f"Groq Whisper STT initialized | Model={self.model}")
+
+    async def process_audio(self, audio_frames: bytes, language: typing.Optional[str] = None, **kwargs: typing.Any) -> None:
+        if not audio_frames or not self.client:
+            return
+        try:
+            wav_bytes = pcm_to_wav(audio_frames, sample_rate=self.sample_rate)
+            def _transcribe():
+                return self.client.audio.transcriptions.create(
+                    file=("speech.wav", wav_bytes),
+                    model=self.model,
+                    temperature=0,
+                    response_format="verbose_json",
+                )
+            transcription = await asyncio.to_thread(_transcribe)
+            text = getattr(transcription, "text", "").strip()
+            if text and self._transcript_callback:
+                logging.info(f"Groq Whisper STT output: '{text}'")
+                response = STTResponse(
+                    event_type=SpeechEventType.FINAL,
+                    data=SpeechData(text=text)
+                )
+                await self._transcript_callback(response)
+        except Exception as e:
+            logging.error(f"Error in Groq Whisper STT processing: {e}")
+
 class KokoroTTS(TTS):
     """Native 82M Kokoro ONNX Text-to-Speech Engine for VideoSDK Agent"""
     def __init__(self, voice: str = "am_adam", speed: float = 1.0, sample_rate: int = 24000):
@@ -1534,7 +1586,7 @@ async def start_session(context: JobContext, custom_variables=None):
         logging.info(f"Kokoro 82M ONNX Engine Active | Voice={kokoro_voice} | Speed={speed}x | Agent={agent_name}")
 
         model = GeminiRealtime(
-            model="models/gemini-3.1-flash-live-preview",
+            model="gemini-2.0-flash-exp",
             api_key=os.getenv("GOOGLE_API_KEY"),
             config=GeminiLiveConfig(
                 response_modalities=["AUDIO"],
@@ -1549,7 +1601,9 @@ async def start_session(context: JobContext, custom_variables=None):
             )
         )
         tts = KokoroTTS(voice=kokoro_voice, speed=speed)
-        pipeline = Pipeline(llm=model, tts=tts, realtime_config=RealtimeConfig(mode="hybrid_tts"))
+        groq_key = os.getenv("GROQ_API_KEY")
+        stt = GroqWhisperSTT(api_key=groq_key, model="whisper-large-v3-turbo") if groq_key else None
+        pipeline = Pipeline(stt=stt, llm=model, tts=tts, realtime_config=RealtimeConfig(mode="hybrid_tts"))
 
         async def gemma_llm_stream_hook(text_stream):
             # Consume Gemini's text stream to let it finish
@@ -1565,7 +1619,7 @@ async def start_session(context: JobContext, custom_variables=None):
             if not user_message:
                 user_message = "Hello"
 
-            # Query gemma-4-26b-a4b-it
+            # Query Gemma model (gemma-4-26b-a4b-it)
             from google import genai
             client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
             
@@ -1617,7 +1671,7 @@ async def start_session(context: JobContext, custom_variables=None):
     else:
         gemini_cfg = agent_cfg.get("gemini") or {}
         selected_voice = gemini_cfg.get("voice") or "Aoede"
-        selected_model = gemini_cfg.get("model") or "models/gemini-3.1-flash-live-preview"
+        selected_model = gemini_cfg.get("model") or "gemini-2.0-flash-exp"
         raw_vad = gemini_cfg.get("vad_silence_ms")
         try:
             vad_silence = int(raw_vad) if raw_vad is not None else 200

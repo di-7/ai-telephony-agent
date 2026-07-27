@@ -4,3 +4,4 @@ python-dotenv
 resend
 kokoro-onnx
 soundfile
+groq

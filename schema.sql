@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS public.agent_configs (
   config JSONB NOT NULL DEFAULT '{
     "provider": "gemini",
     "gemini": {
-      "model": "models/gemini-3.1-flash-live-preview",
+      "model": "gemini-2.0-flash-exp",
       "voice": "Aoede",
       "vad_silence_ms": 200
     },
