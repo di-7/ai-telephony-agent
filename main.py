@@ -8,9 +8,12 @@ import urllib.error
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from videosdk.agents import Agent, AgentSession, Pipeline, JobContext, RoomOptions, WorkerJob, Options
 from videosdk.agents.job import _set_current_job_context
+from videosdk.agents.pipeline import RealtimeConfig
+from videosdk.agents.tts import TTS, FlushMarker
 from videosdk.plugins.google import GeminiRealtime, GeminiLiveConfig
 from google.genai.types import RealtimeInputConfig, AutomaticActivityDetection, EndSensitivity, StartSensitivity
 from dotenv import load_dotenv
+import typing
 import os
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -1411,6 +1414,66 @@ def synthesize_kokoro_speech(text: str, voice: str = "am_adam", speed: float = 1
         logging.error(f"Error in Kokoro ONNX speech synthesis: {e}")
         return b""
 
+class KokoroTTS(TTS):
+    """Native 82M Kokoro ONNX Text-to-Speech Engine for VideoSDK Agent"""
+    def __init__(self, voice: str = "am_adam", speed: float = 1.0, sample_rate: int = 24000):
+        super().__init__(sample_rate=sample_rate, num_channels=1)
+        self.voice = voice
+        self.speed = speed
+        self._interrupted = False
+        self._first_chunk_sent = False
+
+    async def interrupt(self) -> None:
+        self._interrupted = True
+        if self.audio_track and hasattr(self.audio_track, 'interrupt'):
+            self.audio_track.interrupt()
+
+    async def synthesize(
+        self,
+        text: typing.Union[typing.AsyncIterator[typing.Union[str, FlushMarker]], str],
+        **kwargs: typing.Any
+    ) -> None:
+        if not self.audio_track:
+            return
+        self._interrupted = False
+        self._first_chunk_sent = False
+
+        full_text = ""
+        if isinstance(text, str):
+            full_text = text
+        else:
+            async for chunk in text:
+                if self._interrupted:
+                    break
+                if isinstance(chunk, str):
+                    full_text += chunk
+
+        clean_text = full_text.strip()
+        if not clean_text or self._interrupted:
+            return
+
+        logging.info(f"Synthesizing Kokoro 82M ONNX speech (voice={self.voice}, speed={self.speed}x): '{clean_text}'")
+        wav_bytes = synthesize_kokoro_speech(clean_text, voice=self.voice, speed=self.speed)
+        if not wav_bytes or self._interrupted:
+            return
+
+        # Strip 44-byte WAV header if present to get raw 16-bit PCM
+        pcm_bytes = wav_bytes[44:] if len(wav_bytes) > 44 and wav_bytes[:4] == b'RIFF' else wav_bytes
+
+        chunk_size = 960
+        for i in range(0, len(pcm_bytes), chunk_size):
+            if self._interrupted:
+                return
+            chunk = pcm_bytes[i:i + chunk_size]
+            if len(chunk) < chunk_size and len(chunk) > 0:
+                chunk += b'\x00' * (chunk_size - len(chunk))
+            if len(chunk) == chunk_size:
+                if not self._first_chunk_sent and self._first_audio_callback:
+                    self._first_chunk_sent = True
+                    await self._first_audio_callback()
+                asyncio.create_task(self.audio_track.add_new_bytes(chunk))
+                await asyncio.sleep(0.001)
+
 async def start_session(context: JobContext, custom_variables=None):
     # Try in-memory queue first (works when same process), then fall back to Supabase query
     call_entry = pop_recent_pending_call()
@@ -1430,36 +1493,6 @@ async def start_session(context: JobContext, custom_variables=None):
     agent_cfg = (load_agent_config_from_supabase(business_id=b_id) if b_id else load_agent_config())
     provider = agent_cfg.get("provider", "kokoro")
 
-    if provider == "kokoro":
-        kokoro_cfg = agent_cfg.get("kokoro") or {}
-        kokoro_voice = kokoro_cfg.get("voice") or "am_adam"
-        raw_speed = kokoro_cfg.get("speed")
-        try:
-            speed = float(raw_speed) if raw_speed is not None else 1.0
-        except (ValueError, TypeError):
-            speed = 1.0
-        
-        selected_model = "models/gemini-3.1-flash-live-preview"
-        vad_silence = 200
-
-        # Map Kokoro voice IDs to streaming personas:
-        KOKORO_PERSONA_MAP = {
-            "am_adam": "Fenrir",      # Adam Male -> Deep Male
-            "am_michael": "Charon",   # Michael Male -> Professional Male
-            "af_heart": "Aoede",      # Heart Female -> Warm Female
-            "af_bella": "Sulafat"     # Bella Female -> Expressive Female
-        }
-        selected_voice = KOKORO_PERSONA_MAP.get(kokoro_voice, "Fenrir" if "am_" in str(kokoro_voice) else "Aoede")
-        logging.info(f"Kokoro Engine Active | Voice={kokoro_voice} -> Streaming Voice={selected_voice} | Speed={speed}x")
-    else:
-        gemini_cfg = agent_cfg.get("gemini") or {}
-        selected_voice = gemini_cfg.get("voice") or "Aoede"
-        selected_model = gemini_cfg.get("model") or "models/gemini-3.1-flash-live-preview"
-        raw_vad = gemini_cfg.get("vad_silence_ms")
-        try:
-            vad_silence = int(raw_vad) if raw_vad is not None else 200
-        except (ValueError, TypeError):
-            vad_silence = 200
     system_inst = agent_cfg.get("system_instruction", "")
     agent_name = agent_cfg.get("agent_name", "Sarah")
     greeting = agent_cfg.get("greeting", "Hi! Thanks for checking out our site. I'm an AI assistant. Should I have my human team reach out to schedule a full demo?")
@@ -1476,27 +1509,65 @@ async def start_session(context: JobContext, custom_variables=None):
     if end_call_enabled:
         system_inst += f"\n\n[AUTOMATIC CALL ENDING POLICY & INSTRUCTION]:\nCall Termination Conditions: {end_call_conditions}\nWhen these conditions are met or when the customer indicates they have no further questions, are satisfied, or say goodbye, speak your final farewell message ('{end_call_final_response}') and append '[END_CALL]' to the end of your response to signal session completion."
 
-    logging.info(f"Starting agent session | provider={provider} | agent_name={agent_name} | model={selected_model} | voice={selected_voice} | vad={vad_silence}ms | end_call={end_call_enabled}")
+    if provider == "kokoro":
+        kokoro_cfg = agent_cfg.get("kokoro") or {}
+        kokoro_voice = kokoro_cfg.get("voice") or "am_adam"
+        raw_speed = kokoro_cfg.get("speed")
+        try:
+            speed = float(raw_speed) if raw_speed is not None else 1.0
+        except (ValueError, TypeError):
+            speed = 1.0
+        
+        logging.info(f"Kokoro 82M ONNX Engine Active | Voice={kokoro_voice} | Speed={speed}x | Agent={agent_name}")
 
-    # Configure the Gemini model for real-time voice with dynamic config settings
-    model = GeminiRealtime(
-        model=selected_model,
-        api_key=os.getenv("GOOGLE_API_KEY"),
-        config=GeminiLiveConfig(
-            voice=selected_voice,
-            response_modalities=["AUDIO"],
-            realtime_input_config=RealtimeInputConfig(
-                automatic_activity_detection=AutomaticActivityDetection(
-                    start_of_speech_sensitivity=StartSensitivity.START_SENSITIVITY_HIGH,
-                    end_of_speech_sensitivity=EndSensitivity.END_SENSITIVITY_HIGH,
-                    prefix_padding_ms=10,
-                    silence_duration_ms=vad_silence,
+        model = GeminiRealtime(
+            model="models/gemini-3.1-flash-live-preview",
+            api_key=os.getenv("GOOGLE_API_KEY"),
+            config=GeminiLiveConfig(
+                response_modalities=["TEXT"],
+                realtime_input_config=RealtimeInputConfig(
+                    automatic_activity_detection=AutomaticActivityDetection(
+                        start_of_speech_sensitivity=StartSensitivity.START_SENSITIVITY_HIGH,
+                        end_of_speech_sensitivity=EndSensitivity.END_SENSITIVITY_HIGH,
+                        prefix_padding_ms=10,
+                        silence_duration_ms=200,
+                    )
                 )
             )
         )
-    )
+        tts = KokoroTTS(voice=kokoro_voice, speed=speed)
+        pipeline = Pipeline(llm=model, tts=tts, realtime_config=RealtimeConfig(mode="hybrid_tts"))
+    else:
+        gemini_cfg = agent_cfg.get("gemini") or {}
+        selected_voice = gemini_cfg.get("voice") or "Aoede"
+        selected_model = gemini_cfg.get("model") or "models/gemini-3.1-flash-live-preview"
+        raw_vad = gemini_cfg.get("vad_silence_ms")
+        try:
+            vad_silence = int(raw_vad) if raw_vad is not None else 200
+        except (ValueError, TypeError):
+            vad_silence = 200
 
-    # Create a concrete Agent subclass with greeting and Pipeline wrapping the realtime model
+        logging.info(f"Gemini Realtime Engine Active | Voice={selected_voice} | Model={selected_model} | Agent={agent_name}")
+
+        model = GeminiRealtime(
+            model=selected_model,
+            api_key=os.getenv("GOOGLE_API_KEY"),
+            config=GeminiLiveConfig(
+                voice=selected_voice,
+                response_modalities=["AUDIO"],
+                realtime_input_config=RealtimeInputConfig(
+                    automatic_activity_detection=AutomaticActivityDetection(
+                        start_of_speech_sensitivity=StartSensitivity.START_SENSITIVITY_HIGH,
+                        end_of_speech_sensitivity=EndSensitivity.END_SENSITIVITY_HIGH,
+                        prefix_padding_ms=10,
+                        silence_duration_ms=vad_silence,
+                    )
+                )
+            )
+        )
+        pipeline = Pipeline(llm=model)
+
+    # Create a concrete Agent subclass with greeting
     class TelephonyAgent(Agent):
         async def on_enter(self):
             """Deliver the greeting when the agent session starts."""
@@ -1506,7 +1577,6 @@ async def start_session(context: JobContext, custom_variables=None):
             pass
 
     agent = TelephonyAgent(instructions=system_inst)
-    pipeline = Pipeline(llm=model)
 
     transcript_list = []
     session_should_end_event = asyncio.Event()
