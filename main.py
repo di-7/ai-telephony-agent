@@ -1518,10 +1518,11 @@ async def start_session(context: JobContext, custom_variables=None):
         except (ValueError, TypeError):
             speed = 1.0
         
-        logging.info(f"Kokoro 82M ONNX Engine Active | Voice={kokoro_voice} | Speed={speed}x | Agent={agent_name}")
+        selected_model = kokoro_cfg.get("model") or "models/gemini-2.0-flash-exp"
+        logging.info(f"Kokoro 82M ONNX Engine Active | LLM Model={selected_model} | Voice={kokoro_voice} | Speed={speed}x | Agent={agent_name}")
 
         model = GeminiRealtime(
-            model="models/gemini-3.1-flash-live-preview",
+            model=selected_model,
             api_key=os.getenv("GOOGLE_API_KEY"),
             config=GeminiLiveConfig(
                 response_modalities=["TEXT"],
@@ -1540,7 +1541,7 @@ async def start_session(context: JobContext, custom_variables=None):
     else:
         gemini_cfg = agent_cfg.get("gemini") or {}
         selected_voice = gemini_cfg.get("voice") or "Aoede"
-        selected_model = gemini_cfg.get("model") or "models/gemini-3.1-flash-live-preview"
+        selected_model = gemini_cfg.get("model") or "models/gemini-2.0-flash-exp"
         raw_vad = gemini_cfg.get("vad_silence_ms")
         try:
             vad_silence = int(raw_vad) if raw_vad is not None else 200
