@@ -684,6 +684,7 @@ def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None, ca
     """Fetch live diarized transcript directly from VideoSDK AI Deployment & Cloud REST APIs."""
     token = get_videosdk_token()
     if not token:
+        logging.error("No VideoSDK token available")
         return None
 
     candidate_urls = []
@@ -697,18 +698,21 @@ def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None, ca
         # Try to get the session from room first
         try:
             url = f"https://api.videosdk.live/ai/v1/ai-deployment-sessions?roomId={room_id}"
+            logging.info(f"Fetching AI deployment session for room: {url}")
             req = urllib.request.Request(url, method='GET')
             req.add_header('Authorization', token)
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json_module.loads(resp.read().decode('utf-8'))
+                logging.info(f"AI deployment sessions response: {json_module.dumps(data)[:500]}")
                 data_list = data.get('data') if isinstance(data, dict) else (data if isinstance(data, list) else [])
                 if isinstance(data_list, list) and len(data_list) > 0 and isinstance(data_list[0], dict):
                     real_session_id = data_list[0].get('id') or data_list[0].get('sessionId')
                     if real_session_id:
                         logging.info(f"Found session ID {real_session_id} for room {room_id}")
                         candidate_urls.insert(0, f"https://api.videosdk.live/ai/v1/ai-deployment-sessions/{real_session_id}")
+                        candidate_urls.insert(1, f"https://api.videosdk.live/ai/v1/ai-deployment-sessions/{real_session_id}/transcripts")
         except Exception as e:
-            logging.debug(f"Could not get session from room: {e}")
+            logging.warning(f"Could not get session from room: {e}")
     
     # Add more fallback URLs
     if room_id:
@@ -717,15 +721,17 @@ def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None, ca
 
     for url in candidate_urls:
         try:
-            logging.debug(f"Trying transcript URL: {url}")
+            logging.info(f"Trying transcript URL: {url}")
             req = urllib.request.Request(url, method='GET')
             req.add_header('Authorization', token)
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json_module.loads(resp.read().decode('utf-8'))
+                logging.info(f"Response from {url}: {json_module.dumps(data)[:1000]}")
 
                 # Check for transcriptions with file paths
                 transcriptions = data.get('transcriptions') if isinstance(data, dict) else None
                 if isinstance(transcriptions, list) and len(transcriptions) > 0:
+                    logging.info(f"Found {len(transcriptions)} transcription(s)")
                     for t in transcriptions:
                         file_paths = t.get('transcriptionFilePaths') or {}
                         txt_url = file_paths.get('json') or file_paths.get('txt')
@@ -765,8 +771,10 @@ def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None, ca
                 if parsed and len(parsed) > 0:
                     logging.info(f"✅ Fetched {len(parsed)} diarized transcript turns from VideoSDK REST API: {url}")
                     return parsed
+        except urllib.error.HTTPError as e:
+            logging.warning(f"HTTP {e.code} error for {url}: {e.read().decode('utf-8')[:200]}")
         except Exception as e:
-            logging.debug(f"VideoSDK REST API transcript fetch attempt failed for {url}: {e}")
+            logging.warning(f"VideoSDK REST API transcript fetch attempt failed for {url}: {e}")
     
     logging.warning(f"Could not fetch transcript from any VideoSDK API endpoint")
     return None
