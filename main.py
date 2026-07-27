@@ -854,9 +854,7 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     # Add call log
     call_entry = add_call_log(phone_number, name, email, company, source='cta_form' if email else 'instant_call', business_id=business_id, custom_id=sdk_call_id)
 
-    if is_videosdk_cloud and call_entry:
-        threading.Thread(target=handle_videosdk_cloud_call_logging, args=(call_entry, agent_cfg)).start()
-    elif not is_videosdk_cloud and room_id and call_entry:
+    if room_id and call_entry:
         def _run_custom_python_agent(r_id, token, entry, vars_dict):
             try:
                 loop = asyncio.new_event_loop()
