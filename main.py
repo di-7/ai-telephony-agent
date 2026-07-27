@@ -1433,11 +1433,20 @@ def pcm_to_wav(pcm_data: bytes, sample_rate: int = 16000, num_channels: int = 1,
 
 class GroqWhisperSTT(STT):
     """Groq Whisper-large-v3-turbo Speech-to-Text Engine for VideoSDK Agent"""
-    def __init__(self, api_key: typing.Optional[str] = None, model: str = "whisper-large-v3-turbo", sample_rate: int = 16000):
+    def __init__(
+        self,
+        api_key: typing.Optional[str] = None,
+        model: str = "whisper-large-v3-turbo",
+        sample_rate: int = 16000,
+        transcript_list: typing.Optional[list] = None,
+        caller_name: str = "Caller"
+    ):
         super().__init__()
         self.api_key = api_key or os.getenv("GROQ_API_KEY")
         self.model = model
         self.sample_rate = sample_rate
+        self.transcript_list = transcript_list if transcript_list is not None else []
+        self.caller_name = caller_name
         self.client = Groq(api_key=self.api_key) if (Groq and self.api_key) else None
         if self.client:
             logging.info(f"Groq Whisper STT initialized | Model={self.model}")
@@ -1456,13 +1465,19 @@ class GroqWhisperSTT(STT):
                 )
             transcription = await asyncio.to_thread(_transcribe)
             text = getattr(transcription, "text", "").strip()
-            if text and self._transcript_callback:
-                logging.info(f"Groq Whisper STT output: '{text}'")
-                response = STTResponse(
-                    event_type=SpeechEventType.FINAL,
-                    data=SpeechData(text=text)
-                )
-                await self._transcript_callback(response)
+            if text:
+                logging.info(f"Groq Whisper STT output [{self.caller_name}]: '{text}'")
+                self.transcript_list.append({
+                    "speaker": "customer",
+                    "name": self.caller_name,
+                    "text": text
+                })
+                if self._transcript_callback:
+                    response = STTResponse(
+                        event_type=SpeechEventType.FINAL,
+                        data=SpeechData(text=text)
+                    )
+                    await self._transcript_callback(response)
         except Exception as e:
             logging.error(f"Error in Groq Whisper STT processing: {e}")
 
@@ -1673,7 +1688,8 @@ async def start_session(context: JobContext, custom_variables=None):
 
         groq_key = os.getenv("GROQ_API_KEY")
         if groq_key:
-            stt = GroqWhisperSTT(api_key=groq_key, model="whisper-large-v3-turbo")
+            c_name = (call_entry.get('name') if call_entry and call_entry.get('name') else "Caller")
+            stt = GroqWhisperSTT(api_key=groq_key, model="whisper-large-v3-turbo", transcript_list=transcript_list, caller_name=c_name)
             llm = GemmaLLM(
                 model_name="gemma-4-26b-a4b-it",
                 system_instruction=system_inst,
@@ -1849,8 +1865,9 @@ async def start_session(context: JobContext, custom_variables=None):
         except Exception as e:
             logging.error(f"Error processing transcription event: {e}", exc_info=True)
 
-    # Register transcription listener on the model
-    model.on("realtime_model_transcription", on_transcription_event)
+    # Register transcription listener on the model if present
+    if 'model' in locals() and model is not None and hasattr(model, "on"):
+        model.on("realtime_model_transcription", on_transcription_event)
 
     # Attach pipeline to JobContext so VideoSDKHandler gets initialized with the pipeline when connecting to room
     if hasattr(context, "_set_pipeline_internal"):
