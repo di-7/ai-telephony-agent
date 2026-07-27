@@ -7,6 +7,7 @@ import urllib.request
 import urllib.error
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from videosdk.agents import Agent, AgentSession, Pipeline, JobContext, RoomOptions, WorkerJob, Options
+from videosdk.agents.job import _set_current_job_context
 from videosdk.plugins.google import GeminiRealtime, GeminiLiveConfig
 from google.genai.types import RealtimeInputConfig, AutomaticActivityDetection, EndSensitivity, StartSensitivity
 from dotenv import load_dotenv
@@ -1494,8 +1495,9 @@ async def start_session(context: JobContext, custom_variables=None):
         )
     )
 
-    if system_inst and hasattr(model, '_instructions'):
-        model._instructions = system_inst
+    # Create Agent with system instructions and Pipeline wrapping the realtime model
+    agent = Agent(instructions=system_inst)
+    pipeline = Pipeline(llm=model)
 
     transcript_list = []
     session_should_end_event = asyncio.Event()
@@ -1555,12 +1557,22 @@ async def start_session(context: JobContext, custom_variables=None):
     # Register transcription listener on the model
     model.on("realtime_model_transcription", on_transcription_event)
 
-    # Connect worker to VideoSDK room
-    session = AgentSession(model=model)
+    # Set the current job context so AgentSession can discover it
+    _set_current_job_context(context)
+
+    # Connect to the VideoSDK room first
+    await context.connect()
+    logging.info("Connected to VideoSDK room. Waiting for participant...")
+    if context.room:
+        await context.room.wait_for_participant()
+        logging.info("Participant joined the room.")
+
+    # Create and start the agent session
+    session = AgentSession(agent=agent, pipeline=pipeline)
     
     start_time = time.time()
     try:
-        await session.start(context)
+        await session.start()
         logging.info("Agent connected to room. Starting session...")
         
         logging.info("Agent session started. Monitoring session until completion or timeout...")
