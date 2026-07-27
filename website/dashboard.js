@@ -996,42 +996,21 @@ async function loadAdminUserList() {
 }
 
 function selectAdminEngineProvider(provider) {
-    const adminCardKokoro = document.getElementById('adminCardKokoro');
-    const adminCardVideoSdk = document.getElementById('adminCardVideoSdk');
-    const adminRadioKokoro = document.getElementById('adminRadioKokoro');
-    const adminRadioVideoSdk = document.getElementById('adminRadioVideoSdk');
-    const adminVideoSdkIdWrap = document.getElementById('adminVideoSdkIdWrap');
     const adminSecVoice = document.getElementById('adminSecVoice');
     const adminSecIdentity = document.getElementById('adminSecIdentity');
     const adminSecCallEnding = document.getElementById('adminSecCallEnding');
 
-    if (provider === 'videosdk') {
-        if (adminCardKokoro) adminCardKokoro.classList.remove('active');
-        if (adminCardVideoSdk) adminCardVideoSdk.classList.add('active');
-        if (adminRadioKokoro) adminRadioKokoro.checked = false;
-        if (adminRadioVideoSdk) adminRadioVideoSdk.checked = true;
-        if (adminVideoSdkIdWrap) adminVideoSdkIdWrap.style.display = 'block';
-        if (adminSecVoice) adminSecVoice.style.display = 'none';
-        if (adminSecIdentity) adminSecIdentity.style.display = 'none';
-        if (adminSecCallEnding) adminSecCallEnding.style.display = 'none';
-    } else {
-        if (adminCardKokoro) adminCardKokoro.classList.add('active');
-        if (adminCardVideoSdk) adminCardVideoSdk.classList.remove('active');
-        if (adminRadioKokoro) adminRadioKokoro.checked = true;
-        if (adminRadioVideoSdk) adminRadioVideoSdk.checked = false;
-        if (adminVideoSdkIdWrap) adminVideoSdkIdWrap.style.display = 'none';
-        if (adminSecVoice) adminSecVoice.style.display = 'block';
-        if (adminSecIdentity) adminSecIdentity.style.display = 'block';
-        if (adminSecCallEnding) adminSecCallEnding.style.display = 'block';
-        populateAdminVoiceOptions('kokoro');
-    }
+    if (adminSecVoice) adminSecVoice.style.display = 'block';
+    if (adminSecIdentity) adminSecIdentity.style.display = 'block';
+    if (adminSecCallEnding) adminSecCallEnding.style.display = 'block';
+    populateAdminVoiceOptions('gemini');
 }
 
 function populateAdminVoiceOptions(provider, selectedVoice = null) {
     const voiceSelect = document.getElementById('adminVoiceSelect');
     if (!voiceSelect) return;
 
-    const voices = provider === 'videosdk' ? VIDEOSDK_VOICES : KOKORO_VOICES;
+    const voices = VIDEOSDK_VOICES;
     voiceSelect.innerHTML = voices.map(v => 
         `<option value="${v.value}" ${selectedVoice === v.value ? 'selected' : ''}>${v.label}</option>`
     ).join('');
@@ -1104,10 +1083,8 @@ async function saveAdminUserConfig() {
         return;
     }
 
-    const isVideoSdk = document.getElementById('adminRadioVideoSdk')?.checked;
-    const provider = isVideoSdk ? 'videosdk' : 'kokoro';
-    const videoSdkAgentId = isVideoSdk ? document.getElementById('adminVideoSdkAgentId')?.value.trim() : '';
-    const selectedVoice = document.getElementById('adminVoiceSelect')?.value || 'am_adam';
+    const provider = 'gemini';
+    const selectedVoice = document.getElementById('adminVoiceSelect')?.value || 'Aoede';
     const agentName = document.getElementById('adminAgentName')?.value.trim() || 'Sarah';
     const greeting = document.getElementById('adminAgentGreeting')?.value.trim() || '';
     const systemPrompt = document.getElementById('adminSystemPrompt')?.value.trim() || '';
@@ -1117,16 +1094,16 @@ async function saveAdminUserConfig() {
 
     const payload = {
         provider: provider,
-        video_sdk_agent_id: videoSdkAgentId,
         agent_name: agentName,
         greeting: greeting,
         system_instruction: systemPrompt,
         end_call_enabled: endCallEnabled,
         end_call_conditions: endCallConditions,
         end_call_final_response: endCallFinalResponse,
-        kokoro: {
+        gemini: {
+            model: 'gemini-2.0-flash-exp',
             voice: selectedVoice,
-            speed: 1.0
+            vad_silence_ms: 200
         }
     };
 
@@ -1357,23 +1334,16 @@ function updateVideoSdkNotice() {
 }
 
 async function saveAgentConfig() {
-    const radioKokoro = document.getElementById('radioKokoro');
-    const provider = radioKokoro && radioKokoro.checked ? 'kokoro' : 'gemini';
+    const provider = 'gemini';
 
     const cfgGeminiVoice = document.getElementById('cfgGeminiVoice');
     const cfgGeminiModel = document.getElementById('cfgGeminiModel');
     const cfgGeminiVad = document.getElementById('cfgGeminiVad');
 
-    const cfgKokoroVoice = document.getElementById('cfgKokoroVoice');
-    const cfgKokoroSpeed = document.getElementById('cfgKokoroSpeed');
-
     const cfgVideoSdkAgentId = document.getElementById('cfgVideoSdkAgentId');
     const cfgAgentName = document.getElementById('cfgAgentName');
     const cfgAgentGreeting = document.getElementById('cfgAgentGreeting');
     const cfgSystemPrompt = document.getElementById('cfgSystemPrompt');
-
-    const rawSpeed = cfgKokoroSpeed ? parseFloat(cfgKokoroSpeed.value) : 1.0;
-    const speedVal = isNaN(rawSpeed) ? 1.0 : rawSpeed;
 
     const payload = {
         provider: provider,
@@ -1384,10 +1354,6 @@ async function saveAgentConfig() {
             model: cfgGeminiModel ? cfgGeminiModel.value : 'gemini-2.0-flash-exp',
             voice: cfgGeminiVoice ? cfgGeminiVoice.value : 'Aoede',
             vad_silence_ms: cfgGeminiVad ? parseInt(cfgGeminiVad.value, 10) : 200
-        },
-        kokoro: {
-            voice: cfgKokoroVoice ? cfgKokoroVoice.value : 'am_adam',
-            speed: speedVal
         },
         system_instruction: cfgSystemPrompt ? cfgSystemPrompt.value.trim() : ''
     };

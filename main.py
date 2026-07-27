@@ -1763,139 +1763,34 @@ async def start_session(context: JobContext, custom_variables=None):
     if end_call_enabled:
         system_inst += f"\n\n[AUTOMATIC CALL ENDING POLICY & INSTRUCTION]:\nCall Termination Conditions: {end_call_conditions}\nWhen these conditions are met or when the customer indicates they have no further questions, are satisfied, or say goodbye, speak your final farewell message ('{end_call_final_response}') and append '[END_CALL]' to the end of your response to signal session completion."
 
-    if provider == "kokoro":
-        kokoro_cfg = agent_cfg.get("kokoro") or {}
-        kokoro_voice = kokoro_cfg.get("voice") or "am_adam"
-        raw_speed = kokoro_cfg.get("speed")
-        try:
-            speed = float(raw_speed) if raw_speed is not None else 1.0
-        except (ValueError, TypeError):
-            speed = 1.0
-        
-        logging.info(f"Kokoro 82M ONNX Engine Active | Voice={kokoro_voice} | Speed={speed}x | Agent={agent_name}")
+    gemini_cfg = agent_cfg.get("gemini") or {}
+    selected_voice = gemini_cfg.get("voice") or "Aoede"
+    selected_model = gemini_cfg.get("model") or "gemini-2.0-flash-exp"
+    raw_vad = gemini_cfg.get("vad_silence_ms")
+    try:
+        vad_silence = int(raw_vad) if raw_vad is not None else 200
+    except (ValueError, TypeError):
+        vad_silence = 200
 
-        groq_key = os.getenv("GROQ_API_KEY")
-        if groq_key:
-            c_name = (call_entry.get('name') if call_entry and call_entry.get('name') else "Caller")
-            stt = GroqWhisperSTT(api_key=groq_key, model="whisper-large-v3-turbo", transcript_list=transcript_list, caller_name=c_name)
-            llm = GemmaLLM(
-                model_name="gemma-4-26b-a4b-it",
-                system_instruction=system_inst,
-                transcript_list=transcript_list,
-                agent_name=agent_name,
-                end_call_enabled=end_call_enabled,
-                end_call_final_response=end_call_final_response,
-                trigger_auto_end_call_fn=trigger_auto_end_call
-            )
-            tts = KokoroTTS(voice=kokoro_voice, speed=speed)
-            vad = EnergyVAD(threshold=0.015, min_speech_duration=0.2, min_silence_duration=0.4)
-            pipeline = Pipeline(stt=stt, llm=llm, tts=tts, vad=vad)
-            logging.info("Cascade Pipeline Active: EnergyVAD + Groq Whisper STT + Gemma-4 LLM + Kokoro TTS")
-        else:
-            model = GeminiRealtime(
-                model="gemini-2.0-flash-exp",
-                api_key=os.getenv("GOOGLE_API_KEY"),
-                config=GeminiLiveConfig(
-                    response_modalities=["AUDIO"],
-                    realtime_input_config=RealtimeInputConfig(
-                        automatic_activity_detection=AutomaticActivityDetection(
-                            start_of_speech_sensitivity=StartSensitivity.START_SENSITIVITY_HIGH,
-                            end_of_speech_sensitivity=EndSensitivity.END_SENSITIVITY_HIGH,
-                            prefix_padding_ms=10,
-                            silence_duration_ms=200,
-                        )
-                    )
-                )
-            )
-            tts = KokoroTTS(voice=kokoro_voice, speed=speed)
-            pipeline = Pipeline(llm=model, tts=tts, realtime_config=RealtimeConfig(mode="hybrid_tts"))
+    logging.info(f"Gemini Realtime Engine Active | Voice={selected_voice} | Model={selected_model} | Agent={agent_name}")
 
-            async def gemma_llm_stream_hook(text_stream):
-                async for _ in text_stream:
-                    pass
-                user_message = ""
-                for turn in reversed(transcript_list):
-                    if turn.get("speaker") == "customer":
-                        user_message = turn.get("text", "")
-                        break
-                if not user_message:
-                    user_message = "Hello"
-
-                from google import genai
-                client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-                
-                history_prompts = []
-                history_prompts.append(f"System instructions: {system_inst}\n")
-                for turn in transcript_list[-6:]:
-                    speaker = "Agent" if turn.get("speaker") == "agent" else "User"
-                    history_prompts.append(f"{speaker}: {turn.get('text')}")
-                    
-                history_prompts.append(f"User: {user_message}")
-                history_prompts.append("Agent:")
-                
-                full_prompt = "\n".join(history_prompts)
-                logging.info(f"Querying gemma-4-26b-a4b-it with prompt: {full_prompt[:250]}...")
-                
-                gemma_full_response = ""
-                try:
-                    response_stream = await asyncio.to_thread(
-                        client.models.generate_content_stream,
-                        model="gemma-4-26b-a4b-it",
-                        contents=full_prompt
-                    )
-                    for chunk in response_stream:
-                        if chunk.text:
-                            gemma_full_response += chunk.text
-                            yield chunk.text
-                except Exception as e:
-                    logging.error(f"Error generating content from gemma-4: {e}")
-                    
-                if gemma_full_response:
-                    clean_text = gemma_full_response.replace('[END_CALL]', '').strip()
-                    transcript_list.append({
-                        "speaker": "agent",
-                        "name": f"AI Agent ({agent_name})",
-                        "text": clean_text
-                    })
-                    logging.info(f"FINAL transcript [agent] (Gemma-4): {clean_text}")
-                    
-                    if end_call_enabled:
-                        gemma_lower = gemma_full_response.lower()
-                        resp_sample = (end_call_final_response.lower()[:20] if end_call_final_response else 'thank you')
-                        if '[end_call]' in gemma_lower or 'goodbye' in gemma_lower or 'have a wonderful day' in gemma_lower or resp_sample in gemma_lower:
-                            logging.info("Auto Call Ending condition detected in Gemma response! Scheduling session end in 3.5 seconds...")
-                            trigger_auto_end_call(delay_sec=3.5)
-
-            pipeline.hooks._llm_stream_hook = gemma_llm_stream_hook
-    else:
-        gemini_cfg = agent_cfg.get("gemini") or {}
-        selected_voice = gemini_cfg.get("voice") or "Aoede"
-        selected_model = gemini_cfg.get("model") or "gemini-2.0-flash-exp"
-        raw_vad = gemini_cfg.get("vad_silence_ms")
-        try:
-            vad_silence = int(raw_vad) if raw_vad is not None else 200
-        except (ValueError, TypeError):
-            vad_silence = 200
-
-        logging.info(f"Gemini Realtime Engine Active | Voice={selected_voice} | Model={selected_model} | Agent={agent_name}")
-
-        model = GeminiRealtime(
-            model=selected_model,
-            api_key=os.getenv("GOOGLE_API_KEY"),
-            config=GeminiLiveConfig(
-                voice=selected_voice,
-                response_modalities=["AUDIO"],
-                realtime_input_config=RealtimeInputConfig(
-                    automatic_activity_detection=AutomaticActivityDetection(
-                        start_of_speech_sensitivity=StartSensitivity.START_SENSITIVITY_HIGH,
-                        end_of_speech_sensitivity=EndSensitivity.END_SENSITIVITY_HIGH,
-                        prefix_padding_ms=10,
-                        silence_duration_ms=vad_silence,
-                    )
+    model = GeminiRealtime(
+        model=selected_model,
+        api_key=os.getenv("GOOGLE_API_KEY"),
+        config=GeminiLiveConfig(
+            voice=selected_voice,
+            response_modalities=["AUDIO"],
+            realtime_input_config=RealtimeInputConfig(
+                automatic_activity_detection=AutomaticActivityDetection(
+                    start_of_speech_sensitivity=StartSensitivity.START_SENSITIVITY_HIGH,
+                    end_of_speech_sensitivity=EndSensitivity.END_SENSITIVITY_HIGH,
+                    prefix_padding_ms=10,
+                    silence_duration_ms=vad_silence,
                 )
             )
         )
-        pipeline = Pipeline(llm=model)
+    )
+    pipeline = Pipeline(llm=model)
 
     # Create a concrete Agent subclass with greeting
     class TelephonyAgent(Agent):
@@ -2069,9 +1964,6 @@ if __name__ == "__main__":
         # Start health check server in background thread
         health_thread = threading.Thread(target=start_health_server, daemon=True)
         health_thread.start()
-
-        # Pre-download Kokoro ONNX model files in background so call setup connects instantly
-        threading.Thread(target=preload_kokoro_in_background, daemon=True).start()
 
         # Start background scheduled call polling loop
         start_call_scheduler_loop()

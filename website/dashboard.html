@@ -450,68 +450,26 @@
                     </div>
                 </div>
 
-                <!-- Admin Card 2: Engine Selection (Kokoro vs VideoSDK Agent ID) -->
-                <div class="dash-card" style="margin-bottom: 24px;">
-                    <div class="dash-card-header">
-                        <div>
-                            <div class="dash-card-title">2. Choose Engine & Model Architecture for Selected User</div>
-                            <div class="dash-card-sub">Choose between Kokoro (Custom Python Agent) and VideoSDK (Cloud Deployed Agent ID)</div>
-                        </div>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 16px;">
-                        <!-- Option 1: Kokoro / Custom Python Agent -->
-                        <div class="model-select-card active" id="adminCardKokoro" onclick="selectAdminEngineProvider('kokoro')">
-                            <div style="display: flex; justify-content: flex-end; align-items: flex-start;">
-                                <input type="radio" name="adminEngineRadio" value="kokoro" id="adminRadioKokoro" checked style="accent-color: #ff5065; transform: scale(1.2);">
-                            </div>
-                            <h3 style="font-size: 18px; font-weight: 700; margin: 10px 0 6px 0; color: var(--color-carbon-ink);">1. Kokoro (Custom Python Agent)</h3>
-                            <p style="font-size: 13px; color: var(--color-slate); line-height: 1.5; margin: 0;">
-                                Native Python agent execution using 100% open-source Kokoro-TTS models.
-                            </p>
-                        </div>
-
-                        <!-- Option 2: VideoSDK Cloud Agent ID -->
-                        <div class="model-select-card" id="adminCardVideoSdk" onclick="selectAdminEngineProvider('videosdk')">
-                            <div style="display: flex; justify-content: flex-end; align-items: flex-start;">
-                                <input type="radio" name="adminEngineRadio" value="videosdk" id="adminRadioVideoSdk" style="accent-color: #ff5065; transform: scale(1.2);">
-                            </div>
-                            <h3 style="font-size: 18px; font-weight: 700; margin: 10px 0 6px 0; color: var(--color-carbon-ink);">2. VideoSDK Cloud Agent (via Agent ID)</h3>
-                            <p style="font-size: 13px; color: var(--color-slate); line-height: 1.5; margin: 0;">
-                                Cloud-hosted VideoSDK Agent Builder pipeline (e.g. ag_rajwdl).
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- VideoSDK Agent ID Input (Shown when VideoSDK mode is selected) -->
-                    <div id="adminVideoSdkIdWrap" style="display: none; margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(0,0,0,0.06);">
-                        <label class="form-label-custom">VideoSDK Cloud Agent Builder ID</label>
-                        <input type="text" id="adminVideoSdkAgentId" class="form-control-custom" placeholder="e.g. ag_rajwdl" value="ag_rajwdl">
-                        <div style="font-size: 11px; color: var(--color-slate); margin-top: 4px;">Outbound calls for this user will route to VideoSDK Cloud Agent Builder ID.</div>
-                    </div>
-                </div>
-
-                <!-- Admin Card 3: Voice Persona Selection (Kokoro only) -->
+                <!-- Admin Card 2: Voice Persona & Agent Settings -->
                 <div class="dash-card" id="adminSecVoice" style="margin-bottom: 24px;">
                     <div class="dash-card-header">
                         <div>
-                            <div class="dash-card-title">3. Select Voice Persona for Selected User</div>
-                            <div class="dash-card-sub">Available voice personas for the Kokoro TTS engine model</div>
+                            <div class="dash-card-title">2. Select Voice Persona for Selected User</div>
+                            <div class="dash-card-sub">Available voice personas for the AI telephony agent</div>
                         </div>
                     </div>
                     <div style="margin-top: 16px;">
                         <label class="form-label-custom">Assigned Voice Persona</label>
                         <select id="adminVoiceSelect" class="form-control-custom">
-                            <!-- Populated dynamically based on Kokoro vs VideoSDK selection -->
                         </select>
                     </div>
                 </div>
 
-                <!-- Admin Card 4: Agent Instructions & Persona Settings (Kokoro only) -->
+                <!-- Admin Card 3: Agent Instructions & Persona Settings -->
                 <div class="dash-card" id="adminSecIdentity" style="margin-bottom: 24px;">
                     <div class="dash-card-header">
                         <div>
-                            <div class="dash-card-title">4. Agent Identity & System Prompt</div>
+                            <div class="dash-card-title">3. Agent Identity & System Prompt</div>
                             <div class="dash-card-sub">Set persona name, opening greeting, and receptionist system prompt</div>
                         </div>
                     </div>
@@ -534,15 +492,15 @@
                     </div>
                 </div>
 
-                <!-- Admin Card 5: Call Ending Settings (Kokoro Agent) -->
+                <!-- Admin Card 4: Call Ending Settings -->
                 <div class="dash-card" id="adminSecCallEnding" style="margin-bottom: 24px;">
                     <div class="dash-card-header" style="display: flex; align-items: center; justify-content: space-between;">
                         <div>
                             <div class="dash-card-title" style="display: flex; align-items: center; gap: 8px;">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="22" y1="2" x2="2" y2="22"/></svg>
-                                5. Call Ending Settings (Kokoro Agent)
+                                4. Call Ending Settings
                             </div>
-                            <div class="dash-card-sub">Configure end-call conditions and final agent farewell message for Kokoro Agent</div>
+                            <div class="dash-card-sub">Configure end-call conditions and final agent farewell message</div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <span style="font-size: 13px; font-weight: 600; color: #475569;">End Call Tool</span>

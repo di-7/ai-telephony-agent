@@ -131,10 +131,6 @@ CREATE TABLE IF NOT EXISTS public.agent_configs (
       "voice": "Aoede",
       "vad_silence_ms": 200
     },
-    "kokoro": {
-      "voice": "am_adam",
-      "speed": 1.0
-    },
     "system_instruction": "You are a warm, helpful sales receptionist for Mixup AI. Greet the caller nicely, answer questions naturally, and collect their name and company to schedule a demo."
   }'::jsonb,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
