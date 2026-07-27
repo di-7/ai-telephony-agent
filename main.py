@@ -1131,24 +1131,30 @@ class HealthHandler(BaseHTTPRequestHandler):
                     custom_variables=custom_vars
                 )
 
-                if res.get("success"):
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json')
-                    self._send_cors_headers()
-                    self.end_headers()
-                    self.wfile.write(json_module.dumps({"status": "success", "message": f"Calling {phone_number}..."}).encode())
-                else:
-                    self.send_response(400)
-                    self.send_header('Content-Type', 'application/json')
-                    self._send_cors_headers()
-                    self.end_headers()
-                    self.wfile.write(json_module.dumps({"error": res.get("error", "Call failed")}).encode())
+                try:
+                    if res.get("success"):
+                        self.send_response(200)
+                        self.send_header('Content-Type', 'application/json')
+                        self._send_cors_headers()
+                        self.end_headers()
+                        self.wfile.write(json_module.dumps({"status": "success", "message": f"Calling {phone_number}..."}).encode())
+                    else:
+                        self.send_response(400)
+                        self.send_header('Content-Type', 'application/json')
+                        self._send_cors_headers()
+                        self.end_headers()
+                        self.wfile.write(json_module.dumps({"error": res.get("error", "Call failed")}).encode())
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
             except Exception as e:
                 logging.error(f"Failed to parse request: {e}")
-                self.send_response(400)
-                self._send_cors_headers()
-                self.end_headers()
-                self.wfile.write(b'{"error": "Invalid request body"}')
+                try:
+                    self.send_response(400)
+                    self._send_cors_headers()
+                    self.end_headers()
+                    self.wfile.write(b'{"error": "Invalid request body"}')
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
         elif self.path == '/api/schedule-call':
             content_length = int(self.headers.get('Content-Length', 0))
             post_data = self.rfile.read(content_length)
