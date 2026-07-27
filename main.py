@@ -71,13 +71,28 @@ def load_agent_config_from_supabase(business_id=None):
     if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
         return None
 
-    # 1. Try dedicated agent_configs table
+    # 1. Try dedicated agent_configs table with business_id filter
+    if business_id:
+        try:
+            url = f"{SUPABASE_URL}/rest/v1/agent_configs?business_id=eq.{business_id}&select=*&limit=1"
+            req = urllib.request.Request(url, headers={
+                "apikey": SUPABASE_SERVICE_ROLE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"
+            })
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json_module.loads(resp.read().decode('utf-8'))
+                if data and len(data) > 0:
+                    rec = data[0]
+                    config = rec.get('config') if isinstance(rec.get('config'), dict) else json_module.loads(rec.get('config', '{}'))
+                    if config and config.get('video_sdk_agent_id'):
+                        logging.info(f"Loaded config from Supabase agent_configs for business_id={business_id}: provider={config.get('provider')}, agent_id={config.get('video_sdk_agent_id')}")
+                        return config
+        except Exception as e:
+            logging.debug(f"Could not load business-specific agent config from agent_configs table: {e}")
+
+    # 2. Try global/default agent_configs (no business_id filter)
     try:
-        query = "select=*&limit=1"
-        if business_id:
-            query = f"business_id=eq.{business_id}&select=*&limit=1"
-        
-        url = f"{SUPABASE_URL}/rest/v1/agent_configs?{query}"
+        url = f"{SUPABASE_URL}/rest/v1/agent_configs?select=*&order=created_at.desc&limit=1"
         req = urllib.request.Request(url, headers={
             "apikey": SUPABASE_SERVICE_ROLE_KEY,
             "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"
@@ -87,31 +102,30 @@ def load_agent_config_from_supabase(business_id=None):
             if data and len(data) > 0:
                 rec = data[0]
                 config = rec.get('config') if isinstance(rec.get('config'), dict) else json_module.loads(rec.get('config', '{}'))
-                if config:
-                    logging.info(f"Loaded config from Supabase agent_configs table: provider={config.get('provider')}")
+                if config and config.get('video_sdk_agent_id'):
+                    logging.info(f"Loaded default config from Supabase agent_configs: provider={config.get('provider')}, agent_id={config.get('video_sdk_agent_id')}")
                     return config
     except Exception as e:
-        pass
+        logging.debug(f"Could not load default agent config from agent_configs table: {e}")
 
-    # 2. Fallback to call_logs table
-    try:
-        query = "caller_name=eq.SYSTEM_AGENT_CONFIG&order=created_at.desc&limit=1"
-        if business_id:
+    # 3. Fallback to call_logs table (legacy)
+    if business_id:
+        try:
             query = f"business_id=eq.{business_id}&caller_name=eq.SYSTEM_AGENT_CONFIG&order=created_at.desc&limit=1"
-        
-        url = f"{SUPABASE_URL}/rest/v1/call_logs?{query}"
-        req = urllib.request.Request(url, headers={
-            "apikey": SUPABASE_SERVICE_ROLE_KEY,
-            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"
-        })
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json_module.loads(resp.read().decode('utf-8'))
-            if data and len(data) > 0 and data[0].get('transcript'):
-                config = json_module.loads(data[0]['transcript'])
-                logging.info(f"Loaded agent config from Supabase fallback: provider={config.get('provider')}")
-                return config
-    except Exception as e:
-        logging.warning(f"Could not load agent config from Supabase: {e}")
+            url = f"{SUPABASE_URL}/rest/v1/call_logs?{query}"
+            req = urllib.request.Request(url, headers={
+                "apikey": SUPABASE_SERVICE_ROLE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"
+            })
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json_module.loads(resp.read().decode('utf-8'))
+                if data and len(data) > 0 and data[0].get('transcript'):
+                    config = json_module.loads(data[0]['transcript'])
+                    logging.info(f"Loaded agent config from Supabase call_logs fallback for business_id={business_id}")
+                    return config
+        except Exception as e:
+            logging.debug(f"Could not load agent config from call_logs fallback: {e}")
+    
     return None
 
 def save_agent_config_to_supabase(config_data, business_id=None):
@@ -265,8 +279,13 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
         return {"success": False, "error": "Server misconfiguration. Missing API credentials or Gateway ID."}
 
     call_url = "https://api.videosdk.live/v2/sip/call"
-    agent_cfg = (load_agent_config_from_supabase(business_id=business_id) or load_agent_config())
+    
+    # Load agent configuration dynamically for this business
+    agent_cfg = load_agent_config_from_supabase(business_id=business_id) or load_agent_config()
     provider = agent_cfg.get("provider", "videosdk")
+    
+    # Log the configuration being used
+    logging.info(f"Using agent config for business_id={business_id}: provider={provider}, video_sdk_agent_id={agent_cfg.get('video_sdk_agent_id', 'NOT SET')}")
 
     import time
     custom_meeting_id = f"{phone_number.replace('+', '')}-{int(time.time())}"
@@ -278,12 +297,15 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     }
     if room_id:
         call_body["destinationRoomId"] = room_id
+    
+    # Get the agent ID - either from business config or environment fallback
     target_agent_id = (agent_cfg.get("video_sdk_agent_id") or os.getenv("VIDEOSDK_AGENT_ID", "")).strip()
+    
     if target_agent_id:
         call_body["agentId"] = target_agent_id
-        logging.info(f"Routing call to VideoSDK Cloud Agent Builder ID: '{target_agent_id}'")
+        logging.info(f"Routing call to VideoSDK Cloud Agent Builder ID: '{target_agent_id}' for business_id={business_id}")
     else:
-        is_videosdk_cloud = False
+        logging.warning(f"No agent ID configured for business_id={business_id}. Agent responses may not work properly.")
 
     call_payload = json_module.dumps(call_body).encode('utf-8')
     req = urllib.request.Request(call_url, data=call_payload, method="POST")
@@ -314,8 +336,12 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     # Add call log
     call_entry = add_call_log(phone_number, name, email, company, source='cta_form' if email else 'instant_call', business_id=business_id, custom_id=sdk_call_id)
     if call_entry:
-        logging.info(f"VideoSDK Cloud Agent Builder ({call_body.get('agentId')}) is active for call {call_entry.get('id')}. Polling transcript...")
-        threading.Thread(target=handle_videosdk_cloud_call_logging, args=(call_entry, agent_cfg)).start()
+        if target_agent_id:
+            logging.info(f"VideoSDK Cloud Agent Builder ({target_agent_id}) is active for call {call_entry.get('id')}. Polling transcript...")
+            threading.Thread(target=handle_videosdk_cloud_call_logging, args=(call_entry, agent_cfg)).start()
+        else:
+            logging.warning(f"⚠️  NO AGENT ID CONFIGURED - Call {call_entry.get('id')} may not receive responses!")
+            logging.warning(f"⚠️  Configure agent: POST /api/config with video_sdk_agent_id field")
 
     return {"success": True, "call_id": sdk_call_id, "room_id": room_id}
 
@@ -472,7 +498,7 @@ def update_call_log_status_in_supabase(call_id=None, status='completed', duratio
         if sentiment:
             payload_data['sentiment'] = sentiment
         if transcript is not None:
-            payload_data['transcript'] = transcript
+            payload_data['transcript'] = json_module.dumps(transcript) if isinstance(transcript, list) else transcript
 
         req = urllib.request.Request(url, data=json_module.dumps(payload_data).encode('utf-8'), method='PATCH')
         req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
@@ -796,17 +822,17 @@ def send_team_alert(phone_number, name, email, company, resend_key):
         logging.warning("RESEND_API_KEY not set. Skipping team email.")
         return
 
-    resend.api_key = resend_key
-
-    html = f"<p>An AI demo call has just been triggered for <strong>{phone_number}</strong>.</p>"
-    if email:
-        html += f"<h3>CTA Form Details:</h3><ul><li>Name: {name}</li><li>Email: {email}</li><li>Company: {company}</li></ul>"
-    else:
-        html += "<p>They used the Instant Call Modal (no CTA form details provided).</p>"
-        
-    html += "<p>The call is limited to 1 minute. Please check your call transcripts and follow up with the prospect.</p>"
-
     try:
+        resend.api_key = resend_key
+
+        html = f"<p>An AI demo call has just been triggered for <strong>{phone_number}</strong>.</p>"
+        if email:
+            html += f"<h3>CTA Form Details:</h3><ul><li>Name: {name}</li><li>Email: {email}</li><li>Company: {company}</li></ul>"
+        else:
+            html += "<p>They used the Instant Call Modal (no CTA form details provided).</p>"
+            
+        html += "<p>The call is limited to 1 minute. Please check your call transcripts and follow up with the prospect.</p>"
+
         r = resend.Emails.send({
             "from": "onboarding@resend.dev",
             "to": [os.getenv("TEAM_EMAIL", "dukeindustries7@gmail.com")],
@@ -992,6 +1018,23 @@ class HealthHandler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json_module.dumps(load_agent_config()).encode())
+        elif self.path.startswith('/api/config/'):
+            # GET /api/config/{business_id} - get config for specific business
+            parts = self.path.split('/')
+            if len(parts) >= 4:
+                business_id = parts[3]
+                config = load_agent_config_from_supabase(business_id=business_id)
+                if not config:
+                    config = load_agent_config()
+                self.send_response(200)
+                self._send_cors_headers()
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json_module.dumps(config).encode())
+            else:
+                self.send_response(404)
+                self._send_cors_headers()
+                self.end_headers()
         else:
             self.send_response(404)
             self._send_cors_headers()
@@ -1036,7 +1079,9 @@ class HealthHandler(BaseHTTPRequestHandler):
             post_data = self.rfile.read(content_length)
             try:
                 new_cfg = json_module.loads(post_data)
-                save_agent_config(new_cfg)
+                business_id = new_cfg.get('business_id', None)
+                save_agent_config_to_supabase(new_cfg, business_id=business_id)
+                save_agent_config_local(new_cfg)
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self._send_cors_headers()
@@ -1047,7 +1092,33 @@ class HealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self._send_cors_headers()
                 self.end_headers()
-                self.wfile.write(b'{"error": "Failed to save configuration"}')
+                self.wfile.write(json_module.dumps({"error": f"Failed to save configuration: {str(e)}"}).encode())
+        elif self.path.startswith('/api/config/'):
+            # POST /api/config/{business_id} - save config for specific business
+            parts = self.path.split('/')
+            if len(parts) >= 4:
+                business_id = parts[3]
+                content_length = int(self.headers['Content-Length'])
+                post_data = self.rfile.read(content_length)
+                try:
+                    new_cfg = json_module.loads(post_data)
+                    new_cfg['business_id'] = business_id
+                    save_agent_config_to_supabase(new_cfg, business_id=business_id)
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self._send_cors_headers()
+                    self.end_headers()
+                    self.wfile.write(json_module.dumps({"status": "success", "config": new_cfg, "business_id": business_id}).encode())
+                except Exception as e:
+                    logging.error(f"Failed to save config for business {business_id}: {e}")
+                    self.send_response(400)
+                    self._send_cors_headers()
+                    self.end_headers()
+                    self.wfile.write(json_module.dumps({"error": f"Failed to save configuration: {str(e)}"}).encode())
+            else:
+                self.send_response(404)
+                self._send_cors_headers()
+                self.end_headers()
         elif self.path == '/api/make-call':
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
