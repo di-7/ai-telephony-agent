@@ -1421,8 +1421,70 @@ def synthesize_kokoro_speech(text: str, voice: str = "am_adam", speed: float = 1
         return b""
 
 from videosdk.agents.stt import STT, STTResponse, SpeechEventType, SpeechData
+from videosdk.agents.vad import VAD, VADResponse, VADEventType, VADData
 import wave
 import io
+import math
+import struct
+
+class EnergyVAD(VAD):
+    """Fast Energy-based Voice Activity Detection for VideoSDK Agent"""
+    def __init__(self, sample_rate: int = 16000, threshold: float = 0.015, min_speech_duration: float = 0.2, min_silence_duration: float = 0.4):
+        super().__init__(sample_rate=sample_rate, threshold=threshold, min_speech_duration=min_speech_duration, min_silence_duration=min_silence_duration)
+        self._speech_active = False
+        self._speech_bytes = bytearray()
+        self._silence_start = None
+        self._speech_start = None
+
+    async def process_audio(self, audio_frames: bytes, **kwargs: typing.Any) -> None:
+        if not audio_frames:
+            return
+        
+        count = len(audio_frames) // 2
+        if count == 0:
+            return
+        shorts = struct.unpack(f"<{count}h", audio_frames)
+        sum_sq = sum(s * s for s in shorts)
+        rms = math.sqrt(sum_sq / count) / 32768.0
+
+        is_speech = rms > self._threshold
+        now = time.time()
+
+        if is_speech:
+            self._silence_start = None
+            if not self._speech_active:
+                self._speech_active = True
+                self._speech_start = now
+                self._speech_bytes.clear()
+                if self._vad_callback:
+                    await self._vad_callback(VADResponse(
+                        event_type=VADEventType.START_OF_SPEECH,
+                        data=VADData(is_speech=True, energy=rms)
+                    ))
+            
+            self._speech_bytes.extend(audio_frames)
+            if self._vad_callback:
+                await self._vad_callback(VADResponse(
+                    event_type=VADEventType.FRAME_PROCESSED,
+                    data=VADData(is_speech=True, audio_frames=audio_frames, energy=rms)
+                ))
+        else:
+            if self._speech_active:
+                self._speech_bytes.extend(audio_frames)
+                if self._silence_start is None:
+                    self._silence_start = now
+                elif now - self._silence_start >= self._min_silence_duration:
+                    self._speech_active = False
+                    speech_duration = (self._silence_start - (self._speech_start or now))
+                    speech_segment = bytes(self._speech_bytes)
+                    self._speech_bytes.clear()
+                    
+                    if speech_duration >= self._min_speech_duration and len(speech_segment) > 3200:
+                        if self._vad_callback:
+                            await self._vad_callback(VADResponse(
+                                event_type=VADEventType.END_OF_SPEECH,
+                                data=VADData(is_speech=False, speech_duration=speech_duration, audio_frames=speech_segment, energy=rms)
+                            ))
 try:
     from groq import Groq
 except ImportError:
@@ -1726,8 +1788,9 @@ async def start_session(context: JobContext, custom_variables=None):
                 trigger_auto_end_call_fn=trigger_auto_end_call
             )
             tts = KokoroTTS(voice=kokoro_voice, speed=speed)
-            pipeline = Pipeline(stt=stt, llm=llm, tts=tts)
-            logging.info("Cascade Pipeline Active: Groq Whisper STT + Gemma-4 LLM + Kokoro TTS")
+            vad = EnergyVAD(threshold=0.015, min_speech_duration=0.2, min_silence_duration=0.4)
+            pipeline = Pipeline(stt=stt, llm=llm, tts=tts, vad=vad)
+            logging.info("Cascade Pipeline Active: EnergyVAD + Groq Whisper STT + Gemma-4 LLM + Kokoro TTS")
         else:
             model = GeminiRealtime(
                 model="gemini-2.0-flash-exp",
