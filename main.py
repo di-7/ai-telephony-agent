@@ -877,7 +877,7 @@ def handle_videosdk_cloud_call_logging(entry, agent_cfg):
         logging.error(f"Error updating VideoSDK Cloud call log: {e}", exc_info=True)
 
 def generate_transcript_from_recording(recording_url, caller_name='Caller', agent_name='Agent'):
-    """Generate transcript from audio recording URL using OpenAI Whisper or Google Speech-to-Text."""
+    """Generate transcript from audio recording URL using Groq Whisper API."""
     try:
         import tempfile
         
@@ -890,9 +890,20 @@ def generate_transcript_from_recording(recording_url, caller_name='Caller', agen
             tmp_file.write(audio_data)
             audio_path = tmp_file.name
         
-        logging.info(f"Recording downloaded ({len(audio_data)} bytes), transcribing...")
+        logging.info(f"Recording downloaded ({len(audio_data)} bytes), transcribing with Groq...")
         
-        # Try OpenAI Whisper API first
+        # Try Groq Whisper API (fastest and you already have it configured)
+        groq_api_key = os.getenv('GROQ_API_KEY')
+        if groq_api_key and not groq_api_key.startswith('your_'):
+            try:
+                transcript = transcribe_with_groq_whisper(audio_path, groq_api_key)
+                if transcript:
+                    os.unlink(audio_path)
+                    return parse_transcript_text(transcript, caller_name, agent_name)
+            except Exception as e:
+                logging.warning(f"Groq Whisper failed: {e}")
+        
+        # Fallback to OpenAI Whisper API
         openai_key = os.getenv('OPENAI_API_KEY')
         if openai_key and not openai_key.startswith('your_'):
             try:
@@ -903,7 +914,7 @@ def generate_transcript_from_recording(recording_url, caller_name='Caller', agen
             except Exception as e:
                 logging.warning(f"OpenAI Whisper failed: {e}")
         
-        # Try Google Speech-to-Text
+        # Fallback to Google Speech-to-Text
         google_api_key = os.getenv('GOOGLE_API_KEY')
         if google_api_key and not google_api_key.startswith('your_'):
             try:
@@ -916,12 +927,34 @@ def generate_transcript_from_recording(recording_url, caller_name='Caller', agen
         
         # Cleanup
         os.unlink(audio_path)
-        logging.warning("No transcription service available (set OPENAI_API_KEY or GOOGLE_API_KEY)")
+        logging.warning("No transcription service available (set GROQ_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY)")
         return []
         
     except Exception as e:
         logging.error(f"Error generating transcript from recording: {e}")
         return []
+
+def transcribe_with_groq_whisper(audio_path, api_key):
+    """Transcribe audio using Groq Whisper API (fastest)."""
+    try:
+        from groq import Groq
+        
+        client = Groq(api_key=api_key)
+        
+        with open(audio_path, "rb") as file:
+            transcription = client.audio.transcriptions.create(
+                file=(os.path.basename(audio_path), file.read()),
+                model="whisper-large-v3-turbo",
+                temperature=0,
+                response_format="verbose_json",
+            )
+            
+            logging.info(f"✅ Groq Whisper transcription completed")
+            return transcription.text
+            
+    except Exception as e:
+        logging.error(f"Groq Whisper transcription failed: {e}")
+        return None
 
 def transcribe_with_openai_whisper(audio_path, api_key):
     """Transcribe audio using OpenAI Whisper API."""
