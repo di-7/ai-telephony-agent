@@ -995,31 +995,6 @@ async function loadAdminUserList() {
     }
 }
 
-function selectAdminEngineProvider(provider) {
-    const adminSecVoice = document.getElementById('adminSecVoice');
-    const adminSecIdentity = document.getElementById('adminSecIdentity');
-    const adminSecCallEnding = document.getElementById('adminSecCallEnding');
-
-    if (adminSecVoice) adminSecVoice.style.display = 'block';
-    if (adminSecIdentity) adminSecIdentity.style.display = 'block';
-    if (adminSecCallEnding) adminSecCallEnding.style.display = 'block';
-    populateAdminVoiceOptions('gemini');
-}
-
-function populateAdminVoiceOptions(provider, selectedVoice = null) {
-    const voiceSelect = document.getElementById('adminVoiceSelect');
-    if (!voiceSelect) return;
-
-    const voices = VIDEOSDK_VOICES;
-    voiceSelect.innerHTML = voices.map(v => 
-        `<option value="${v.value}" ${selectedVoice === v.value ? 'selected' : ''}>${v.label}</option>`
-    ).join('');
-
-    if (!selectedVoice && voices.length > 0) {
-        voiceSelect.value = voices[0].value;
-    }
-}
-
 async function onAdminTargetUserChange() {
     const targetBusinessId = document.getElementById('adminTargetUserSelect')?.value;
     if (!targetBusinessId || typeof supabaseClient === 'undefined' || !supabaseClient) return;
@@ -1031,45 +1006,12 @@ async function onAdminTargetUserChange() {
             .eq('business_id', targetBusinessId)
             .maybeSingle();
 
+        const sdkInput = document.getElementById('adminVideoSdkAgentId');
         if (!error && data && data.config) {
             const cfg = typeof data.config === 'string' ? JSON.parse(data.config) : data.config;
-            const provider = cfg.provider === 'videosdk' ? 'videosdk' : 'kokoro';
-            selectAdminEngineProvider(provider);
-
-            if (cfg.video_sdk_agent_id) {
-                const sdkInput = document.getElementById('adminVideoSdkAgentId');
-                if (sdkInput) sdkInput.value = cfg.video_sdk_agent_id;
-            }
-
-            const currentVoice = cfg.kokoro?.voice || cfg.voice || 'am_adam';
-            populateAdminVoiceOptions(provider, currentVoice);
-
-            if (cfg.agent_name) {
-                const nameInput = document.getElementById('adminAgentName');
-                if (nameInput) nameInput.value = cfg.agent_name;
-            }
-            if (cfg.greeting) {
-                const greetInput = document.getElementById('adminAgentGreeting');
-                if (greetInput) greetInput.value = cfg.greeting;
-            }
-            if (cfg.system_instruction) {
-                const promptInput = document.getElementById('adminSystemPrompt');
-                if (promptInput) promptInput.value = cfg.system_instruction;
-            }
-            if (cfg.end_call_enabled !== undefined) {
-                const endToggle = document.getElementById('adminEndCallToggle');
-                if (endToggle) endToggle.checked = !!cfg.end_call_enabled;
-            }
-            if (cfg.end_call_conditions) {
-                const condInput = document.getElementById('adminEndCallConditions');
-                if (condInput) condInput.value = cfg.end_call_conditions;
-            }
-            if (cfg.end_call_final_response) {
-                const respInput = document.getElementById('adminEndCallFinalResponse');
-                if (respInput) respInput.value = cfg.end_call_final_response;
-            }
+            if (sdkInput) sdkInput.value = cfg.video_sdk_agent_id || '';
         } else {
-            selectAdminEngineProvider('kokoro');
+            if (sdkInput) sdkInput.value = '';
         }
     } catch (e) {
         console.warn('Error loading admin target user config:', e);
@@ -1083,30 +1025,10 @@ async function saveAdminUserConfig() {
         return;
     }
 
-    const provider = 'gemini';
     const videoSdkAgentId = document.getElementById('adminVideoSdkAgentId')?.value.trim() || '';
-    const selectedVoice = document.getElementById('adminVoiceSelect')?.value || 'Aoede';
-    const agentName = document.getElementById('adminAgentName')?.value.trim() || 'Sarah';
-    const greeting = document.getElementById('adminAgentGreeting')?.value.trim() || '';
-    const systemPrompt = document.getElementById('adminSystemPrompt')?.value.trim() || '';
-    const endCallEnabled = document.getElementById('adminEndCallToggle')?.checked ?? true;
-    const endCallConditions = document.getElementById('adminEndCallConditions')?.value.trim() || '';
-    const endCallFinalResponse = document.getElementById('adminEndCallFinalResponse')?.value.trim() || '';
 
     const payload = {
-        provider: provider,
-        video_sdk_agent_id: videoSdkAgentId,
-        agent_name: agentName,
-        greeting: greeting,
-        system_instruction: systemPrompt,
-        end_call_enabled: endCallEnabled,
-        end_call_conditions: endCallConditions,
-        end_call_final_response: endCallFinalResponse,
-        gemini: {
-            model: 'gemini-2.0-flash-exp',
-            voice: selectedVoice,
-            vad_silence_ms: 200
-        }
+        video_sdk_agent_id: videoSdkAgentId
     };
 
     // 1. Save directly to Supabase agent_configs table under target business_id
@@ -1114,7 +1036,6 @@ async function saveAdminUserConfig() {
         try {
             await supabaseClient.from('agent_configs').upsert({
                 business_id: targetBusinessId,
-                provider: provider,
                 config: payload,
                 updated_at: new Date().toISOString()
             }, { onConflict: 'business_id' });
@@ -1130,9 +1051,10 @@ async function saveAdminUserConfig() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...payload, business_id: targetBusinessId })
         });
-    } catch (e) {}
+    } catch (err) {
+        console.warn('Error posting admin config to backend API:', err);
+    }
 
-    // Show success button animation
     const saveBtn = document.querySelector('button[onclick="saveAdminUserConfig()"]');
     const originalBtnHtml = saveBtn ? saveBtn.innerHTML : 'Save & Attach Config to User';
 
@@ -1152,7 +1074,7 @@ async function saveAdminUserConfig() {
             saveBtn.style.background = 'linear-gradient(135deg, #ff5065, #ff7a59)';
             saveBtn.innerHTML = originalBtnHtml;
         }
-    }, 3000);
+    }, 4000);
 }
 
 function selectEngineProvider(provider) {
