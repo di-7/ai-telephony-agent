@@ -926,6 +926,7 @@ def start_call_scheduler_loop():
                 if due_calls:
                     logging.info(f"Scheduled Call Worker: Found {len(due_calls)} due call(s) to execute!")
                     for sc in due_calls:
+                        logging.info(f"  Due call: {sc.get('caller_name')} ({sc.get('caller_phone')}), scheduled_at={sc.get('scheduled_at')}, now_utc={now_dt.isoformat()}")
                         sc_id = sc.get('id')
                         if sc_id:
                             processed_sc_ids.add(sc_id)
@@ -1568,31 +1569,36 @@ async def start_session(context: JobContext, custom_variables=None):
     # Set the current job context so AgentSession can discover it
     _set_current_job_context(context)
 
-    # Connect to the VideoSDK room first
-    await context.connect()
-    logging.info("Connected to VideoSDK room. Waiting for participant...")
-    if context.room:
-        await context.room.wait_for_participant()
-        logging.info("Participant joined the room.")
-
-    # Create and start the agent session
+    # Create the agent session (room connection + pipeline start handled by run_until_shutdown)
     session = AgentSession(agent=agent, pipeline=pipeline)
     
     start_time = time.time()
-    try:
-        await session.start()
-        logging.info("Agent connected to room. Starting session...")
-        
-        logging.info("Agent session started. Monitoring session until completion or timeout...")
+
+    # Background task: enforce 90s max duration and auto end-call trigger
+    async def _monitor_session():
         try:
             await asyncio.wait_for(session_should_end_event.wait(), timeout=90.0)
             logging.info("Auto Call Ending trigger reached. Closing call session cleanly.")
         except asyncio.TimeoutError:
             logging.info("90 second max call duration limit reached. Closing session.")
+        # Signal the SDK to shut down gracefully
+        try:
+            await context.shutdown()
+        except Exception:
+            pass
+
+    monitor_task = asyncio.ensure_future(_monitor_session())
+
+    try:
+        # Let the SDK handle: connect → wait for participant → start pipeline → process audio
+        await session.start(wait_for_participant=True, run_until_shutdown=True)
+        logging.info("Agent session ended normally.")
             
     except Exception as e:
         logging.error(f"Error during agent session: {e}", exc_info=True)
     finally:
+        if not monitor_task.done():
+            monitor_task.cancel()
         elapsed = int(time.time() - start_time)
         duration_str = f"{elapsed // 60}m {elapsed % 60:02d}s" if elapsed >= 5 else "--"
         
