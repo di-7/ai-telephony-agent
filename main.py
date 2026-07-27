@@ -1788,6 +1788,12 @@ async def start_session(context: JobContext, custom_variables=None):
             )
         )
     )
+    try:
+        from google import genai
+        model.client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"), http_options={"api_version": "v1alpha"})
+    except Exception as e:
+        logging.warning(f"Could not patch GeminiRealtime genai client: {e}")
+
     pipeline = Pipeline(llm=model)
 
     # Create a concrete Agent subclass with greeting
@@ -1814,9 +1820,6 @@ async def start_session(context: JobContext, custom_variables=None):
                     clean_text = text.replace('[END_CALL]', '').strip()
                     if is_final:
                         speaker_role = "agent" if role == "agent" else "customer"
-                        if speaker_role == "agent" and provider == "kokoro":
-                            # Skip Gemini's response because Gemma-4 generates the actual spoken agent text!
-                            return
                         caller_name = (call_entry.get('name') if call_entry and call_entry.get('name') else "Caller")
                         speaker_name = f"AI Agent ({agent_name})" if role == "agent" else caller_name
                         transcript_list.append({
