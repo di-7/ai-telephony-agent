@@ -1084,6 +1084,7 @@ async function saveAdminUserConfig() {
     }
 
     const provider = 'gemini';
+    const videoSdkAgentId = document.getElementById('adminVideoSdkAgentId')?.value.trim() || '';
     const selectedVoice = document.getElementById('adminVoiceSelect')?.value || 'Aoede';
     const agentName = document.getElementById('adminAgentName')?.value.trim() || 'Sarah';
     const greeting = document.getElementById('adminAgentGreeting')?.value.trim() || '';
@@ -1094,6 +1095,7 @@ async function saveAdminUserConfig() {
 
     const payload = {
         provider: provider,
+        video_sdk_agent_id: videoSdkAgentId,
         agent_name: agentName,
         greeting: greeting,
         system_instruction: systemPrompt,
