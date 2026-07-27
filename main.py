@@ -11,9 +11,6 @@ import typing
 import os
 import logging
 logging.basicConfig(level=logging.INFO)
-import os
-import logging
-logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 
@@ -21,23 +18,28 @@ import json as json_module
 import time
 from datetime import datetime, timezone
 
+# --- Supabase Configuration ---
+SUPABASE_URL = os.getenv('SUPABASE_URL', '').rstrip('/')
+SUPABASE_SERVICE_ROLE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY', '')
+
 # --- Call Log Storage (JSON file-based) ---
 CALL_LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'call_logs.json')
 
 def load_call_logs():
     """Load call logs from Supabase cloud database with local file fallback."""
-    try:
-        url = f"{SUPABASE_URL}/rest/v1/call_logs?caller_name=neq.SYSTEM_AGENT_CONFIG&status=neq.config&order=created_at.desc&limit=100"
-        req = urllib.request.Request(url, headers={
-            "apikey": SUPABASE_SERVICE_ROLE_KEY,
-            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"
-        })
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json_module.loads(resp.read().decode('utf-8'))
-            if isinstance(data, list) and len(data) > 0:
-                return data
-    except Exception as e:
-        logging.warning(f"Could not load call logs from Supabase: {e}")
+    if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY:
+        try:
+            url = f"{SUPABASE_URL}/rest/v1/call_logs?caller_name=neq.SYSTEM_AGENT_CONFIG&status=neq.config&order=created_at.desc&limit=100"
+            req = urllib.request.Request(url, headers={
+                "apikey": SUPABASE_SERVICE_ROLE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"
+            })
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json_module.loads(resp.read().decode('utf-8'))
+                if isinstance(data, list) and len(data) > 0:
+                    return data
+        except Exception as e:
+            logging.warning(f"Could not load call logs from Supabase: {e}")
 
     try:
         if os.path.exists(CALL_LOG_FILE):
@@ -66,6 +68,9 @@ DEFAULT_AGENT_CONFIG = {
 
 def load_agent_config_from_supabase(business_id=None):
     """Fetch the latest active agent configuration from Supabase agent_configs table (or fallback call_logs)."""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        return None
+
     # 1. Try dedicated agent_configs table
     try:
         query = "select=*&limit=1"
@@ -111,6 +116,8 @@ def load_agent_config_from_supabase(business_id=None):
 
 def save_agent_config_to_supabase(config_data, business_id=None):
     """Persist agent configuration to Supabase agent_configs table."""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        return False
     b_id = business_id or "c16fc8ab-3bb2-44fe-88ed-560f950c8069"
     try:
         url = f"{SUPABASE_URL}/rest/v1/agent_configs?on_conflict=business_id"
@@ -180,8 +187,6 @@ def save_agent_config(config_data):
     save_agent_config_to_supabase(config_data)
 
 # --- Supabase Configuration ---
-SUPABASE_URL = os.getenv('SUPABASE_URL', '')
-SUPABASE_SERVICE_ROLE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY', '')
 
 def get_videosdk_token():
     """Dynamically generate a valid JWT VideoSDK token on-the-fly using API Key and Secret."""
@@ -425,6 +430,8 @@ def add_call_log_to_supabase(entry):
 
 def update_call_log_in_supabase(entry):
     """Update call log duration, status, sentiment, and transcript in Supabase via REST API."""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        return
     try:
         url = f"{SUPABASE_URL}/rest/v1/call_logs?id=eq.{entry['id']}"
         payload_data = {}
@@ -448,12 +455,33 @@ def update_call_log_in_supabase(entry):
         req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
         req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
         req.add_header('Content-Type', 'application/json')
-        req.add_header('Prefer', 'return=minimal')
-
-        with urllib.request.urlopen(req) as resp:
-            logging.info(f"Call log updated in Supabase: status {resp.status}, id {entry['id']}")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            pass
     except Exception as e:
         logging.error(f"Failed to update call log in Supabase: {e}")
+
+def update_call_log_status_in_supabase(call_id=None, status='completed', duration='--', sentiment='Completed', transcript=None):
+    """Helper to update call status by call_id or sdk_id in Supabase."""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY or not call_id:
+        return
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/call_logs?id=eq.{call_id}"
+        payload_data = {'status': status}
+        if duration != '--':
+            payload_data['duration'] = duration
+        if sentiment:
+            payload_data['sentiment'] = sentiment
+        if transcript is not None:
+            payload_data['transcript'] = transcript
+
+        req = urllib.request.Request(url, data=json_module.dumps(payload_data).encode('utf-8'), method='PATCH')
+        req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
+        req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
+        req.add_header('Content-Type', 'application/json')
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            logging.info(f"Updated call log status in Supabase for call_id {call_id} to '{status}'")
+    except Exception as e:
+        logging.warning(f"Could not update call log status in Supabase for {call_id}: {e}")
 
 def add_call_log(phone_number, name='', email='', company='', source='instant_call', business_id=None, custom_id=None):
     """Add a new call log entry to local backup and Supabase."""
@@ -789,38 +817,6 @@ def send_team_alert(phone_number, name, email, company, resend_key):
     except Exception as e:
         logging.error(f"Failed to send team email via Resend: {e}")
 
-    req.add_header("Authorization", str(videosdk_token))
-    req.add_header("Content-Type", "application/json")
-
-    sdk_call_id = None
-    try:
-        with urllib.request.urlopen(req) as response:
-            api_response = response.read()
-            logging.info(f"VideoSDK call triggered successfully: {api_response}")
-            try:
-                resp_json = json_module.loads(api_response.decode('utf-8'))
-                sdk_call_id = (resp_json.get("data") or {}).get("id")
-            except Exception:
-                pass
-    except urllib.error.HTTPError as e:
-        error_body = e.read().decode('utf-8')
-        logging.error(f"VideoSDK API failed with status {e.code}: {error_body}")
-        return {"success": False, "error": error_body}
-    except Exception as e:
-        logging.error(f"VideoSDK API failed: {e}")
-        return {"success": False, "error": str(e)}
-
-    # Send team alert email
-    threading.Thread(target=send_team_alert, args=(phone_number, name, email, company, resend_key)).start()
-
-    # Add call log
-    call_entry = add_call_log(phone_number, name, email, company, source='cta_form' if email else 'instant_call', business_id=business_id, custom_id=sdk_call_id)
-    if call_entry:
-        logging.info(f"VideoSDK Cloud Agent Builder ({call_body.get('agentId')}) is active for call {call_entry.get('id')}. Polling transcript...")
-        threading.Thread(target=handle_videosdk_cloud_call_logging, args=(call_entry, agent_cfg)).start()
-
-    return {"success": True, "call_id": sdk_call_id, "room_id": room_id}
-
 IN_MEMORY_SCHEDULED_CALLS = []
 processed_sc_ids = set()
 
@@ -832,29 +828,29 @@ def start_call_scheduler_loop():
         while True:
             try:
                 now_dt = datetime.now(timezone.utc)
-                now_iso = urllib.parse.quote(now_dt.strftime('%Y-%m-%dT%H:%M:%SZ'))
+                now_utc_str = urllib.parse.quote(now_dt.strftime('%Y-%m-%dT%H:%M:%SZ'))
 
                 due_calls = []
                 seen_ids = set()
 
                 # 1. Query Supabase scheduled_calls table
-                try:
-                    url = f"{SUPABASE_URL}/rest/v1/scheduled_calls?status=eq.pending&scheduled_at=lte.{now_iso}&select=*"
-                    headers = {
-                        'apikey': SUPABASE_SERVICE_ROLE_KEY,
-                        'Authorization': f'Bearer {SUPABASE_SERVICE_ROLE_KEY}'
-                    }
-                    req = urllib.request.Request(url, headers=headers)
-                    with urllib.request.urlopen(req, timeout=5) as resp:
-                        supa_due = json_module.loads(resp.read().decode('utf-8'))
-                        if isinstance(supa_due, list):
-                            for item in supa_due:
-                                item_id = item.get('id')
-                                if item_id and item_id not in seen_ids and item_id not in processed_sc_ids:
-                                    seen_ids.add(item_id)
-                                    due_calls.append(item)
-                except Exception as se:
-                    logging.warning(f"Scheduler Supabase query warning: {se}")
+                if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY:
+                    try:
+                        query_url = f"{SUPABASE_URL}/rest/v1/scheduled_calls?status=eq.pending&scheduled_at=lte.{now_utc_str}&select=*"
+                        req = urllib.request.Request(query_url, headers={
+                            "apikey": SUPABASE_SERVICE_ROLE_KEY,
+                            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"
+                        })
+                        with urllib.request.urlopen(req, timeout=5) as resp:
+                            supa_due = json_module.loads(resp.read().decode('utf-8'))
+                            if isinstance(supa_due, list):
+                                for item in supa_due:
+                                    item_id = item.get('id')
+                                    if item_id and item_id not in seen_ids and item_id not in processed_sc_ids:
+                                        seen_ids.add(item_id)
+                                        due_calls.append(item)
+                    except Exception as se:
+                        logging.warning(f"Scheduler Supabase query warning: {se}")
 
                 # 2. Check in-memory fallback queue
                 for sc in list(IN_MEMORY_SCHEDULED_CALLS):
