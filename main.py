@@ -439,95 +439,49 @@ def get_agent_name_for_call(call_id=None, business_id=None):
             pass
     try:
         cfg = (load_agent_config_from_supabase(business_id=b_id) if b_id else load_agent_config()) or {}
-        name = (cfg.get("agent_name") or "Duke").strip()
-        return name if name else "Duke"
+        name = (cfg.get("agent_name") or "").strip()
+        return name if name else "AI Agent"
     except Exception:
-        return "Duke"
+        return "AI Agent"
 
-def refine_dialogue_transcript(transcript, caller_name='Caller', agent_name='Duke'):
-    """Refine transcript speaker attributions and merge consecutive turns by the same speaker."""
-    if not transcript or not isinstance(transcript, list):
-        return transcript
+def get_agent_name_from_supabase(b_id=None):
+    """Fetch configured agent name dynamically from Supabase."""
+    try:
+        cfg = (load_agent_config_from_supabase(business_id=b_id) if b_id else load_agent_config()) or {}
+        name = (cfg.get("agent_name") or "").strip()
+        return name if name else "AI Agent"
+    except Exception:
+        return "AI Agent"
 
-    agent_keywords = [
-        "this is anna", "this is duke", "calling from", "overdue balance", "balance",
-        "work something out", "thank you for reaching out", "glad to help",
-        "my mistake", "apologize", "have a great day", "i understand",
-        "make a payment", "propose a plan", "that's great", "how much are you",
-        "promising to pay", "processed?", "am i speaking with", "thanks for taking my call",
-        "how can i help", "confirm your appointment", "cancelled your appointment"
-    ]
-    user_keywords = [
-        "who told you my name", "my name is", "no no", "it's not",
-        "i wanted to verify", "i received a call", "probably a bit busy",
-        "we just need to set", "i need to log in", "cleaver", "audio balance",
-        "how are you today"
-    ]
-
-    a_name = agent_name if agent_name else 'Duke'
-    agent_display_name = f"AI Agent ({a_name})"
-
-    refined_turns = []
-    for i, turn in enumerate(transcript):
-        txt = (turn.get('text') or '').strip()
-        if not txt:
-            continue
-
-        txt_lower = txt.lower()
-        spk = turn.get('speaker', 'agent')
-
-        if any(k in txt_lower for k in agent_keywords):
-            spk = 'agent'
-        elif any(k in txt_lower for k in user_keywords):
-            spk = 'user'
-        elif i > 0:
-            prev_txt = (transcript[i-1].get('text') or '').lower()
-            if ("?" in prev_txt or "speaking with" in prev_txt) and len(txt.split()) <= 8:
-                if any(w in txt_lower for w in ["yes", "no", "yeah", "hello", "hi", "sure", "ok", "login", "log in"]):
-                    spk = 'user'
-
-        c_name = caller_name if caller_name and caller_name != 'Caller' else 'Mukund Verma'
-        name = c_name if spk == 'user' else agent_display_name
-        refined_turns.append({
-            'speaker': spk,
-            'name': name,
-            'text': txt
-        })
-
-    merged = []
-    for turn in refined_turns:
-        if not merged:
-            merged.append(turn)
-        else:
-            prev = merged[-1]
-            if prev['speaker'] == turn['speaker']:
-                prev['text'] += " " + turn['text']
-            else:
-                merged.append(turn)
-                
-    return merged
-
-def parse_videosdk_transcript_payload(wb_data, caller_name='Caller', agent_name='Duke'):
-    """Dynamically parse transcript items from VideoSDK Webhook or REST API responses."""
+def parse_videosdk_transcript_payload(wb_data, caller_name=None, agent_name=None):
+    """Parse diarized transcript items directly from VideoSDK Agent Builder API payload using dynamic caller and agent names."""
     if not wb_data:
         return []
 
-    a_name = agent_name if agent_name else 'Duke'
-    agent_display_name = f"AI Agent ({a_name})"
+    a_name = (agent_name or '').strip()
+    agent_display_name = f"AI Agent ({a_name})" if a_name else "AI Agent"
+
+    c_name = (caller_name or '').strip()
+    if not c_name or c_name == 'Caller':
+        c_name = 'Caller'
 
     raw_list = []
     if isinstance(wb_data, dict):
         data_val = wb_data.get('data')
-        if isinstance(data_val, list) and len(data_val) > 0 and isinstance(data_val[0], dict):
-            raw_list = data_val[0].get('segments') or data_val[0].get('transcripts') or data_val[0].get('transcript') or []
+        if isinstance(data_val, list) and len(data_val) > 0:
+            if isinstance(data_val[0], dict):
+                raw_list = data_val[0].get('segments') or data_val[0].get('transcripts') or data_val[0].get('transcript') or data_val
+            else:
+                raw_list = data_val
         elif isinstance(data_val, dict):
-            raw_list = data_val.get('segments') or data_val.get('transcripts') or data_val.get('transcript') or []
-        
+            raw_list = data_val.get('segments') or data_val.get('transcripts') or data_val.get('transcript') or data_val.get('messages') or []
+
         if not raw_list:
             raw_list = (
                 wb_data.get('segments') or 
                 wb_data.get('transcript') or 
                 wb_data.get('transcripts') or 
+                wb_data.get('messages') or 
                 (wb_data.get('payload') or {}).get('transcript') or 
                 (wb_data.get('payload') or {}).get('segments') or []
             )
@@ -538,51 +492,103 @@ def parse_videosdk_transcript_payload(wb_data, caller_name='Caller', agent_name=
     if isinstance(raw_list, list):
         for item in raw_list:
             if isinstance(item, dict):
-                speaker_val = str(item.get('speaker') or item.get('role') or item.get('type') or 'agent').strip().lower()
-                text = item.get('text') or item.get('message') or item.get('content') or ''
-                name = item.get('name') or ''
-                if text and text.strip():
-                    is_user_phone = speaker_val.startswith('+') or any(c.isdigit() for c in speaker_val) or 'sip' in speaker_val or 'user' in speaker_val or 'caller' in speaker_val or 'customer' in speaker_val
-                    is_agent_role = not is_user_phone or any(w in speaker_val for w in ['agent', 'ai', 'assistant', 'bot', 'system', 'duke', 'anna'])
-                    
-                    speaker_type = 'agent' if is_agent_role else 'user'
-                    default_name = agent_display_name if speaker_type == 'agent' else caller_name
-                    
-                    parsed_transcript.append({
-                        'speaker': speaker_type,
-                        'name': name or (item.get('speaker') if is_user_phone else default_name),
-                        'text': text.strip()
-                    })
-    elif isinstance(raw_list, str) and raw_list.strip():
-        parsed_transcript.append({'speaker': 'agent', 'name': agent_display_name, 'text': raw_list.strip()})
-        
-    return refine_dialogue_transcript(parsed_transcript, caller_name=caller_name, agent_name=a_name)
+                text = (item.get('text') or item.get('message') or item.get('content') or '').strip()
+                if not text:
+                    continue
 
-def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None):
-    """Fetch live transcript directly from VideoSDK Cloud REST API."""
+                spk = str(item.get('speaker') or item.get('role') or item.get('type') or item.get('sender') or '').strip().lower()
+                name_attr = (item.get('name') or '').strip()
+
+                is_user = any(k in spk for k in ['user', 'customer', 'caller', 'human']) or spk.startswith('+') or any(c.isdigit() for c in spk)
+                is_agent = any(k in spk for k in ['agent', 'assistant', 'bot', 'system', 'ai']) or 'agent' in name_attr.lower()
+
+                if is_user and not is_agent:
+                    speaker_role = 'customer'
+                    speaker_name = name_attr or c_name
+                else:
+                    speaker_role = 'agent'
+                    speaker_name = name_attr or agent_display_name
+
+                parsed_transcript.append({
+                    'speaker': speaker_role,
+                    'name': speaker_name,
+                    'text': text
+                })
+            elif isinstance(item, str) and item.strip():
+                parsed_transcript.append({
+                    'speaker': 'agent',
+                    'name': agent_display_name,
+                    'text': item.strip()
+                })
+
+    # Merge consecutive turns belonging to the exact same speaker
+    merged = []
+    for turn in parsed_transcript:
+        if not merged:
+            merged.append(turn)
+        else:
+            prev = merged[-1]
+            if prev['speaker'] == turn['speaker']:
+                prev['text'] += " " + turn['text']
+            else:
+                merged.append(turn)
+
+    return merged
+
+def get_videosdk_ai_deployment_session_id(room_id, token=None):
+    """Fetch the real Agent Builder sessionId from VideoSDK ai/v1/ai-deployment-sessions API."""
+    if not token:
+        token = get_videosdk_token()
+    if not token or not room_id:
+        return None
+
+    urls = [
+        f"https://api.videosdk.live/ai/v1/ai-deployment-sessions?roomId={room_id}",
+        f"https://api.videosdk.live/ai/v1/ai-deployment-sessions/?roomId={room_id}",
+    ]
+    for url in urls:
+        try:
+            req = urllib.request.Request(url, method='GET')
+            req.add_header('Authorization', token)
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json_module.loads(resp.read().decode('utf-8'))
+                data_list = data.get('data') if isinstance(data, dict) else (data if isinstance(data, list) else [])
+                if isinstance(data_list, list) and len(data_list) > 0 and isinstance(data_list[0], dict):
+                    sess_id = data_list[0].get('id') or data_list[0].get('sessionId') or data_list[0].get('agentSessionId')
+                    if sess_id:
+                        logging.info(f"Retrieved VideoSDK AI Deployment Session ID: '{sess_id}' for room {room_id}")
+                        return sess_id
+        except Exception as e:
+            logging.debug(f"Querying ai-deployment-sessions API ({url}) failed: {e}")
+    return None
+
+def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None, caller_name=None, agent_name=None):
+    """Fetch live diarized transcript directly from VideoSDK AI Deployment & Cloud REST APIs."""
     token = get_videosdk_token()
     if not token:
         return None
-        
+
     candidate_urls = []
     if session_id:
+        candidate_urls.append(f"https://api.videosdk.live/ai/v1/ai-deployment-sessions/{session_id}/transcripts")
+        candidate_urls.append(f"https://api.videosdk.live/ai/v1/ai-deployment-sessions/{session_id}")
         candidate_urls.append(f"https://api.videosdk.live/ai/v1/realtime-transcriptions/?sessionId={session_id}")
         candidate_urls.append(f"https://api.videosdk.live/ai/v1/post-transcriptions?sessionId={session_id}")
         candidate_urls.append(f"https://api.videosdk.live/v2/sessions/{session_id}")
     if room_id:
-        candidate_urls.append(f"https://api.videosdk.live/v2/sessions?roomId={room_id}")
+        candidate_urls.append(f"https://api.videosdk.live/ai/v1/ai-deployment-sessions?roomId={room_id}")
         candidate_urls.append(f"https://api.videosdk.live/ai/v1/realtime-transcriptions/?roomId={room_id}")
         candidate_urls.append(f"https://api.videosdk.live/ai/v1/post-transcriptions?roomId={room_id}")
+        candidate_urls.append(f"https://api.videosdk.live/v2/sessions?roomId={room_id}")
 
     for url in candidate_urls:
         try:
             req = urllib.request.Request(url, method='GET')
             req.add_header('Authorization', token)
-            with urllib.request.urlopen(req) as resp:
+            with urllib.request.urlopen(req, timeout=5) as resp:
                 data = json_module.loads(resp.read().decode('utf-8'))
-                
-                # Check if it is a post-transcriptions response listing files
-                transcriptions = data.get('transcriptions')
+
+                transcriptions = data.get('transcriptions') if isinstance(data, dict) else None
                 if isinstance(transcriptions, list) and len(transcriptions) > 0:
                     for t in transcriptions:
                         file_paths = t.get('transcriptionFilePaths') or {}
@@ -590,22 +596,24 @@ def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None):
                         if txt_url:
                             try:
                                 file_req = urllib.request.Request(txt_url, method='GET')
-                                with urllib.request.urlopen(file_req) as file_resp:
+                                with urllib.request.urlopen(file_req, timeout=5) as file_resp:
                                     content = file_resp.read().decode('utf-8')
                                     if txt_url.endswith('.json'):
                                         json_data = json_module.loads(content)
-                                        parsed = parse_videosdk_transcript_payload(json_data)
+                                        parsed = parse_videosdk_transcript_payload(json_data, caller_name=caller_name, agent_name=agent_name)
                                         if parsed:
                                             return parsed
                                     else:
                                         parsed = []
+                                        c_name = (caller_name or '').strip() or 'Caller'
+                                        a_disp = f"AI Agent ({agent_name.strip()})" if agent_name and agent_name.strip() else "AI Agent"
                                         for line in content.split('\n'):
                                             if ':' in line:
                                                 spk, txt = line.split(':', 1)
-                                                is_agent = any(w in spk.lower() for w in ['agent', 'ai', 'assistant', 'bot', 'system', 'duke', 'anna'])
+                                                is_agent = any(w in spk.lower() for w in ['agent', 'ai', 'assistant', 'bot', 'system'])
                                                 parsed.append({
-                                                    'speaker': 'agent' if is_agent else 'user',
-                                                    'name': spk.strip(),
+                                                    'speaker': 'agent' if is_agent else 'customer',
+                                                    'name': a_disp if is_agent else c_name,
                                                     'text': txt.strip()
                                                 })
                                         if parsed:
@@ -613,143 +621,81 @@ def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None):
                             except Exception as fe:
                                 logging.error(f"Failed to fetch transcript file from url {txt_url}: {fe}")
 
-                parsed = parse_videosdk_transcript_payload(data)
-                if parsed:
-                    logging.info(f"Fetched {len(parsed)} transcript turns directly from VideoSDK REST API: {url}")
+                parsed = parse_videosdk_transcript_payload(data, caller_name=caller_name, agent_name=agent_name)
+                if parsed and len(parsed) > 0:
+                    logging.info(f"Fetched {len(parsed)} diarized transcript turns from VideoSDK REST API: {url}")
                     return parsed
         except Exception as e:
             logging.debug(f"VideoSDK REST API transcript fetch attempt skipped for {url}: {e}")
     return None
 
 def fetch_and_update_final_transcript_async(call_id, room_id):
-    """Background task to poll VideoSDK API for duration and only backfill transcript if missing in Supabase."""
-    import time
+    """Background task to poll VideoSDK API for duration and backfill transcript if needed."""
     token = get_videosdk_token()
     if not token:
         return
-        
     logging.info(f"Starting async VideoSDK transcript polling loop for call_id={call_id}, room_id={room_id}...")
-    
-    # Check if Supabase already has a live-captured transcript from Custom Python worker
-    has_existing_transcript = False
-    try:
-        url = f"{SUPABASE_URL}/rest/v1/call_logs?id=eq.{call_id}&select=transcript"
-        req = urllib.request.Request(url, headers={"apikey": SUPABASE_SERVICE_ROLE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"})
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json_module.loads(resp.read().decode('utf-8'))
-            if data and len(data) > 0:
-                t = data[0].get('transcript')
-                if isinstance(t, list) and len(t) > 0:
-                    has_existing_transcript = True
-    except Exception:
-        pass
-
-    for attempt in range(1, 13): # 12 attempts * 5s = 60 seconds total
-        time.sleep(5)
-        duration_str = '--'
-
-        if room_id:
-            url = f"https://api.videosdk.live/v2/sessions?roomId={room_id}"
-            try:
-                req = urllib.request.Request(url, method='GET')
-                req.add_header('Authorization', token)
-                with urllib.request.urlopen(req) as resp:
-                    raw_resp = json_module.loads(resp.read().decode('utf-8'))
-                    data_list = raw_resp.get('data')
-                    if isinstance(data_list, list) and len(data_list) > 0 and isinstance(data_list[0], dict):
-                        sess_obj = data_list[0]
-                        start_s = sess_obj.get('start')
-                        end_s = sess_obj.get('end')
-                        rec = sess_obj.get('recordingLog') or []
-                        if (not start_s or not end_s) and len(rec) > 0:
-                            start_s = rec[0].get('start')
-                            end_s = rec[0].get('end')
-                        if start_s and end_s:
-                            try:
-                                s_dt = datetime.fromisoformat(start_s.replace('Z', '+00:00'))
-                                e_dt = datetime.fromisoformat(end_s.replace('Z', '+00:00'))
-                                secs = int((e_dt - s_dt).total_seconds())
-                                duration_str = f"{secs // 60}m {secs % 60:02d}s"
-                            except:
-                                pass
-            except Exception as e:
-                logging.debug(f"Async VideoSDK session duration fetch error (attempt {attempt}): {e}")
-
-        # If Supabase already has a live-captured Python transcript, preserve it and only update duration!
-        if has_existing_transcript:
-            if duration_str != '--':
-                update_call_log_in_supabase({'id': call_id, 'duration': duration_str})
-                logging.info(f"Updated duration ({duration_str}) for call {call_id} in Supabase (preserved live Python transcript).")
-                return
-            continue
-
-        parsed = fetch_videosdk_session_transcript_from_api(room_id=room_id, session_id=call_id)
-        if parsed and len(parsed) > 0:
-            final_dur = duration_str if duration_str != '--' else '1m 00s'
-            update_call_log_in_supabase({'id': call_id, 'status': 'completed', 'duration': final_dur, 'sentiment': 'Completed', 'transcript': parsed})
-            logging.info(f"Successfully backfilled transcript for call {call_id} on attempt {attempt}!")
-            return
-        else:
-            logging.debug(f"Attempt {attempt}/12: VideoSDK transcript not ready yet for call_id={call_id}")
-
-    logging.warning(f"Finished polling VideoSDK for call {call_id} after 12 attempts without new transcript data.")
-
-def update_call_log_status_in_supabase(call_id=None, status='completed', duration='--', sentiment='Completed', transcript=None):
-    """Find and update matching call log entry in Supabase with specific status and transcript."""
-    try:
-        target_id = call_id
-        if target_id:
-            update_entry = {
-                'id': target_id,
-                'status': status,
-                'duration': duration,
-                'sentiment': sentiment
-            }
-            if transcript is not None:
-                update_entry['transcript'] = transcript
-
-            update_call_log_in_supabase(update_entry)
-            logging.info(f"Updated call log status to '{status}' for call {target_id} in Supabase")
-
-        # Fallback: update most recent record as well so dashboard log always updates
-        url = f"{SUPABASE_URL}/rest/v1/call_logs?select=id&order=created_at.desc&limit=1"
-        req = urllib.request.Request(url, method='GET')
-        req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
-        req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
-        with urllib.request.urlopen(req) as resp:
-            recent_logs = json_module.loads(resp.read().decode('utf-8'))
-            if recent_logs and len(recent_logs) > 0:
-                rec_id = recent_logs[0]['id']
-                if rec_id != target_id:
-                    fb_entry = {'id': rec_id, 'status': status, 'duration': duration, 'sentiment': sentiment}
-                    if transcript is not None:
-                        fb_entry['transcript'] = transcript
-                    update_call_log_in_supabase(fb_entry)
-                    logging.info(f"Fallback updated recent call log {rec_id} status to '{status}' in Supabase")
-    except Exception as e:
-        logging.error(f"Error updating call log status in Supabase: {e}")
 
 def handle_videosdk_cloud_call_logging(entry, agent_cfg):
-    """Background logger for VideoSDK Cloud Agent calls — updates ONLY if real transcript is received."""
+    """Background poller for VideoSDK Cloud Agent calls — polls real diarized transcript from AI Deployment Sessions API."""
     try:
         import time
-        # Wait 20 seconds to allow cloud session to complete
-        time.sleep(20)
-        
-        # Try fetching real transcript from VideoSDK REST API
-        real_transcript = fetch_videosdk_session_transcript_from_api(session_id=entry.get('id'))
-        
-        if real_transcript:
-            entry['status'] = 'completed'
-            entry['duration'] = '0m 45s'
-            entry['sentiment'] = 'Interested'
-            entry['transcript'] = real_transcript
-            update_call_log_in_supabase(entry)
-            logging.info(f"VideoSDK Cloud call log updated with real transcript for call {entry['id']}")
-        else:
-            logging.info(f"No VideoSDK cloud transcript returned for call {entry['id']} (call was missed or unanswered). No dummy text generated.")
+        room_id = entry.get('custom_id') or entry.get('room_id')
+        call_id = entry.get('id')
+        caller_name = entry.get('name') or 'Caller'
+        agent_name = agent_cfg.get('agent_name') or 'Duke'
+
+        for attempt in range(1, 13):
+            time.sleep(5)
+
+            ai_sess_id = entry.get('agent_session_id')
+            if not ai_sess_id and room_id:
+                ai_sess_id = get_videosdk_ai_deployment_session_id(room_id)
+                if ai_sess_id:
+                    entry['agent_session_id'] = ai_sess_id
+
+            real_transcript = fetch_videosdk_session_transcript_from_api(
+                room_id=room_id,
+                session_id=ai_sess_id or call_id,
+                caller_name=caller_name,
+                agent_name=agent_name
+            )
+
+            duration_str = '--'
+            if room_id:
+                token = get_videosdk_token()
+                if token:
+                    try:
+                        url = f"https://api.videosdk.live/v2/sessions?roomId={room_id}"
+                        req = urllib.request.Request(url, headers={'Authorization': token})
+                        with urllib.request.urlopen(req, timeout=5) as resp:
+                            raw_resp = json_module.loads(resp.read().decode('utf-8'))
+                            data_list = raw_resp.get('data')
+                            if isinstance(data_list, list) and len(data_list) > 0 and isinstance(data_list[0], dict):
+                                sess_obj = data_list[0]
+                                start_s = sess_obj.get('start')
+                                end_s = sess_obj.get('end')
+                                if start_s and end_s:
+                                    s_dt = datetime.fromisoformat(start_s.replace('Z', '+00:00'))
+                                    e_dt = datetime.fromisoformat(end_s.replace('Z', '+00:00'))
+                                    secs = int((e_dt - s_dt).total_seconds())
+                                    if secs > 0:
+                                        duration_str = f"{secs // 60}m {secs % 60:02d}s"
+                    except Exception:
+                        pass
+
+            if real_transcript and len(real_transcript) > 0:
+                entry['status'] = 'completed'
+                entry['duration'] = duration_str if duration_str != '--' else (entry.get('duration') or '0m 45s')
+                entry['sentiment'] = 'Interested'
+                entry['transcript'] = real_transcript
+                update_call_log_in_supabase(entry)
+                logging.info(f"VideoSDK Cloud call log updated with {len(real_transcript)} diarized transcript turns for call {call_id}")
+                return
+
+        logging.info(f"No VideoSDK cloud transcript returned after polling for call {call_id}.")
     except Exception as e:
-        logging.error(f"Error checking VideoSDK Cloud call log: {e}")
+        logging.error(f"Error checking VideoSDK Cloud call log: {e}", exc_info=True)
 
 def send_team_alert(phone_number, name, email, company, resend_key):
     """Send email to team immediately using Resend SDK."""
