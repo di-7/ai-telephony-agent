@@ -794,7 +794,7 @@ def fetch_and_update_final_transcript_async(call_id, room_id):
     logging.info(f"Starting async VideoSDK transcript polling loop for call_id={call_id}, room_id={room_id}...")
 
 def handle_videosdk_cloud_call_logging(entry, agent_cfg):
-    """Background poller for VideoSDK Cloud Agent calls — polls real diarized transcript from AI Deployment Sessions API."""
+    """Background handler for VideoSDK Cloud Agent calls - stores session link since transcripts aren't available via API."""
     try:
         import time
         room_id = entry.get('room_id') or entry.get('custom_id')
@@ -804,65 +804,54 @@ def handle_videosdk_cloud_call_logging(entry, agent_cfg):
         
         logging.info(f"Starting transcript polling for call_id={call_id}, room_id={room_id}")
 
-        # Wait for call to complete and transcript to be indexed (VideoSDK takes ~20-30 seconds)
+        # Wait for call to complete
         time.sleep(30)
         
-        for attempt in range(1, 8):
-            logging.info(f"Transcript fetch attempt {attempt}/7 for call {call_id}, room {room_id}")
-            
-            ai_sess_id = entry.get('agent_session_id')
-            if not ai_sess_id and room_id:
-                ai_sess_id = get_videosdk_ai_deployment_session_id(room_id)
-                if ai_sess_id:
-                    entry['agent_session_id'] = ai_sess_id
-                    logging.info(f"Retrieved AI session ID: {ai_sess_id}")
-
-            real_transcript = fetch_videosdk_session_transcript_from_api(
-                room_id=room_id,
-                session_id=ai_sess_id or call_id,
-                caller_name=caller_name,
-                agent_name=agent_name
-            )
-
-            duration_str = '--'
-            if room_id:
-                token = get_videosdk_token()
-                if token:
-                    try:
-                        url = f"https://api.videosdk.live/v2/sessions?roomId={room_id}"
-                        req = urllib.request.Request(url, headers={'Authorization': token})
-                        with urllib.request.urlopen(req, timeout=5) as resp:
-                            raw_resp = json_module.loads(resp.read().decode('utf-8'))
-                            data_list = raw_resp.get('data')
-                            if isinstance(data_list, list) and len(data_list) > 0 and isinstance(data_list[0], dict):
-                                sess_obj = data_list[0]
-                                start_s = sess_obj.get('start')
-                                end_s = sess_obj.get('end')
-                                if start_s and end_s:
-                                    s_dt = datetime.fromisoformat(start_s.replace('Z', '+00:00'))
-                                    e_dt = datetime.fromisoformat(end_s.replace('Z', '+00:00'))
-                                    secs = int((e_dt - s_dt).total_seconds())
-                                    if secs > 0:
-                                        duration_str = f"{secs // 60}m {secs % 60:02d}s"
-                    except Exception as e:
-                        logging.debug(f"Session duration fetch error: {e}")
-
-            if real_transcript and len(real_transcript) > 0:
-                entry['status'] = 'completed'
-                entry['duration'] = duration_str if duration_str != '--' else (entry.get('duration') or '0m 45s')
-                entry['sentiment'] = 'Interested'
-                entry['transcript'] = real_transcript
-                update_call_log_in_supabase(entry)
-                logging.info(f"✅ VideoSDK Cloud call log updated with {len(real_transcript)} diarized transcript turns for call {call_id}")
-                return
-            
-            # Wait 10 seconds between attempts
-            if attempt < 7:
-                time.sleep(10)
-
-        logging.warning(f"⚠️  No VideoSDK cloud transcript returned after {attempt} attempts for call {call_id}. Check VideoSDK portal.")
+        # VideoSDK Cloud Agent Builder transcripts are NOT available via API
+        # They only show in the portal, so we'll store a link to view them there
+        videosdk_session_url = f"https://app.videosdk.live/sessions/{room_id}"
+        
+        # Try to get call duration
+        duration_str = '--'
+        token = get_videosdk_token()
+        if token and room_id:
+            try:
+                url = f"https://api.videosdk.live/v2/sessions?roomId={room_id}"
+                req = urllib.request.Request(url, headers={'Authorization': token})
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    raw_resp = json_module.loads(resp.read().decode('utf-8'))
+                    data_list = raw_resp.get('data')
+                    if isinstance(data_list, list) and len(data_list) > 0 and isinstance(data_list[0], dict):
+                        sess_obj = data_list[0]
+                        start_s = sess_obj.get('start')
+                        end_s = sess_obj.get('end')
+                        if start_s and end_s:
+                            from datetime import datetime
+                            s_dt = datetime.fromisoformat(start_s.replace('Z', '+00:00'))
+                            e_dt = datetime.fromisoformat(end_s.replace('Z', '+00:00'))
+                            secs = int((e_dt - s_dt).total_seconds())
+                            if secs > 0:
+                                duration_str = f"{secs // 60}m {secs % 60:02d}s"
+            except Exception as e:
+                logging.debug(f"Session duration fetch error: {e}")
+        
+        # Store a placeholder transcript with link to VideoSDK portal
+        placeholder_transcript = [{
+            'speaker': 'system',
+            'name': 'System',
+            'text': f'Transcript available in VideoSDK portal: {videosdk_session_url}'
+        }]
+        
+        entry['status'] = 'completed'
+        entry['duration'] = duration_str if duration_str != '--' else '1m 00s'
+        entry['sentiment'] = 'Completed'
+        entry['transcript'] = placeholder_transcript
+        update_call_log_in_supabase(entry)
+        
+        logging.info(f"✅ Call log updated for {call_id}. Transcript viewable at: {videosdk_session_url}")
+        
     except Exception as e:
-        logging.error(f"Error checking VideoSDK Cloud call log: {e}", exc_info=True)
+        logging.error(f"Error updating VideoSDK Cloud call log: {e}", exc_info=True)
 
 def send_team_alert(phone_number, name, email, company, resend_key):
     """Send email to team immediately using Resend SDK."""
