@@ -1566,6 +1566,10 @@ async def start_session(context: JobContext, custom_variables=None):
     # Register transcription listener on the model
     model.on("realtime_model_transcription", on_transcription_event)
 
+    # Attach pipeline to JobContext so VideoSDKHandler gets initialized with the pipeline when connecting to room
+    if hasattr(context, "_set_pipeline_internal"):
+        context._set_pipeline_internal(pipeline)
+
     # Set the current job context so AgentSession can discover it
     _set_current_job_context(context)
 
