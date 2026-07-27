@@ -60,17 +60,8 @@ def save_call_logs(logs):
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'agent_config.json')
 
 DEFAULT_AGENT_CONFIG = {
-    "provider": "gemini",
-    "gemini": {
-        "model": "gemini-2.0-flash-exp",
-        "voice": "Aoede",
-        "vad_silence_ms": 200
-    },
-    "kokoro": {
-        "voice": "af_heart",
-        "speed": 1.0
-    },
-    "system_instruction": "You are a warm, helpful sales receptionist for Mixup AI. Greet the caller nicely, answer questions naturally, and collect their name and company to schedule a demo."
+    "provider": "videosdk",
+    "video_sdk_agent_id": ""
 }
 
 def load_agent_config_from_supabase(business_id=None):
@@ -125,7 +116,7 @@ def save_agent_config_to_supabase(config_data, business_id=None):
         url = f"{SUPABASE_URL}/rest/v1/agent_configs?on_conflict=business_id"
         payload = {
             "business_id": b_id,
-            "provider": config_data.get("provider", "gemini"),
+            "provider": config_data.get("provider", "videosdk"),
             "config": config_data
         }
         data = json_module.dumps(payload).encode('utf-8')
@@ -168,14 +159,11 @@ def load_agent_config():
         save_agent_config_local(sp_config)
         return sp_config
 
-    # 2. Fallback to local JSON file
+    """Load local agent configuration from agent_config.json."""
     try:
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, 'r') as f:
-                saved = json_module.load(f)
-                config = DEFAULT_AGENT_CONFIG.copy()
-                config.update(saved)
-                return config
+                return json_module.load(f)
     except Exception as e:
         logging.error(f"Failed to load agent config from file: {e}")
     return DEFAULT_AGENT_CONFIG.copy()
@@ -217,37 +205,114 @@ def get_videosdk_token():
         token = jwt.encode(payload, secret, algorithm='HS256')
         return token
     except Exception as e:
-        logging.error(f"Failed to generate dynamic VideoSDK JWT token: {e}")
+        logging.error(f"Failed to generate dynamic VideoSDK token via PyJWT: {e}")
         return os.getenv("VIDEOSDK_AUTH_TOKEN")
 
-def create_videosdk_room_with_transcription(token, custom_id=None):
-    """Create a new VideoSDK room with autoStartConfig enabling recording and transcription."""
-    url = "https://api.videosdk.live/v2/rooms"
+def create_videosdk_room_with_transcription(videosdk_token, custom_room_id=None):
+    """Create a new VideoSDK room with real-time transcription enabled."""
+    create_room_url = "https://api.videosdk.live/v2/rooms"
+    req = urllib.request.Request(create_room_url, method="POST")
+    req.add_header("Authorization", str(videosdk_token))
+    req.add_header("Content-Type", "application/json")
+    
     body = {
-        "autoStartConfig": {
-            "recording": {
-                "transcription": {
-                    "enabled": True,
-                    "summary": {"enabled": True}
-                }
+        "autoStartTranscription": True,
+        "transcription": {
+            "enabled": True,
+            "summary": {
+                "enabled": True,
+                "prompt": "Summarize this telephony sales session, listing key interest areas and follow-up items."
             }
         }
     }
-    if custom_id:
-        body["customMeetingId"] = custom_id
+    if custom_room_id:
+        body["customRoomId"] = custom_room_id
         
     try:
-        req = urllib.request.Request(url, data=json_module.dumps(body).encode('utf-8'), method='POST')
-        req.add_header('Authorization', token)
-        req.add_header('Content-Type', 'application/json')
-        with urllib.request.urlopen(req) as resp:
-            resp_data = json_module.loads(resp.read().decode('utf-8'))
-            room_id = resp_data.get("roomId")
+        data = json_module.dumps(body).encode('utf-8')
+        req.data = data
+        with urllib.request.urlopen(req) as response:
+            resp_body = response.read()
+            resp_json = json_module.loads(resp_body.decode('utf-8'))
+            room_id = resp_json.get("roomId") or resp_json.get("id")
             logging.info(f"Created VideoSDK room {room_id} with transcription enabled.")
             return room_id
     except Exception as e:
         logging.error(f"Failed to create VideoSDK room with transcription: {e}")
         return None
+
+def trigger_outbound_call(phone_number, name="there", email="", company="", business_id=None, custom_variables=None):
+    """Core function to trigger outbound SIP call via VideoSDK & bridge custom Python worker or VideoSDK agent."""
+    if not phone_number:
+        return {"success": False, "error": "Phone number is required"}
+
+    if not phone_number.startswith('+'):
+        phone_number = '+' + phone_number
+
+    logging.info(f"Triggering outbound call: {phone_number} for {name} ({email}), business_id: {business_id}, custom_vars: {custom_variables}")
+
+    videosdk_token = get_videosdk_token()
+    gateway_id = os.getenv("SIP_GATEWAY_ID")
+    resend_key = os.getenv("RESEND_API_KEY")
+
+    if not videosdk_token or not gateway_id:
+        logging.error("Missing VideoSDK credentials or SIP_GATEWAY_ID in environment")
+        return {"success": False, "error": "Server misconfiguration. Missing API credentials or Gateway ID."}
+
+    call_url = "https://api.videosdk.live/v2/sip/call"
+    agent_cfg = (load_agent_config_from_supabase(business_id=business_id) or load_agent_config())
+    provider = agent_cfg.get("provider", "videosdk")
+
+    import time
+    custom_meeting_id = f"{phone_number.replace('+', '')}-{int(time.time())}"
+    room_id = create_videosdk_room_with_transcription(videosdk_token, custom_meeting_id)
+
+    call_body = {
+        "gatewayId": gateway_id,
+        "sipCallTo": phone_number
+    }
+    if room_id:
+        call_body["destinationRoomId"] = room_id
+    target_agent_id = (agent_cfg.get("video_sdk_agent_id") or os.getenv("VIDEOSDK_AGENT_ID", "")).strip()
+    if target_agent_id:
+        call_body["agentId"] = target_agent_id
+        logging.info(f"Routing call to VideoSDK Cloud Agent Builder ID: '{target_agent_id}'")
+    else:
+        is_videosdk_cloud = False
+
+    call_payload = json_module.dumps(call_body).encode('utf-8')
+    req = urllib.request.Request(call_url, data=call_payload, method="POST")
+    req.add_header("Authorization", str(videosdk_token))
+    req.add_header("Content-Type", "application/json")
+
+    sdk_call_id = None
+    try:
+        with urllib.request.urlopen(req) as response:
+            api_response = response.read()
+            logging.info(f"VideoSDK call triggered successfully: {api_response}")
+            try:
+                resp_json = json_module.loads(api_response.decode('utf-8'))
+                sdk_call_id = (resp_json.get("data") or {}).get("id")
+            except Exception:
+                pass
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode('utf-8')
+        logging.error(f"VideoSDK API failed with status {e.code}: {error_body}")
+        return {"success": False, "error": error_body}
+    except Exception as e:
+        logging.error(f"VideoSDK API failed: {e}")
+        return {"success": False, "error": str(e)}
+
+    # Send team alert email
+    threading.Thread(target=send_team_alert, args=(phone_number, name, email, company, resend_key)).start()
+
+    # Add call log
+    call_entry = add_call_log(phone_number, name, email, company, source='cta_form' if email else 'instant_call', business_id=business_id, custom_id=sdk_call_id)
+    if call_entry:
+        logging.info(f"VideoSDK Cloud Agent Builder ({call_body.get('agentId')}) is active for call {call_entry.get('id')}. Polling transcript...")
+        threading.Thread(target=handle_videosdk_cloud_call_logging, args=(call_entry, agent_cfg)).start()
+
+    return {"success": True, "call_id": sdk_call_id, "room_id": room_id}
 
 # Pending calls tracking for pairing sessions with API call requests
 PENDING_CALLS = []
@@ -724,50 +789,6 @@ def send_team_alert(phone_number, name, email, company, resend_key):
     except Exception as e:
         logging.error(f"Failed to send team email via Resend: {e}")
 
-def trigger_outbound_call(phone_number, name="there", email="", company="", business_id=None, custom_variables=None):
-    """Core function to trigger outbound SIP call via VideoSDK & bridge custom Python worker or VideoSDK agent."""
-    if not phone_number:
-        return {"success": False, "error": "Phone number is required"}
-
-    if not phone_number.startswith('+'):
-        phone_number = '+' + phone_number
-
-    logging.info(f"Triggering outbound call: {phone_number} for {name} ({email}), business_id: {business_id}, custom_vars: {custom_variables}")
-
-    videosdk_token = get_videosdk_token()
-    gateway_id = os.getenv("SIP_GATEWAY_ID")
-    resend_key = os.getenv("RESEND_API_KEY")
-
-    if not videosdk_token or not gateway_id:
-        logging.error("Missing VideoSDK credentials or SIP_GATEWAY_ID in environment")
-        return {"success": False, "error": "Server misconfiguration. Missing API credentials or Gateway ID."}
-
-    call_url = "https://api.videosdk.live/v2/sip/call"
-    agent_cfg = (load_agent_config_from_supabase(business_id=business_id) or load_agent_config())
-    provider = agent_cfg.get("provider", "gemini")
-
-    import time
-    custom_meeting_id = f"{phone_number.replace('+', '')}-{int(time.time())}"
-    room_id = create_videosdk_room_with_transcription(videosdk_token, custom_meeting_id)
-
-    call_body = {
-        "gatewayId": gateway_id,
-        "sipCallTo": phone_number
-    }
-    if room_id:
-        call_body["destinationRoomId"] = room_id
-
-    target_agent_id = agent_cfg.get("video_sdk_agent_id") or "ag_rajwdl"
-    if provider == "videosdk" or (target_agent_id and target_agent_id.strip()):
-        sdk_id = target_agent_id.strip() if target_agent_id and target_agent_id.strip() else "ag_rajwdl"
-        call_body["agentId"] = sdk_id
-        is_videosdk_cloud = True
-        logging.info(f"Routing call to VideoSDK Cloud Agent Builder ID: '{sdk_id}'")
-    else:
-        is_videosdk_cloud = False
-
-    call_payload = json_module.dumps(call_body).encode('utf-8')
-    req = urllib.request.Request(call_url, data=call_payload, method="POST")
     req.add_header("Authorization", str(videosdk_token))
     req.add_header("Content-Type", "application/json")
 

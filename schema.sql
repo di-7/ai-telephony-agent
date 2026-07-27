@@ -123,15 +123,10 @@ CREATE TRIGGER on_auth_user_created
 CREATE TABLE IF NOT EXISTS public.agent_configs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id UUID REFERENCES public.businesses(id) ON DELETE CASCADE,
-  provider TEXT NOT NULL DEFAULT 'gemini',
+  provider TEXT NOT NULL DEFAULT 'videosdk',
   config JSONB NOT NULL DEFAULT '{
-    "provider": "gemini",
-    "gemini": {
-      "model": "gemini-2.0-flash-exp",
-      "voice": "Aoede",
-      "vad_silence_ms": 200
-    },
-    "system_instruction": "You are a warm, helpful sales receptionist for Mixup AI. Greet the caller nicely, answer questions naturally, and collect their name and company to schedule a demo."
+    "provider": "videosdk",
+    "video_sdk_agent_id": ""
   }'::jsonb,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW(),

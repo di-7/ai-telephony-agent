@@ -1026,7 +1026,7 @@ async function saveAdminUserConfig() {
     }
 
     const videoSdkAgentId = document.getElementById('adminVideoSdkAgentId')?.value.trim() || '';
-    const provider = videoSdkAgentId ? 'videosdk' : 'gemini';
+    const provider = 'videosdk';
 
     const payload = {
         provider: provider,
@@ -1197,7 +1197,7 @@ async function loadAgentConfigFromStorage() {
 function populateConfigUI(config) {
     if (!config) return;
 
-    selectEngineProvider(config.provider || 'gemini');
+    selectEngineProvider(config.provider || 'videosdk');
 
     if (config.gemini) {
         const cfgVoice = document.getElementById('cfgGeminiVoice');
@@ -1264,7 +1264,7 @@ function updateVideoSdkNotice() {
 async function saveAgentConfig() {
     const cfgVideoSdkAgentId = document.getElementById('cfgVideoSdkAgentId');
     const videoSdkAgentId = cfgVideoSdkAgentId ? cfgVideoSdkAgentId.value.trim() : '';
-    const provider = videoSdkAgentId ? 'videosdk' : 'gemini';
+    const provider = 'videosdk';
 
     const cfgGeminiVoice = document.getElementById('cfgGeminiVoice');
     const cfgGeminiModel = document.getElementById('cfgGeminiModel');
