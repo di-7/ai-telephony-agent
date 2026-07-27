@@ -1438,14 +1438,15 @@ def pcm_to_wav(pcm_data: bytes, sample_rate: int = 16000, num_channels: int = 1,
     return buf.getvalue()
 
 class GroqWhisperSTT(STT):
-    """Groq Whisper-large-v3-turbo Speech-to-Text Engine for VideoSDK Agent"""
+    """Groq Whisper-large-v3-turbo Speech-to-Text Engine with Audio Buffer Accumulator for VideoSDK Agent"""
     def __init__(
         self,
         api_key: typing.Optional[str] = None,
         model: str = "whisper-large-v3-turbo",
         sample_rate: int = 16000,
         transcript_list: typing.Optional[list] = None,
-        caller_name: str = "Caller"
+        caller_name: str = "Caller",
+        min_buffer_bytes: int = 25600  # ~0.8s at 16kHz 16-bit mono
     ):
         super().__init__()
         self.api_key = api_key or os.getenv("GROQ_API_KEY")
@@ -1453,39 +1454,58 @@ class GroqWhisperSTT(STT):
         self.sample_rate = sample_rate
         self.transcript_list = transcript_list if transcript_list is not None else []
         self.caller_name = caller_name
+        self.min_buffer_bytes = min_buffer_bytes
+        self._audio_buffer = bytearray()
+        self._last_transcribe_time = time.time()
         self.client = Groq(api_key=self.api_key) if (Groq and self.api_key) else None
         if self.client:
-            logging.info(f"Groq Whisper STT initialized | Model={self.model}")
+            logging.info(f"Groq Whisper STT initialized | Model={self.model} | BufferThreshold={self.min_buffer_bytes} bytes")
 
     async def process_audio(self, audio_frames: bytes, language: typing.Optional[str] = None, **kwargs: typing.Any) -> None:
         if not audio_frames or not self.client:
             return
-        try:
-            wav_bytes = pcm_to_wav(audio_frames, sample_rate=self.sample_rate)
-            def _transcribe():
-                return self.client.audio.transcriptions.create(
-                    file=("speech.wav", wav_bytes),
-                    model=self.model,
-                    temperature=0,
-                    response_format="verbose_json",
-                )
-            transcription = await asyncio.to_thread(_transcribe)
-            text = getattr(transcription, "text", "").strip()
-            if text:
-                logging.info(f"Groq Whisper STT output [{self.caller_name}]: '{text}'")
-                self.transcript_list.append({
-                    "speaker": "customer",
-                    "name": self.caller_name,
-                    "text": text
-                })
-                if self._transcript_callback:
-                    response = STTResponse(
-                        event_type=SpeechEventType.FINAL,
-                        data=SpeechData(text=text)
+
+        self._audio_buffer.extend(audio_frames)
+        now = time.time()
+        time_elapsed = now - self._last_transcribe_time
+
+        # Transcribe when buffer reaches ~0.8s OR after 1.2s timeout
+        if len(self._audio_buffer) >= self.min_buffer_bytes or (len(self._audio_buffer) > 6400 and time_elapsed > 1.2):
+            buffer_to_process = bytes(self._audio_buffer)
+            self._audio_buffer.clear()
+            self._last_transcribe_time = now
+
+            try:
+                wav_bytes = pcm_to_wav(buffer_to_process, sample_rate=self.sample_rate)
+                def _transcribe():
+                    return self.client.audio.transcriptions.create(
+                        file=("speech.wav", wav_bytes),
+                        model=self.model,
+                        temperature=0,
+                        response_format="verbose_json",
                     )
-                    await self._transcript_callback(response)
-        except Exception as e:
-            logging.error(f"Error in Groq Whisper STT processing: {e}")
+                transcription = await asyncio.to_thread(_transcribe)
+                text = getattr(transcription, "text", "").strip()
+                
+                # Ignore common silence hallucinations from Whisper
+                silence_phrases = ["thank you for watching", "subtitles by", "amara.org", "thank you", "bye", "you"]
+                is_hallucination = any(p in text.lower() for p in silence_phrases) and len(text) < 12
+
+                if text and len(text) > 1 and not is_hallucination:
+                    logging.info(f"Groq Whisper STT output [{self.caller_name}]: '{text}'")
+                    self.transcript_list.append({
+                        "speaker": "customer",
+                        "name": self.caller_name,
+                        "text": text
+                    })
+                    if self._transcript_callback:
+                        response = STTResponse(
+                            event_type=SpeechEventType.FINAL,
+                            data=SpeechData(text=text)
+                        )
+                        await self._transcript_callback(response)
+            except Exception as e:
+                logging.error(f"Error in Groq Whisper STT processing: {e}")
 
 from videosdk.agents.llm import LLM, LLMResponse, ChatRole, ChatContext
 
