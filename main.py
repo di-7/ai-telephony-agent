@@ -1488,6 +1488,19 @@ async def start_session(context: JobContext, custom_variables=None):
         else:
             logging.warning("No pending call entry found (neither in-memory nor Supabase). Transcript will still be captured.")
 
+    # Initialize transcription and call lifecycle tracking early so other setups can reference them
+    transcript_list = []
+    session_should_end_event = asyncio.Event()
+
+    def trigger_auto_end_call(delay_sec=3.5):
+        async def _end():
+            await asyncio.sleep(delay_sec)
+            session_should_end_event.set()
+        try:
+            asyncio.create_task(_end())
+        except Exception:
+            pass
+
     # Load dynamic configuration from dashboard settings (per business_id)
     b_id = call_entry.get('business_id') if call_entry else None
     agent_cfg = (load_agent_config_from_supabase(business_id=b_id) if b_id else load_agent_config())
@@ -1509,9 +1522,6 @@ async def start_session(context: JobContext, custom_variables=None):
     if end_call_enabled:
         system_inst += f"\n\n[AUTOMATIC CALL ENDING POLICY & INSTRUCTION]:\nCall Termination Conditions: {end_call_conditions}\nWhen these conditions are met or when the customer indicates they have no further questions, are satisfied, or say goodbye, speak your final farewell message ('{end_call_final_response}') and append '[END_CALL]' to the end of your response to signal session completion."
 
-    gemini_cfg = agent_cfg.get("gemini") or {}
-    selected_model = gemini_cfg.get("model") or agent_cfg.get("model") or os.getenv("GEMINI_LIVE_MODEL", "models/gemini-2.0-flash-exp")
-
     if provider == "kokoro":
         kokoro_cfg = agent_cfg.get("kokoro") or {}
         kokoro_voice = kokoro_cfg.get("voice") or "am_adam"
@@ -1521,10 +1531,10 @@ async def start_session(context: JobContext, custom_variables=None):
         except (ValueError, TypeError):
             speed = 1.0
         
-        logging.info(f"Kokoro 82M ONNX Engine Active | Voice={kokoro_voice} | Speed={speed}x | Model={selected_model} | Agent={agent_name}")
+        logging.info(f"Kokoro 82M ONNX Engine Active | Voice={kokoro_voice} | Speed={speed}x | Agent={agent_name}")
 
         model = GeminiRealtime(
-            model=selected_model,
+            model="models/gemini-3.1-flash-live-preview",
             api_key=os.getenv("GOOGLE_API_KEY"),
             config=GeminiLiveConfig(
                 response_modalities=["TEXT"],
@@ -1540,8 +1550,74 @@ async def start_session(context: JobContext, custom_variables=None):
         )
         tts = KokoroTTS(voice=kokoro_voice, speed=speed)
         pipeline = Pipeline(llm=model, tts=tts, realtime_config=RealtimeConfig(mode="hybrid_tts"))
+
+        async def gemma_llm_stream_hook(text_stream):
+            # Consume Gemini's text stream to let it finish
+            async for _ in text_stream:
+                pass
+                
+            # Get the user message
+            user_message = ""
+            for turn in reversed(transcript_list):
+                if turn.get("speaker") == "customer":
+                    user_message = turn.get("text", "")
+                    break
+            if not user_message:
+                user_message = "Hello"
+
+            # Query gemma-4-26b-a4b-it
+            from google import genai
+            client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+            
+            history_prompts = []
+            history_prompts.append(f"System instructions: {system_inst}\n")
+            for turn in transcript_list[-6:]:
+                speaker = "Agent" if turn.get("speaker") == "agent" else "User"
+                history_prompts.append(f"{speaker}: {turn.get('text')}")
+                
+            history_prompts.append(f"User: {user_message}")
+            history_prompts.append("Agent:")
+            
+            full_prompt = "\n".join(history_prompts)
+            logging.info(f"Querying gemma-4-26b-a4b-it with prompt: {full_prompt[:250]}...")
+            
+            gemma_full_response = ""
+            try:
+                response_stream = await asyncio.to_thread(
+                    client.models.generate_content_stream,
+                    model="gemma-4-26b-a4b-it",
+                    contents=full_prompt
+                )
+                for chunk in response_stream:
+                    if chunk.text:
+                        gemma_full_response += chunk.text
+                        yield chunk.text
+            except Exception as e:
+                logging.error(f"Error generating content from gemma-4: {e}")
+                
+            # Save Gemma response to transcript
+            if gemma_full_response:
+                clean_text = gemma_full_response.replace('[END_CALL]', '').strip()
+                transcript_list.append({
+                    "speaker": "agent",
+                    "name": f"AI Agent ({agent_name})",
+                    "text": clean_text
+                })
+                logging.info(f"FINAL transcript [agent] (Gemma-4): {clean_text}")
+                
+                # Check auto end call triggers
+                if end_call_enabled:
+                    gemma_lower = gemma_full_response.lower()
+                    resp_sample = (end_call_final_response.lower()[:20] if end_call_final_response else 'thank you')
+                    if '[end_call]' in gemma_lower or 'goodbye' in gemma_lower or 'have a wonderful day' in gemma_lower or resp_sample in gemma_lower:
+                        logging.info("Auto Call Ending condition detected in Gemma response! Scheduling session end in 3.5 seconds...")
+                        trigger_auto_end_call(delay_sec=3.5)
+
+        pipeline.hooks._llm_stream_hook = gemma_llm_stream_hook
     else:
+        gemini_cfg = agent_cfg.get("gemini") or {}
         selected_voice = gemini_cfg.get("voice") or "Aoede"
+        selected_model = gemini_cfg.get("model") or "models/gemini-3.1-flash-live-preview"
         raw_vad = gemini_cfg.get("vad_silence_ms")
         try:
             vad_silence = int(raw_vad) if raw_vad is not None else 200
@@ -1579,18 +1655,6 @@ async def start_session(context: JobContext, custom_variables=None):
 
     agent = TelephonyAgent(instructions=system_inst)
 
-    transcript_list = []
-    session_should_end_event = asyncio.Event()
-
-    def trigger_auto_end_call(delay_sec=3.5):
-        async def _end():
-            await asyncio.sleep(delay_sec)
-            session_should_end_event.set()
-        try:
-            asyncio.create_task(_end())
-        except Exception:
-            pass
-
     def on_transcription_event(data):
         """Capture transcription events from the Gemini realtime model and detect auto end-call triggers."""
         try:
@@ -1604,6 +1668,9 @@ async def start_session(context: JobContext, custom_variables=None):
                     clean_text = text.replace('[END_CALL]', '').strip()
                     if is_final:
                         speaker_role = "agent" if role == "agent" else "customer"
+                        if speaker_role == "agent" and provider == "kokoro":
+                            # Skip Gemini's response because Gemma-4 generates the actual spoken agent text!
+                            return
                         caller_name = (call_entry.get('name') if call_entry and call_entry.get('name') else "Caller")
                         speaker_name = f"AI Agent ({agent_name})" if role == "agent" else caller_name
                         transcript_list.append({
