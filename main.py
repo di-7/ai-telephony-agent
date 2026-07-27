@@ -794,7 +794,7 @@ def fetch_and_update_final_transcript_async(call_id, room_id):
     logging.info(f"Starting async VideoSDK transcript polling loop for call_id={call_id}, room_id={room_id}...")
 
 def handle_videosdk_cloud_call_logging(entry, agent_cfg):
-    """Background handler for VideoSDK Cloud Agent calls - stores session link since transcripts aren't available via API."""
+    """Background handler for VideoSDK Cloud Agent calls - fetches recording and generates transcript."""
     try:
         import time
         room_id = entry.get('room_id') or entry.get('custom_id')
@@ -802,27 +802,29 @@ def handle_videosdk_cloud_call_logging(entry, agent_cfg):
         caller_name = entry.get('name') or 'Caller'
         agent_name = agent_cfg.get('agent_name') or 'Duke'
         
-        logging.info(f"Starting transcript polling for call_id={call_id}, room_id={room_id}")
+        logging.info(f"Starting recording fetch and transcript generation for call_id={call_id}, room_id={room_id}")
 
-        # Wait for call to complete
-        time.sleep(30)
+        # Wait for call to complete and recording to be ready
+        time.sleep(45)
         
-        # VideoSDK Cloud Agent Builder transcripts are NOT available via API
-        # They only show in the portal, so we'll store a link to view them there
-        videosdk_session_url = f"https://app.videosdk.live/sessions/{room_id}"
-        
-        # Try to get call duration
-        duration_str = '--'
         token = get_videosdk_token()
+        duration_str = '--'
+        recording_url = None
+        
+        # Get session details and recording
         if token and room_id:
             try:
+                # Get session data
                 url = f"https://api.videosdk.live/v2/sessions?roomId={room_id}"
                 req = urllib.request.Request(url, headers={'Authorization': token})
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     raw_resp = json_module.loads(resp.read().decode('utf-8'))
                     data_list = raw_resp.get('data')
-                    if isinstance(data_list, list) and len(data_list) > 0 and isinstance(data_list[0], dict):
+                    if isinstance(data_list, list) and len(data_list) > 0:
                         sess_obj = data_list[0]
+                        session_id = sess_obj.get('id') or sess_obj.get('_id')
+                        
+                        # Calculate duration
                         start_s = sess_obj.get('start')
                         end_s = sess_obj.get('end')
                         if start_s and end_s:
@@ -832,26 +834,198 @@ def handle_videosdk_cloud_call_logging(entry, agent_cfg):
                             secs = int((e_dt - s_dt).total_seconds())
                             if secs > 0:
                                 duration_str = f"{secs // 60}m {secs % 60:02d}s"
+                        
+                        # Try to get recording
+                        if session_id:
+                            rec_url = f"https://api.videosdk.live/v2/recordings?sessionId={session_id}"
+                            rec_req = urllib.request.Request(rec_url, headers={'Authorization': token})
+                            with urllib.request.urlopen(rec_req, timeout=10) as rec_resp:
+                                rec_data = json_module.loads(rec_resp.read().decode('utf-8'))
+                                recordings = rec_data.get('data', [])
+                                if recordings and len(recordings) > 0:
+                                    recording_url = recordings[0].get('file', {}).get('url')
+                                    logging.info(f"Found recording URL: {recording_url}")
             except Exception as e:
-                logging.debug(f"Session duration fetch error: {e}")
+                logging.warning(f"Error fetching session/recording data: {e}")
         
-        # Store a placeholder transcript with link to VideoSDK portal
-        placeholder_transcript = [{
-            'speaker': 'system',
-            'name': 'System',
-            'text': f'Transcript available in VideoSDK portal: {videosdk_session_url}'
-        }]
+        # Generate transcript from recording or create placeholder
+        transcript = []
         
+        if recording_url:
+            logging.info(f"Attempting to generate transcript from recording...")
+            transcript = generate_transcript_from_recording(recording_url, caller_name, agent_name)
+        
+        if not transcript or len(transcript) == 0:
+            # Fallback: create a simple placeholder transcript
+            logging.warning(f"No recording available or transcription failed. Using placeholder.")
+            transcript = [{
+                'speaker': 'system',
+                'name': 'System',
+                'text': f'Call completed. Duration: {duration_str}. Recording transcription not available. View session in VideoSDK portal: https://app.videosdk.live/sessions/{room_id}'
+            }]
+        
+        # Update call log
         entry['status'] = 'completed'
         entry['duration'] = duration_str if duration_str != '--' else '1m 00s'
         entry['sentiment'] = 'Completed'
-        entry['transcript'] = placeholder_transcript
+        entry['transcript'] = transcript
         update_call_log_in_supabase(entry)
         
-        logging.info(f"✅ Call log updated for {call_id}. Transcript viewable at: {videosdk_session_url}")
+        logging.info(f"✅ Call log updated for {call_id} with {len(transcript)} transcript turns")
         
     except Exception as e:
         logging.error(f"Error updating VideoSDK Cloud call log: {e}", exc_info=True)
+
+def generate_transcript_from_recording(recording_url, caller_name='Caller', agent_name='Agent'):
+    """Generate transcript from audio recording URL using OpenAI Whisper or Google Speech-to-Text."""
+    try:
+        import tempfile
+        
+        # Download the recording
+        logging.info(f"Downloading recording from: {recording_url}")
+        audio_data = urllib.request.urlopen(recording_url, timeout=60).read()
+        
+        # Save to temporary file
+        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as tmp_file:
+            tmp_file.write(audio_data)
+            audio_path = tmp_file.name
+        
+        logging.info(f"Recording downloaded ({len(audio_data)} bytes), transcribing...")
+        
+        # Try OpenAI Whisper API first
+        openai_key = os.getenv('OPENAI_API_KEY')
+        if openai_key and not openai_key.startswith('your_'):
+            try:
+                transcript = transcribe_with_openai_whisper(audio_path, openai_key)
+                if transcript:
+                    os.unlink(audio_path)
+                    return parse_transcript_text(transcript, caller_name, agent_name)
+            except Exception as e:
+                logging.warning(f"OpenAI Whisper failed: {e}")
+        
+        # Try Google Speech-to-Text
+        google_api_key = os.getenv('GOOGLE_API_KEY')
+        if google_api_key and not google_api_key.startswith('your_'):
+            try:
+                transcript = transcribe_with_google_speech(audio_path, google_api_key)
+                if transcript:
+                    os.unlink(audio_path)
+                    return parse_transcript_text(transcript, caller_name, agent_name)
+            except Exception as e:
+                logging.warning(f"Google Speech-to-Text failed: {e}")
+        
+        # Cleanup
+        os.unlink(audio_path)
+        logging.warning("No transcription service available (set OPENAI_API_KEY or GOOGLE_API_KEY)")
+        return []
+        
+    except Exception as e:
+        logging.error(f"Error generating transcript from recording: {e}")
+        return []
+
+def transcribe_with_openai_whisper(audio_path, api_key):
+    """Transcribe audio using OpenAI Whisper API."""
+    try:
+        url = "https://api.openai.com/v1/audio/transcriptions"
+        
+        # Read audio file
+        with open(audio_path, 'rb') as audio_file:
+            audio_content = audio_file.read()
+        
+        # Prepare multipart form data
+        boundary = '----WebKitFormBoundary' + str(uuid.uuid4()).replace('-', '')
+        
+        body = (
+            f'--{boundary}\r\n'
+            f'Content-Disposition: form-data; name="file"; filename="audio.mp3"\r\n'
+            f'Content-Type: audio/mpeg\r\n\r\n'
+        ).encode() + audio_content + (
+            f'\r\n--{boundary}\r\n'
+            f'Content-Disposition: form-data; name="model"\r\n\r\n'
+            f'whisper-1\r\n'
+            f'--{boundary}--\r\n'
+        ).encode()
+        
+        req = urllib.request.Request(url, data=body, method='POST')
+        req.add_header('Authorization', f'Bearer {api_key}')
+        req.add_header('Content-Type', f'multipart/form-data; boundary={boundary}')
+        
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            result = json_module.loads(resp.read().decode('utf-8'))
+            return result.get('text', '')
+            
+    except Exception as e:
+        logging.error(f"OpenAI Whisper transcription failed: {e}")
+        return None
+
+def transcribe_with_google_speech(audio_path, api_key):
+    """Transcribe audio using Google Speech-to-Text API."""
+    try:
+        import base64
+        
+        # Read and encode audio
+        with open(audio_path, 'rb') as audio_file:
+            audio_content = base64.b64encode(audio_file.read()).decode('utf-8')
+        
+        url = f"https://speech.googleapis.com/v1/speech:recognize?key={api_key}"
+        
+        payload = {
+            "config": {
+                "encoding": "MP3",
+                "sampleRateHertz": 16000,
+                "languageCode": "en-US",
+                "enableAutomaticPunctuation": True
+            },
+            "audio": {
+                "content": audio_content
+            }
+        }
+        
+        data = json_module.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(url, data=data, method='POST')
+        req.add_header('Content-Type', 'application/json')
+        
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            result = json_module.loads(resp.read().decode('utf-8'))
+            results = result.get('results', [])
+            if results:
+                alternatives = results[0].get('alternatives', [])
+                if alternatives:
+                    return alternatives[0].get('transcript', '')
+        
+        return None
+            
+    except Exception as e:
+        logging.error(f"Google Speech-to-Text transcription failed: {e}")
+        return None
+
+def parse_transcript_text(text, caller_name='Caller', agent_name='Agent'):
+    """Parse plain transcript text into structured format with speaker diarization."""
+    # Simple heuristic: split by sentences and alternate speakers
+    # This is basic - in reality, proper diarization would need timestamps
+    
+    sentences = []
+    current = ""
+    for char in text:
+        current += char
+        if char in '.?!':
+            if current.strip():
+                sentences.append(current.strip())
+            current = ""
+    if current.strip():
+        sentences.append(current.strip())
+    
+    transcript = []
+    for i, sentence in enumerate(sentences):
+        # Simple alternating logic - agent speaks first (greeting), then alternate
+        is_agent = (i % 2 == 0)
+        transcript.append({
+            'speaker': 'agent' if is_agent else 'customer',
+            'name': agent_name if is_agent else caller_name,
+            'text': sentence
+        })
+    
+    return transcript
 
 def send_team_alert(phone_number, name, email, company, resend_key):
     """Send email to team immediately using Resend SDK."""
