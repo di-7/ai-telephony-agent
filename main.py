@@ -1509,6 +1509,9 @@ async def start_session(context: JobContext, custom_variables=None):
     if end_call_enabled:
         system_inst += f"\n\n[AUTOMATIC CALL ENDING POLICY & INSTRUCTION]:\nCall Termination Conditions: {end_call_conditions}\nWhen these conditions are met or when the customer indicates they have no further questions, are satisfied, or say goodbye, speak your final farewell message ('{end_call_final_response}') and append '[END_CALL]' to the end of your response to signal session completion."
 
+    gemini_cfg = agent_cfg.get("gemini") or {}
+    selected_model = gemini_cfg.get("model") or agent_cfg.get("model") or os.getenv("GEMINI_LIVE_MODEL", "models/gemini-2.0-flash-exp")
+
     if provider == "kokoro":
         kokoro_cfg = agent_cfg.get("kokoro") or {}
         kokoro_voice = kokoro_cfg.get("voice") or "am_adam"
@@ -1518,8 +1521,7 @@ async def start_session(context: JobContext, custom_variables=None):
         except (ValueError, TypeError):
             speed = 1.0
         
-        selected_model = kokoro_cfg.get("model") or "models/gemini-3.1-flash-live-preview"
-        logging.info(f"Kokoro 82M ONNX Engine Active | LLM Model={selected_model} | Voice={kokoro_voice} | Speed={speed}x | Agent={agent_name}")
+        logging.info(f"Kokoro 82M ONNX Engine Active | Voice={kokoro_voice} | Speed={speed}x | Model={selected_model} | Agent={agent_name}")
 
         model = GeminiRealtime(
             model=selected_model,
@@ -1539,9 +1541,7 @@ async def start_session(context: JobContext, custom_variables=None):
         tts = KokoroTTS(voice=kokoro_voice, speed=speed)
         pipeline = Pipeline(llm=model, tts=tts, realtime_config=RealtimeConfig(mode="hybrid_tts"))
     else:
-        gemini_cfg = agent_cfg.get("gemini") or {}
         selected_voice = gemini_cfg.get("voice") or "Aoede"
-        selected_model = gemini_cfg.get("model") or "models/gemini-3.1-flash-live-preview"
         raw_vad = gemini_cfg.get("vad_silence_ms")
         try:
             vad_silence = int(raw_vad) if raw_vad is not None else 200
