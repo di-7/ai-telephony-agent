@@ -336,8 +336,10 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     # Add call log
     call_entry = add_call_log(phone_number, name, email, company, source='cta_form' if email else 'instant_call', business_id=business_id, custom_id=sdk_call_id)
     if call_entry:
+        # Store room_id in the call entry for transcript fetching
+        call_entry['room_id'] = room_id
         if target_agent_id:
-            logging.info(f"VideoSDK Cloud Agent Builder ({target_agent_id}) is active for call {call_entry.get('id')}. Polling transcript...")
+            logging.info(f"VideoSDK Cloud Agent Builder ({target_agent_id}) is active for call {call_entry.get('id')}, room {room_id}. Polling transcript...")
             threading.Thread(target=handle_videosdk_cloud_call_logging, args=(call_entry, agent_cfg)).start()
         else:
             logging.warning(f"⚠️  NO AGENT ID CONFIGURED - Call {call_entry.get('id')} may not receive responses!")
@@ -780,10 +782,12 @@ def handle_videosdk_cloud_call_logging(entry, agent_cfg):
     """Background poller for VideoSDK Cloud Agent calls — polls real diarized transcript from AI Deployment Sessions API."""
     try:
         import time
-        room_id = entry.get('custom_id') or entry.get('room_id')
+        room_id = entry.get('room_id') or entry.get('custom_id')
         call_id = entry.get('id')
         caller_name = entry.get('name') or 'Caller'
         agent_name = agent_cfg.get('agent_name') or 'Duke'
+        
+        logging.info(f"Starting transcript polling for call_id={call_id}, room_id={room_id}")
 
         # Wait for call to complete and transcript to be indexed (VideoSDK takes ~20-30 seconds)
         time.sleep(30)
