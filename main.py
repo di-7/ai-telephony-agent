@@ -817,11 +817,12 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     if room_id:
         call_body["destinationRoomId"] = room_id
 
-    if provider == "videosdk":
-        target_agent_id = agent_cfg.get("video_sdk_agent_id") or "ag_rajwdl"
+    target_agent_id = agent_cfg.get("video_sdk_agent_id") or "ag_rajwdl"
+    if provider == "videosdk" or (target_agent_id and target_agent_id.strip()):
         sdk_id = target_agent_id.strip() if target_agent_id and target_agent_id.strip() else "ag_rajwdl"
         call_body["agentId"] = sdk_id
         is_videosdk_cloud = True
+        logging.info(f"Routing call to VideoSDK Cloud Agent Builder ID: '{sdk_id}'")
     else:
         is_videosdk_cloud = False
 
@@ -854,7 +855,10 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     # Add call log
     call_entry = add_call_log(phone_number, name, email, company, source='cta_form' if email else 'instant_call', business_id=business_id, custom_id=sdk_call_id)
 
-    if room_id and call_entry:
+    if is_videosdk_cloud and call_entry:
+        logging.info(f"VideoSDK Cloud Agent Builder ({call_body.get('agentId')}) is active for call {call_entry.get('id')}. Polling transcript...")
+        threading.Thread(target=handle_videosdk_cloud_call_logging, args=(call_entry, agent_cfg)).start()
+    elif not is_videosdk_cloud and room_id and call_entry:
         def _run_custom_python_agent(r_id, token, entry, vars_dict):
             try:
                 loop = asyncio.new_event_loop()
