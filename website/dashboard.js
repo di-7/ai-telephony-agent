@@ -1026,9 +1026,12 @@ async function saveAdminUserConfig() {
     }
 
     const videoSdkAgentId = document.getElementById('adminVideoSdkAgentId')?.value.trim() || '';
+    const provider = videoSdkAgentId ? 'videosdk' : 'gemini';
 
     const payload = {
-        video_sdk_agent_id: videoSdkAgentId
+        provider: provider,
+        video_sdk_agent_id: videoSdkAgentId,
+        business_id: targetBusinessId
     };
 
     // 1. Save directly to Supabase agent_configs table under target business_id
@@ -1036,6 +1039,7 @@ async function saveAdminUserConfig() {
         try {
             await supabaseClient.from('agent_configs').upsert({
                 business_id: targetBusinessId,
+                provider: provider,
                 config: payload,
                 updated_at: new Date().toISOString()
             }, { onConflict: 'business_id' });
@@ -1258,20 +1262,21 @@ function updateVideoSdkNotice() {
 }
 
 async function saveAgentConfig() {
-    const provider = 'gemini';
+    const cfgVideoSdkAgentId = document.getElementById('cfgVideoSdkAgentId');
+    const videoSdkAgentId = cfgVideoSdkAgentId ? cfgVideoSdkAgentId.value.trim() : '';
+    const provider = videoSdkAgentId ? 'videosdk' : 'gemini';
 
     const cfgGeminiVoice = document.getElementById('cfgGeminiVoice');
     const cfgGeminiModel = document.getElementById('cfgGeminiModel');
     const cfgGeminiVad = document.getElementById('cfgGeminiVad');
 
-    const cfgVideoSdkAgentId = document.getElementById('cfgVideoSdkAgentId');
     const cfgAgentName = document.getElementById('cfgAgentName');
     const cfgAgentGreeting = document.getElementById('cfgAgentGreeting');
     const cfgSystemPrompt = document.getElementById('cfgSystemPrompt');
 
     const payload = {
         provider: provider,
-        video_sdk_agent_id: cfgVideoSdkAgentId ? cfgVideoSdkAgentId.value.trim() : '',
+        video_sdk_agent_id: videoSdkAgentId,
         agent_name: cfgAgentName ? cfgAgentName.value.trim() : 'Sarah',
         greeting: cfgAgentGreeting ? cfgAgentGreeting.value.trim() : "Hi! Thanks for checking out our site. I'm an AI assistant. Should I have my human team reach out to schedule a full demo?",
         gemini: {
