@@ -826,6 +826,7 @@ function switchDashboardTab(tabName) {
         if (navScheduleBtn) navScheduleBtn.classList.add('active');
         if (navConfigBtn) navConfigBtn.classList.remove('active');
         loadScheduledCallsQueue();
+        toggleSchedNow(document.getElementById('schedNowCheckbox')?.checked || false);
     } else if (tabName === 'config' || tabName === 'admin') {
         if (tabAnalytics) tabAnalytics.style.display = 'none';
         if (tabAdmin) tabAdmin.style.display = 'block';
@@ -1483,21 +1484,34 @@ function setSchedMode(mode) {
 function toggleSchedNow(isNow) {
     const dateInput = document.getElementById('schedInputDate');
     const timeInput = document.getElementById('schedInputTime');
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const localDate = `${year}-${month}-${day}`;
+    
+    const hours = String(now.getHours()).padStart(2, '0');
+    const mins = String(now.getMinutes()).padStart(2, '0');
+    const localTime = `${hours}:${mins}`;
+
     if (isNow) {
-        const now = new Date();
         if (dateInput) {
-            dateInput.value = now.toISOString().split('T')[0];
+            dateInput.value = localDate;
             dateInput.disabled = true;
         }
         if (timeInput) {
-            const hours = String(now.getHours()).padStart(2, '0');
-            const mins = String(now.getMinutes()).padStart(2, '0');
-            timeInput.value = `${hours}:${mins}`;
+            timeInput.value = localTime;
             timeInput.disabled = true;
         }
     } else {
-        if (dateInput) dateInput.disabled = false;
-        if (timeInput) timeInput.disabled = false;
+        if (dateInput) {
+            if (!dateInput.value) dateInput.value = localDate;
+            dateInput.disabled = false;
+        }
+        if (timeInput) {
+            if (!timeInput.value) timeInput.value = localTime;
+            timeInput.disabled = false;
+        }
     }
 }
 
