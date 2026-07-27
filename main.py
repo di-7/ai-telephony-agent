@@ -1495,8 +1495,16 @@ async def start_session(context: JobContext, custom_variables=None):
         )
     )
 
-    # Create Agent with system instructions and Pipeline wrapping the realtime model
-    agent = Agent(instructions=system_inst)
+    # Create a concrete Agent subclass with greeting and Pipeline wrapping the realtime model
+    class TelephonyAgent(Agent):
+        async def on_enter(self):
+            """Deliver the greeting when the agent session starts."""
+            if self.session and greeting:
+                await self.session.say(greeting)
+        async def on_exit(self):
+            pass
+
+    agent = TelephonyAgent(instructions=system_inst)
     pipeline = Pipeline(llm=model)
 
     transcript_list = []
