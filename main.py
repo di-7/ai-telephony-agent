@@ -341,11 +341,10 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     # Add call log
     call_entry = add_call_log(phone_number, name, email, company, source='cta_form' if email else 'instant_call', business_id=business_id, custom_id=sdk_call_id)
     if call_entry:
-        # Store room_id in the call entry for transcript fetching
+        # Store room_id in the call entry for later transcript fetching via webhook
         call_entry['room_id'] = room_id
         if target_agent_id:
-            logging.info(f"VideoSDK Cloud Agent Builder ({target_agent_id}) is active for call {call_entry.get('id')}, room {room_id}. Polling transcript...")
-            threading.Thread(target=handle_videosdk_cloud_call_logging, args=(call_entry, agent_cfg)).start()
+            logging.info(f"VideoSDK Cloud Agent Builder ({target_agent_id}) is active for call {call_entry.get('id')}, room {room_id}")
         else:
             logging.warning(f"⚠️  NO AGENT ID CONFIGURED - Call {call_entry.get('id')} may not receive responses!")
             logging.warning(f"⚠️  Configure agent: POST /api/config with video_sdk_agent_id field")
@@ -658,158 +657,14 @@ def parse_videosdk_transcript_payload(wb_data, caller_name=None, agent_name=None
 
     return merged
 
-def get_videosdk_ai_deployment_session_id(room_id, token=None):
-    """Fetch the real Agent Builder sessionId from VideoSDK ai/v1/ai-deployment-sessions API."""
-    if not token:
-        token = get_videosdk_token()
-    if not token or not room_id:
-        return None
-
-    urls = [
-        f"https://api.videosdk.live/ai/v1/ai-deployment-sessions?roomId={room_id}",
-        f"https://api.videosdk.live/ai/v1/ai-deployment-sessions/?roomId={room_id}",
-    ]
-    for url in urls:
-        try:
-            req = urllib.request.Request(url, method='GET')
-            req.add_header('Authorization', token)
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                data = json_module.loads(resp.read().decode('utf-8'))
-                data_list = data.get('data') if isinstance(data, dict) else (data if isinstance(data, list) else [])
-                if isinstance(data_list, list) and len(data_list) > 0 and isinstance(data_list[0], dict):
-                    sess_id = data_list[0].get('id') or data_list[0].get('sessionId') or data_list[0].get('agentSessionId')
-                    if sess_id:
-                        logging.info(f"Retrieved VideoSDK AI Deployment Session ID: '{sess_id}' for room {room_id}")
-                        return sess_id
-        except Exception as e:
-            logging.debug(f"Querying ai-deployment-sessions API ({url}) failed: {e}")
-    return None
-
-def fetch_videosdk_session_transcript_from_api(room_id=None, session_id=None, caller_name=None, agent_name=None):
-    """Fetch live diarized transcript directly from VideoSDK AI Deployment & Cloud REST APIs."""
-    token = get_videosdk_token()
-    if not token:
-        logging.error("No VideoSDK token available")
-        return None
-    
-    # Ensure token has proper format (some endpoints need just the token, others need "Bearer" prefix)
-    auth_header = token if token.startswith('Bearer ') or token.startswith('eyJ') else f"Bearer {token}"
-
-    candidate_urls = []
-    
-    # Priority order: try AI deployment session endpoints first
-    if session_id:
-        candidate_urls.append(f"https://api.videosdk.live/ai/v1/ai-deployment-sessions/{session_id}")
-        candidate_urls.append(f"https://api.videosdk.live/ai/v1/ai-deployment-sessions/{session_id}/transcripts")
-        
-    if room_id:
-        # Try to get the session from room first
-        try:
-            url = f"https://api.videosdk.live/ai/v1/ai-deployment-sessions?roomId={room_id}"
-            logging.info(f"Fetching AI deployment session for room: {url}")
-            req = urllib.request.Request(url, method='GET')
-            req.add_header('Authorization', auth_header)
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json_module.loads(resp.read().decode('utf-8'))
-                logging.info(f"AI deployment sessions response: {json_module.dumps(data)[:500]}")
-                data_list = data.get('data') if isinstance(data, dict) else (data if isinstance(data, list) else [])
-                if isinstance(data_list, list) and len(data_list) > 0 and isinstance(data_list[0], dict):
-                    real_session_id = data_list[0].get('id') or data_list[0].get('sessionId')
-                    if real_session_id:
-                        logging.info(f"Found session ID {real_session_id} for room {room_id}")
-                        candidate_urls.insert(0, f"https://api.videosdk.live/ai/v1/ai-deployment-sessions/{real_session_id}")
-                        candidate_urls.insert(1, f"https://api.videosdk.live/ai/v1/ai-deployment-sessions/{real_session_id}/transcripts")
-        except urllib.error.HTTPError as e:
-            error_msg = e.read().decode('utf-8')
-            logging.warning(f"Could not get session from room (HTTP {e.code}): {error_msg}")
-        except Exception as e:
-            logging.warning(f"Could not get session from room: {e}")
-    
-    # Add more fallback URLs
-    if room_id:
-        candidate_urls.append(f"https://api.videosdk.live/v2/sessions?roomId={room_id}")
-        candidate_urls.append(f"https://api.videosdk.live/ai/v1/post-transcriptions?roomId={room_id}")
-
-    for url in candidate_urls:
-        try:
-            logging.info(f"Trying transcript URL: {url}")
-            req = urllib.request.Request(url, method='GET')
-            req.add_header('Authorization', auth_header)
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json_module.loads(resp.read().decode('utf-8'))
-                logging.info(f"Response from {url}: {json_module.dumps(data)[:1000]}")
-
-                # Check for transcriptions with file paths
-                transcriptions = data.get('transcriptions') if isinstance(data, dict) else None
-                if isinstance(transcriptions, list) and len(transcriptions) > 0:
-                    logging.info(f"Found {len(transcriptions)} transcription(s)")
-                    for t in transcriptions:
-                        file_paths = t.get('transcriptionFilePaths') or {}
-                        txt_url = file_paths.get('json') or file_paths.get('txt')
-                        if txt_url:
-                            try:
-                                logging.info(f"Fetching transcript file from: {txt_url}")
-                                file_req = urllib.request.Request(txt_url, method='GET')
-                                with urllib.request.urlopen(file_req, timeout=10) as file_resp:
-                                    content = file_resp.read().decode('utf-8')
-                                    if txt_url.endswith('.json'):
-                                        json_data = json_module.loads(content)
-                                        parsed = parse_videosdk_transcript_payload(json_data, caller_name=caller_name, agent_name=agent_name)
-                                        if parsed:
-                                            logging.info(f"✅ Successfully fetched {len(parsed)} transcript turns from file")
-                                            return parsed
-                                    else:
-                                        parsed = []
-                                        c_name = (caller_name or '').strip() or 'Caller'
-                                        a_disp = f"AI Agent ({agent_name.strip()})" if agent_name and agent_name.strip() else "AI Agent"
-                                        for line in content.split('\n'):
-                                            if ':' in line:
-                                                spk, txt = line.split(':', 1)
-                                                is_agent = any(w in spk.lower() for w in ['agent', 'ai', 'assistant', 'bot', 'system'])
-                                                parsed.append({
-                                                    'speaker': 'agent' if is_agent else 'customer',
-                                                    'name': a_disp if is_agent else c_name,
-                                                    'text': txt.strip()
-                                                })
-                                        if parsed:
-                                            logging.info(f"✅ Successfully parsed {len(parsed)} transcript turns from text file")
-                                            return parsed
-                            except Exception as fe:
-                                logging.error(f"Failed to fetch transcript file from url {txt_url}: {fe}")
-
-                # Try parsing the data directly
-                parsed = parse_videosdk_transcript_payload(data, caller_name=caller_name, agent_name=agent_name)
-                if parsed and len(parsed) > 0:
-                    logging.info(f"✅ Fetched {len(parsed)} diarized transcript turns from VideoSDK REST API: {url}")
-                    return parsed
-        except urllib.error.HTTPError as e:
-            error_msg = e.read().decode('utf-8')
-            logging.warning(f"HTTP {e.code} error for {url}: {error_msg[:200]}")
-        except Exception as e:
-            logging.warning(f"VideoSDK REST API transcript fetch attempt failed for {url}: {e}")
-    
-    logging.warning(f"Could not fetch transcript from any VideoSDK API endpoint")
-    return None
-
-def fetch_and_update_final_transcript_async(call_id, room_id):
-    """Background task to poll VideoSDK API for duration and backfill transcript if needed."""
-    token = get_videosdk_token()
-    if not token:
-        return
-    logging.info(f"Starting async VideoSDK transcript polling loop for call_id={call_id}, room_id={room_id}...")
-
-def handle_videosdk_cloud_call_logging(entry, agent_cfg):
-    """Background handler for VideoSDK Cloud Agent calls - fetches recording and generates transcript."""
+def fetch_recording_and_transcribe(call_id, room_id):
+    """Fetch recording and transcribe it after call ends (webhook-triggered, not polling)."""
     try:
         import time
-        room_id = entry.get('room_id') or entry.get('custom_id')
-        call_id = entry.get('id')
-        caller_name = entry.get('name') or 'Caller'
-        agent_name = agent_cfg.get('agent_name') or 'Duke'
         
-        logging.info(f"Starting recording fetch and transcript generation for call_id={call_id}, room_id={room_id}")
-
-        # Wait for call to complete and recording to be ready (VideoSDK needs time to process)
+        logging.info(f"Recording fetch triggered by webhook for call_id={call_id}, room_id={room_id}")
+        
+        # Wait for VideoSDK to process and make recording available
         time.sleep(60)
         
         token = get_videosdk_token()
@@ -854,41 +709,40 @@ def handle_videosdk_cloud_call_logging(entry, agent_cfg):
                                 if recordings and len(recordings) > 0:
                                     rec_file = recordings[0].get('file', {})
                                     recording_url = rec_file.get('url') or rec_file.get('fileUrl')
-                                    logging.info(f"✅ Recording URL found: {recording_url[:100] if recording_url else 'None'}...")
+                                    if recording_url:
+                                        logging.info(f"✅ Recording URL found: {recording_url[:100]}...")
                                 else:
                                     logging.warning(f"No recordings found in response: {rec_data}")
             except Exception as e:
                 logging.error(f"Error fetching session/recording data: {e}", exc_info=True)
         
-        # Generate transcript from recording or create placeholder
+        # Generate transcript from recording
         transcript = []
+        caller_name = 'Caller'
+        agent_name = 'Duke'
         
         if recording_url:
-            logging.info(f"Attempting to generate transcript from recording...")
+            logging.info(f"Attempting to transcribe recording with Groq Whisper...")
             transcript = generate_transcript_from_recording(recording_url, caller_name, agent_name)
         else:
-            logging.warning(f"No recording URL available. Check if recording is enabled in VideoSDK room settings.")
+            logging.warning(f"No recording URL available for call {call_id}")
         
         if not transcript or len(transcript) == 0:
-            # Fallback: create a simple placeholder transcript
-            logging.warning(f"No recording available or transcription failed. Using placeholder.")
+            logging.warning(f"Transcription failed or no recording. Using placeholder for call {call_id}")
             transcript = [{
                 'speaker': 'system',
                 'name': 'System',
-                'text': f'Call completed. Duration: {duration_str}. Recording not available. Enable recording in VideoSDK room settings or view session in portal: https://app.videosdk.live/sessions/{room_id}'
+                'text': f'Call completed. Duration: {duration_str}. Recording not available or transcription failed. View session: https://app.videosdk.live/sessions/{room_id}'
             }]
         
-        # Update call log
-        entry['status'] = 'completed'
-        entry['duration'] = duration_str if duration_str != '--' else '1m 00s'
-        entry['sentiment'] = 'Completed'
-        entry['transcript'] = transcript
+        # Update call log with transcript
+        entry = {'id': call_id, 'duration': duration_str, 'transcript': transcript}
         update_call_log_in_supabase(entry)
         
-        logging.info(f"✅ Call log updated for {call_id} with {len(transcript)} transcript turns")
+        logging.info(f"✅ Transcript updated for call {call_id} with {len(transcript)} turns")
         
     except Exception as e:
-        logging.error(f"Error updating VideoSDK Cloud call log: {e}", exc_info=True)
+        logging.error(f"Error in fetch_recording_and_transcribe: {e}", exc_info=True)
 
 def generate_transcript_from_recording(recording_url, caller_name='Caller', agent_name='Agent'):
     """Generate transcript from audio recording URL using Groq Whisper API."""
@@ -1544,20 +1398,17 @@ class HealthHandler(BaseHTTPRequestHandler):
                     )
                 elif webhook_type == 'call-hangup' or status == 'ended':
                     room_id = wb_payload.get("roomId") or wb_data.get("roomId")
-                    parsed = parse_videosdk_transcript_payload(wb_data)
-                    if not parsed:
-                        parsed = fetch_videosdk_session_transcript_from_api(room_id=room_id, session_id=call_id)
-
+                    
                     update_call_log_status_in_supabase(
                         call_id=call_id,
                         status='completed',
                         duration='--',
-                        sentiment='Completed',
-                        transcript=parsed if parsed else None
+                        sentiment='Completed'
                     )
-
-                    # Trigger asynchronous 5-second delayed poll to catch late-indexed VideoSDK transcripts
-                    threading.Thread(target=fetch_and_update_final_transcript_async, args=(call_id, room_id)).start()
+                    
+                    # Trigger recording fetch and transcription in background
+                    if room_id and call_id:
+                        threading.Thread(target=fetch_recording_and_transcribe, args=(call_id, room_id)).start()
 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
