@@ -61,7 +61,7 @@
   --spacing-120: 120px;
 
   /* Layout */
-  --page-max-width: 1200px;
+  --page-max-width: 100%;
   --section-gap: 80px;
   --card-padding: 24px;
   --element-gap: 16px;
@@ -160,11 +160,12 @@ img {
 
 /* --- Container --- */
 .container {
-  max-width: var(--page-max-width);
+  max-width: 100%;
   margin: 0 auto;
-  padding: 0 var(--spacing-24);
+  padding: 0 48px;
   width: 100%;
   position: relative;
+  box-sizing: border-box;
 }
 
 /* ==========================================
@@ -499,13 +500,14 @@ img {
 }
 
 .nav-container {
-  max-width: var(--page-max-width);
+  max-width: 100%;
   margin: 0 auto;
-  padding: 0 var(--spacing-24);
+  padding: 0 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .nav-logo {

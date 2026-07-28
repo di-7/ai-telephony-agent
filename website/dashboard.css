@@ -4,6 +4,13 @@
    v3.0 - Sidebar Drawer & Header Toggle Engine
    ========================================== */
 
+html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   background-color: var(--color-pure-white, #ffffff);
   color: var(--color-carbon-ink, #0e0f10);
@@ -13,6 +20,20 @@ body {
   padding: 0;
   overflow-x: hidden;
   width: 100%;
+}
+
+/* Override navbar container max-width from styles.css */
+.navbar {
+  width: 100% !important;
+  left: 0 !important;
+  right: 0 !important;
+}
+
+.navbar .nav-container {
+  max-width: 100% !important;
+  margin: 0 auto !important;
+  padding: 0 48px !important;
+  box-sizing: border-box;
 }
 
 /* Ensure nav-actions & menu toggle icon are ALWAYS visible in top right corner on all screen sizes */
@@ -73,19 +94,20 @@ body {
 
 /* Dashboard Outer Layout Container */
 .dash-wrapper {
-  max-width: 100%;
-  margin: 0;
+  max-width: 100% !important;
+  margin: 0 !important;
   padding: 95px 0 60px 0;
   display: block;
-  width: 100%;
+  width: 100% !important;
   box-sizing: border-box;
+  background: var(--color-pure-white, #ffffff);
 }
 
 /* Main content area with proper constraints */
 .dash-main-content {
-  max-width: 1320px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 48px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -122,6 +144,12 @@ body {
 @media (max-width: 992px) {
   .dash-wrapper {
     padding: 85px 16px 40px 16px;
+  }
+  .dash-main-content {
+    padding: 0 16px;
+  }
+  .navbar .nav-container {
+    padding: 0 16px !important;
   }
 }
 
