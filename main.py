@@ -728,15 +728,21 @@ def fetch_recording_and_transcribe(call_id, room_id):
             logging.warning(f"No recording URL available for call {call_id}")
         
         if not transcript or len(transcript) == 0:
-            logging.warning(f"Transcription failed or no recording. Using placeholder for call {call_id}")
+            logging.warning(f"Transcription failed or no recording for call {call_id}")
             transcript = [{
                 'speaker': 'system',
                 'name': 'System',
-                'text': f'Call completed. Duration: {duration_str}. Recording not available or transcription failed. View session: https://app.videosdk.live/sessions/{room_id}'
+                'text': f'Transcription unavailable. Recording not found or processing failed.'
             }]
         
-        # Update call log with transcript
-        entry = {'id': call_id, 'duration': duration_str, 'transcript': transcript}
+        # Update call log with transcript and mark as completed
+        entry = {
+            'id': call_id,
+            'duration': duration_str,
+            'transcript': transcript,
+            'status': 'completed',
+            'sentiment': 'Completed'
+        }
         update_call_log_in_supabase(entry)
         
         logging.info(f"✅ Transcript updated for call {call_id} with {len(transcript)} turns")
@@ -1399,11 +1405,17 @@ class HealthHandler(BaseHTTPRequestHandler):
                 elif webhook_type == 'call-hangup' or status == 'ended':
                     room_id = wb_payload.get("roomId") or wb_data.get("roomId")
                     
+                    # Mark as processing (not completed yet)
                     update_call_log_status_in_supabase(
                         call_id=call_id,
-                        status='completed',
+                        status='processing',
                         duration='--',
-                        sentiment='Completed'
+                        sentiment='Processing',
+                        transcript=[{
+                            'speaker': 'system',
+                            'name': 'System',
+                            'text': 'Processing transcription...'
+                        }]
                     )
                     
                     # Trigger recording fetch and transcription in background
