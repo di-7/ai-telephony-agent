@@ -550,13 +550,22 @@ function openModal(call) {
     document.getElementById('modalName').innerText = name;
     document.getElementById('modalMeta').innerText = `${phone} \u2022 ${source} \u2022 Duration: ${duration} \u2022 Status: ${status}`;
 
-    // Add download recording button if recording_url exists
+    // Add play/download recording buttons if recording_url exists
     const recordingUrl = call.recording_url;
     const downloadBtnContainer = document.getElementById('modalDownloadBtn');
     if (downloadBtnContainer) {
         if (recordingUrl) {
-            downloadBtnContainer.style.display = 'inline-block';
+            downloadBtnContainer.style.display = 'flex';
+            downloadBtnContainer.style.gap = '8px';
+            downloadBtnContainer.style.alignItems = 'center';
             downloadBtnContainer.innerHTML = `
+                <button onclick="toggleRecordingPlayer('${escapeHtml(recordingUrl)}')" 
+                   style="display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; padding: 8px 16px; border: none; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    Play Recording
+                </button>
                 <a href="${escapeHtml(recordingUrl)}" download="recording_${call.id}.mp4" target="_blank" 
                    style="display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #10b981, #059669); color: #fff; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -564,12 +573,18 @@ function openModal(call) {
                         <polyline points="7 10 12 15 17 10"/>
                         <line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
-                    Download Recording
+                    Download
                 </a>
             `;
         } else {
             downloadBtnContainer.style.display = 'none';
         }
+    }
+    
+    // Hide recording player by default
+    const recordingPlayerContainer = document.getElementById('modalRecordingPlayer');
+    if (recordingPlayerContainer) {
+        recordingPlayerContainer.style.display = 'none';
     }
 
     const chatList = document.getElementById('modalChatList');
@@ -1777,6 +1792,27 @@ async function cancelScheduledCall(id) {
         });
         loadScheduledCallsQueue();
     } catch (e) {}
+}
+
+function toggleRecordingPlayer(recordingUrl) {
+    const playerContainer = document.getElementById('modalRecordingPlayer');
+    const videoPlayer = document.getElementById('modalVideoPlayer');
+    
+    if (!playerContainer || !videoPlayer) return;
+    
+    if (playerContainer.style.display === 'none' || playerContainer.style.display === '') {
+        // Show player
+        videoPlayer.src = recordingUrl;
+        playerContainer.style.display = 'block';
+        
+        // Scroll player into view
+        playerContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+        // Hide player and stop playback
+        videoPlayer.pause();
+        videoPlayer.src = '';
+        playerContainer.style.display = 'none';
+    }
 }
 
 
