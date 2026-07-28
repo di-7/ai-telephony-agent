@@ -228,7 +228,7 @@ def get_videosdk_token():
         return os.getenv("VIDEOSDK_AUTH_TOKEN")
 
 def create_videosdk_room_with_transcription(videosdk_token, custom_room_id=None):
-    """Create a new VideoSDK room with real-time transcription enabled."""
+    """Create a new VideoSDK room with real-time transcription AND recording enabled."""
     create_room_url = "https://api.videosdk.live/v2/rooms"
     req = urllib.request.Request(create_room_url, method="POST")
     req.add_header("Authorization", str(videosdk_token))
@@ -242,6 +242,11 @@ def create_videosdk_room_with_transcription(videosdk_token, custom_room_id=None)
                 "enabled": True,
                 "prompt": "Summarize this telephony sales session, listing key interest areas and follow-up items."
             }
+        },
+        "autoStartRecording": True,
+        "recording": {
+            "enabled": True,
+            "mode": "audio"
         }
     }
     if custom_room_id:
@@ -254,7 +259,7 @@ def create_videosdk_room_with_transcription(videosdk_token, custom_room_id=None)
             resp_body = response.read()
             resp_json = json_module.loads(resp_body.decode('utf-8'))
             room_id = resp_json.get("roomId") or resp_json.get("id")
-            logging.info(f"Created VideoSDK room {room_id} with transcription enabled.")
+            logging.info(f"Created VideoSDK room {room_id} with transcription and recording enabled.")
             return room_id
     except Exception as e:
         logging.error(f"Failed to create VideoSDK room with transcription: {e}")
@@ -804,12 +809,13 @@ def handle_videosdk_cloud_call_logging(entry, agent_cfg):
         
         logging.info(f"Starting recording fetch and transcript generation for call_id={call_id}, room_id={room_id}")
 
-        # Wait for call to complete and recording to be ready
-        time.sleep(45)
+        # Wait for call to complete and recording to be ready (VideoSDK needs time to process)
+        time.sleep(60)
         
         token = get_videosdk_token()
         duration_str = '--'
         recording_url = None
+        session_id = None
         
         # Get session details and recording
         if token and room_id:
@@ -835,6 +841,8 @@ def handle_videosdk_cloud_call_logging(entry, agent_cfg):
                             if secs > 0:
                                 duration_str = f"{secs // 60}m {secs % 60:02d}s"
                         
+                        logging.info(f"Session ID: {session_id}, Duration: {duration_str}")
+                        
                         # Try to get recording
                         if session_id:
                             rec_url = f"https://api.videosdk.live/v2/recordings?sessionId={session_id}"
@@ -842,11 +850,15 @@ def handle_videosdk_cloud_call_logging(entry, agent_cfg):
                             with urllib.request.urlopen(rec_req, timeout=10) as rec_resp:
                                 rec_data = json_module.loads(rec_resp.read().decode('utf-8'))
                                 recordings = rec_data.get('data', [])
+                                logging.info(f"Found {len(recordings)} recording(s) for session {session_id}")
                                 if recordings and len(recordings) > 0:
-                                    recording_url = recordings[0].get('file', {}).get('url')
-                                    logging.info(f"Found recording URL: {recording_url}")
+                                    rec_file = recordings[0].get('file', {})
+                                    recording_url = rec_file.get('url') or rec_file.get('fileUrl')
+                                    logging.info(f"✅ Recording URL found: {recording_url[:100] if recording_url else 'None'}...")
+                                else:
+                                    logging.warning(f"No recordings found in response: {rec_data}")
             except Exception as e:
-                logging.warning(f"Error fetching session/recording data: {e}")
+                logging.error(f"Error fetching session/recording data: {e}", exc_info=True)
         
         # Generate transcript from recording or create placeholder
         transcript = []
@@ -854,6 +866,8 @@ def handle_videosdk_cloud_call_logging(entry, agent_cfg):
         if recording_url:
             logging.info(f"Attempting to generate transcript from recording...")
             transcript = generate_transcript_from_recording(recording_url, caller_name, agent_name)
+        else:
+            logging.warning(f"No recording URL available. Check if recording is enabled in VideoSDK room settings.")
         
         if not transcript or len(transcript) == 0:
             # Fallback: create a simple placeholder transcript
@@ -861,7 +875,7 @@ def handle_videosdk_cloud_call_logging(entry, agent_cfg):
             transcript = [{
                 'speaker': 'system',
                 'name': 'System',
-                'text': f'Call completed. Duration: {duration_str}. Recording transcription not available. View session in VideoSDK portal: https://app.videosdk.live/sessions/{room_id}'
+                'text': f'Call completed. Duration: {duration_str}. Recording not available. Enable recording in VideoSDK room settings or view session in portal: https://app.videosdk.live/sessions/{room_id}'
             }]
         
         # Update call log
