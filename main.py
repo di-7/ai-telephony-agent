@@ -757,6 +757,19 @@ def fetch_recording_and_transcribe(call_id, room_id):
                                         if recording_url:
                                             logging.info(f"✅ Recording URL found, attempting transcription...")
                                             transcript = generate_transcript_from_recording(recording_url, 'Caller', 'Duke')
+                                            
+                                            # Store recording URL in database for download access
+                                            try:
+                                                update_url = f"{SUPABASE_URL}/rest/v1/call_logs?id=eq.{call_id}"
+                                                update_payload = json_module.dumps({'recording_url': recording_url}).encode('utf-8')
+                                                update_req = urllib.request.Request(update_url, data=update_payload, method='PATCH')
+                                                update_req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
+                                                update_req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
+                                                update_req.add_header('Content-Type', 'application/json')
+                                                urllib.request.urlopen(update_req, timeout=5)
+                                                logging.info(f"Stored recording URL for call {call_id}")
+                                            except Exception as store_err:
+                                                logging.warning(f"Could not store recording URL: {store_err}")
                                         else:
                                             logging.warning(f"Recording exists but no file URL available yet")
                                     else:

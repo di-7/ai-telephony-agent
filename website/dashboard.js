@@ -550,6 +550,28 @@ function openModal(call) {
     document.getElementById('modalName').innerText = name;
     document.getElementById('modalMeta').innerText = `${phone} \u2022 ${source} \u2022 Duration: ${duration} \u2022 Status: ${status}`;
 
+    // Add download recording button if recording_url exists
+    const recordingUrl = call.recording_url;
+    const downloadBtnContainer = document.getElementById('modalDownloadBtn');
+    if (downloadBtnContainer) {
+        if (recordingUrl) {
+            downloadBtnContainer.style.display = 'inline-block';
+            downloadBtnContainer.innerHTML = `
+                <a href="${escapeHtml(recordingUrl)}" download="recording_${call.id}.mp4" target="_blank" 
+                   style="display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #10b981, #059669); color: #fff; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download Recording
+                </a>
+            `;
+        } else {
+            downloadBtnContainer.style.display = 'none';
+        }
+    }
+
     const chatList = document.getElementById('modalChatList');
     const transcript = call.transcript;
 
