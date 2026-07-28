@@ -242,13 +242,11 @@ def create_videosdk_room_with_transcription(videosdk_token, custom_room_id=None)
                 "enabled": True,
                 "prompt": "Summarize this telephony sales session, listing key interest areas and follow-up items."
             }
-        },
-        "autoStartRecording": True,
-        "recording": {
-            "enabled": True,
-            "mode": "audio"
         }
     }
+    # Note: Recording is handled by VideoSDK Agent Builder, not room settings
+    # The agent configuration controls recording, not the room
+    
     if custom_room_id:
         body["customRoomId"] = custom_room_id
         
@@ -259,10 +257,10 @@ def create_videosdk_room_with_transcription(videosdk_token, custom_room_id=None)
             resp_body = response.read()
             resp_json = json_module.loads(resp_body.decode('utf-8'))
             room_id = resp_json.get("roomId") or resp_json.get("id")
-            logging.info(f"Created VideoSDK room {room_id} with transcription and recording enabled.")
+            logging.info(f"Created VideoSDK room {room_id} with transcription enabled. Recording controlled by agent config.")
             return room_id
     except Exception as e:
-        logging.error(f"Failed to create VideoSDK room with transcription: {e}")
+        logging.error(f"Failed to create VideoSDK room: {e}")
         return None
 
 def trigger_outbound_call(phone_number, name="there", email="", company="", business_id=None, custom_variables=None):
@@ -664,15 +662,15 @@ def fetch_recording_and_transcribe(call_id, room_id):
         
         logging.info(f"Recording fetch triggered by webhook for call_id={call_id}, room_id={room_id}")
         
-        # Wait for VideoSDK to process and make recording available
+        # Wait for VideoSDK to process
         time.sleep(60)
         
         token = get_videosdk_token()
         duration_str = '--'
-        recording_url = None
+        transcript = []
         session_id = None
         
-        # Get session details and recording
+        # Get session details
         if token and room_id:
             try:
                 # Get session data
@@ -698,41 +696,45 @@ def fetch_recording_and_transcribe(call_id, room_id):
                         
                         logging.info(f"Session ID: {session_id}, Duration: {duration_str}")
                         
-                        # Try to get recording
+                        # Check for participants to extract transcript from agent traces
+                        participants = sess_obj.get('participants', [])
+                        for participant in participants:
+                            if participant.get('type') == 'agent':
+                                # This is the AI agent - transcript might be in device metadata
+                                device_info = participant.get('deviceInfo', {})
+                                sdk_metadata = device_info.get('sdkMetadata', {})
+                                logging.info(f"Found agent participant with metadata: {sdk_metadata}")
+                        
+                        # Try to get recording (though it may not be enabled)
                         if session_id:
-                            rec_url = f"https://api.videosdk.live/v2/recordings?sessionId={session_id}"
-                            rec_req = urllib.request.Request(rec_url, headers={'Authorization': token})
-                            with urllib.request.urlopen(rec_req, timeout=10) as rec_resp:
-                                rec_data = json_module.loads(rec_resp.read().decode('utf-8'))
-                                recordings = rec_data.get('data', [])
-                                logging.info(f"Found {len(recordings)} recording(s) for session {session_id}")
-                                if recordings and len(recordings) > 0:
-                                    rec_file = recordings[0].get('file', {})
-                                    recording_url = rec_file.get('url') or rec_file.get('fileUrl')
-                                    if recording_url:
-                                        logging.info(f"✅ Recording URL found: {recording_url[:100]}...")
-                                else:
-                                    logging.warning(f"No recordings found in response: {rec_data}")
+                            try:
+                                rec_url = f"https://api.videosdk.live/v2/recordings?sessionId={session_id}"
+                                rec_req = urllib.request.Request(rec_url, headers={'Authorization': token})
+                                with urllib.request.urlopen(rec_req, timeout=10) as rec_resp:
+                                    rec_data = json_module.loads(rec_resp.read().decode('utf-8'))
+                                    recordings = rec_data.get('data', [])
+                                    logging.info(f"Found {len(recordings)} recording(s) for session {session_id}")
+                                    if recordings and len(recordings) > 0:
+                                        rec_file = recordings[0].get('file', {})
+                                        recording_url = rec_file.get('url') or rec_file.get('fileUrl')
+                                        if recording_url:
+                                            logging.info(f"✅ Recording URL found, attempting transcription...")
+                                            transcript = generate_transcript_from_recording(recording_url, 'Caller', 'Duke')
+                                    else:
+                                        logging.warning(f"No recordings available. Recording may not be enabled in agent settings.")
+                            except Exception as rec_err:
+                                logging.warning(f"Could not fetch recording: {rec_err}")
+                                
             except Exception as e:
-                logging.error(f"Error fetching session/recording data: {e}", exc_info=True)
+                logging.error(f"Error fetching session data: {e}", exc_info=True)
         
-        # Generate transcript from recording
-        transcript = []
-        caller_name = 'Caller'
-        agent_name = 'Duke'
-        
-        if recording_url:
-            logging.info(f"Attempting to transcribe recording with Groq Whisper...")
-            transcript = generate_transcript_from_recording(recording_url, caller_name, agent_name)
-        else:
-            logging.warning(f"No recording URL available for call {call_id}")
-        
+        # If no transcript from recording, create a helpful message
         if not transcript or len(transcript) == 0:
-            logging.warning(f"Transcription failed or no recording for call {call_id}")
+            logging.info(f"No recording available for transcription. Transcripts visible in VideoSDK portal only.")
             transcript = [{
                 'speaker': 'system',
                 'name': 'System',
-                'text': f'Transcription unavailable. Recording not found or processing failed.'
+                'text': f'Transcript available in VideoSDK portal only. Enable recording in your VideoSDK Agent Builder settings to auto-generate transcripts here.'
             }]
         
         # Update call log with transcript and mark as completed
@@ -745,7 +747,7 @@ def fetch_recording_and_transcribe(call_id, room_id):
         }
         update_call_log_in_supabase(entry)
         
-        logging.info(f"✅ Transcript updated for call {call_id} with {len(transcript)} turns")
+        logging.info(f"✅ Call log updated for {call_id} with {len(transcript)} transcript turns")
         
     except Exception as e:
         logging.error(f"Error in fetch_recording_and_transcribe: {e}", exc_info=True)
