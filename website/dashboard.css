@@ -5,12 +5,14 @@
    ========================================== */
 
 body {
-  background-color: var(--surface-fog, #f4f4f8);
+  background-color: var(--color-pure-white, #ffffff);
   color: var(--color-carbon-ink, #0e0f10);
   font-family: var(--font-gilroy, 'Sora', sans-serif);
   min-height: 100vh;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 /* Ensure nav-actions & menu toggle icon are ALWAYS visible in top right corner on all screen sizes */
@@ -71,10 +73,19 @@ body {
 
 /* Dashboard Outer Layout Container */
 .dash-wrapper {
+  max-width: 100%;
+  margin: 0;
+  padding: 95px 0 60px 0;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Main content area with proper constraints */
+.dash-main-content {
   max-width: 1320px;
   margin: 0 auto;
-  padding: 95px 24px 60px 24px;
-  display: block;
+  padding: 0 24px;
   width: 100%;
   box-sizing: border-box;
 }
