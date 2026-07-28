@@ -29,8 +29,20 @@ CREATE TABLE IF NOT EXISTS public.call_logs (
   status TEXT DEFAULT 'completed',
   sentiment TEXT DEFAULT 'Interested',
   transcript JSONB DEFAULT '[]'::jsonb,
+  recording_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add recording_url column if it doesn't exist (migration for existing databases)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'call_logs' AND column_name = 'recording_url'
+  ) THEN
+    ALTER TABLE public.call_logs ADD COLUMN recording_url TEXT;
+  END IF;
+END $$;
 
 -- 3. Enable Row Level Security (RLS) on both tables
 ALTER TABLE public.businesses ENABLE ROW LEVEL SECURITY;
