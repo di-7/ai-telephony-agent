@@ -228,7 +228,7 @@ def get_videosdk_token():
         return os.getenv("VIDEOSDK_AUTH_TOKEN")
 
 def create_videosdk_room_with_transcription(videosdk_token, custom_room_id=None):
-    """Create a new VideoSDK room with real-time transcription AND recording enabled."""
+    """Create a new VideoSDK room with real-time transcription enabled. Recording will be started via API when call is answered."""
     create_room_url = "https://api.videosdk.live/v2/rooms"
     req = urllib.request.Request(create_room_url, method="POST")
     req.add_header("Authorization", str(videosdk_token))
@@ -244,8 +244,8 @@ def create_videosdk_room_with_transcription(videosdk_token, custom_room_id=None)
             }
         }
     }
-    # Note: Recording is handled by VideoSDK Agent Builder, not room settings
-    # The agent configuration controls recording, not the room
+    # Recording is started via API when call-answered webhook is received
+    # This allows us to control recording lifecycle and fetch recordings after call ends
     
     if custom_room_id:
         body["customRoomId"] = custom_room_id
@@ -257,7 +257,7 @@ def create_videosdk_room_with_transcription(videosdk_token, custom_room_id=None)
             resp_body = response.read()
             resp_json = json_module.loads(resp_body.decode('utf-8'))
             room_id = resp_json.get("roomId") or resp_json.get("id")
-            logging.info(f"Created VideoSDK room {room_id} with transcription enabled. Recording controlled by agent config.")
+            logging.info(f"Created VideoSDK room {room_id} with transcription enabled. Recording will start when call is answered.")
             return room_id
     except Exception as e:
         logging.error(f"Failed to create VideoSDK room: {e}")
@@ -655,6 +655,42 @@ def parse_videosdk_transcript_payload(wb_data, caller_name=None, agent_name=None
 
     return merged
 
+def start_meeting_recording(room_id):
+    """Start meeting recording via VideoSDK API when call is answered."""
+    try:
+        token = get_videosdk_token()
+        if not token or not room_id:
+            logging.warning(f"Cannot start recording: missing token or room_id")
+            return
+        
+        url = "https://api.videosdk.live/v2/recordings/start"
+        payload = {
+            "roomId": room_id,
+            "config": {
+                "layout": {
+                    "type": "SPOTLIGHT",
+                    "priority": "PIN",
+                    "gridSize": 4
+                },
+                "theme": "DARK",
+                "mode": "video-and-audio",
+                "quality": "high",
+                "orientation": "landscape"
+            }
+        }
+        
+        data = json_module.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(url, data=data, method='POST')
+        req.add_header('Authorization', token)
+        req.add_header('Content-Type', 'application/json')
+        
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json_module.loads(resp.read().decode('utf-8'))
+            logging.info(f"✅ Meeting recording started for room {room_id}: {result}")
+            
+    except Exception as e:
+        logging.error(f"Failed to start meeting recording for room {room_id}: {e}")
+
 def fetch_recording_and_transcribe(call_id, room_id):
     """Fetch recording and transcribe it after call ends (webhook-triggered, not polling)."""
     try:
@@ -662,8 +698,8 @@ def fetch_recording_and_transcribe(call_id, room_id):
         
         logging.info(f"Recording fetch triggered by webhook for call_id={call_id}, room_id={room_id}")
         
-        # Wait for VideoSDK to process
-        time.sleep(60)
+        # Wait for VideoSDK to process recording (increased to 90s for meeting recordings)
+        time.sleep(90)
         
         token = get_videosdk_token()
         duration_str = '--'
@@ -705,36 +741,39 @@ def fetch_recording_and_transcribe(call_id, room_id):
                                 sdk_metadata = device_info.get('sdkMetadata', {})
                                 logging.info(f"Found agent participant with metadata: {sdk_metadata}")
                         
-                        # Try to get recording (though it may not be enabled)
+                        # Try to get recording via meeting recordings API
                         if session_id:
                             try:
-                                rec_url = f"https://api.videosdk.live/v2/recordings?sessionId={session_id}"
+                                # Use meeting recordings API instead of track recordings
+                                rec_url = f"https://api.videosdk.live/v2/recordings?roomId={room_id}"
                                 rec_req = urllib.request.Request(rec_url, headers={'Authorization': token})
                                 with urllib.request.urlopen(rec_req, timeout=10) as rec_resp:
                                     rec_data = json_module.loads(rec_resp.read().decode('utf-8'))
                                     recordings = rec_data.get('data', [])
-                                    logging.info(f"Found {len(recordings)} recording(s) for session {session_id}")
+                                    logging.info(f"Found {len(recordings)} meeting recording(s) for room {room_id}")
                                     if recordings and len(recordings) > 0:
                                         rec_file = recordings[0].get('file', {})
                                         recording_url = rec_file.get('url') or rec_file.get('fileUrl')
                                         if recording_url:
                                             logging.info(f"✅ Recording URL found, attempting transcription...")
                                             transcript = generate_transcript_from_recording(recording_url, 'Caller', 'Duke')
+                                        else:
+                                            logging.warning(f"Recording exists but no file URL available yet")
                                     else:
-                                        logging.warning(f"No recordings available. Recording may not be enabled in agent settings.")
+                                        logging.warning(f"No meeting recordings available. Check if recording was started via API.")
                             except Exception as rec_err:
-                                logging.warning(f"Could not fetch recording: {rec_err}")
+                                logging.warning(f"Could not fetch meeting recording: {rec_err}")
                                 
             except Exception as e:
                 logging.error(f"Error fetching session data: {e}", exc_info=True)
         
         # If no transcript from recording, create a helpful message
         if not transcript or len(transcript) == 0:
-            logging.info(f"No recording available for transcription. Transcripts visible in VideoSDK portal only.")
+            logging.info(f"No recording available for transcription. Recording may not have been started via API.")
             transcript = [{
                 'speaker': 'system',
                 'name': 'System',
-                'text': f'Transcript available in VideoSDK portal only. Enable recording in your VideoSDK Agent Builder settings to auto-generate transcripts here.'
+                'text': f'No recording available. Automatic recording will start on next call when answered.'
             }]
         
         # Update call log with transcript and mark as completed
@@ -1398,6 +1437,12 @@ class HealthHandler(BaseHTTPRequestHandler):
                         transcript=[{'speaker': 'system', 'name': 'System', 'text': 'Call was missed or unanswered by recipient.'}]
                     )
                 elif webhook_type == 'call-answered' or status == 'answered':
+                    room_id = wb_payload.get("roomId") or wb_data.get("roomId")
+                    
+                    # Start recording via API when call is answered
+                    if room_id:
+                        threading.Thread(target=start_meeting_recording, args=(room_id,)).start()
+                    
                     update_call_log_status_in_supabase(
                         call_id=call_id,
                         status='in-progress',
