@@ -741,81 +741,8 @@ def fetch_recording_and_transcribe(call_id, room_id):
                                 sdk_metadata = device_info.get('sdkMetadata', {})
                                 logging.info(f"Found agent participant with metadata: {sdk_metadata}")
                         
-                        # Try to get transcript from VideoSDK transcript APIs first (faster)
-                        if session_id or room_id:
-                            try:
-                                # 1. Try post-transcriptions API (works with recording)
-                                trans_url = f"https://api.videosdk.live/ai/v1/post-transcriptions/?roomId={room_id}"
-                                trans_req = urllib.request.Request(trans_url, headers={'Authorization': token})
-                                with urllib.request.urlopen(trans_req, timeout=10) as trans_resp:
-                                    trans_data = json_module.loads(trans_resp.read().decode('utf-8'))
-                                    transcriptions = trans_data.get('transcriptions', [])
-                                    logging.info(f"Found {len(transcriptions)} post-transcription(s) from VideoSDK API")
-                                    
-                                    if transcriptions and len(transcriptions) > 0:
-                                        trans_item = transcriptions[0]
-                                        
-                                        # Get recording URL for download
-                                        recording_url = trans_item.get('filePath')
-                                        if recording_url:
-                                            try:
-                                                update_url = f"{SUPABASE_URL}/rest/v1/call_logs?id=eq.{call_id}"
-                                                update_payload = json_module.dumps({'recording_url': recording_url}).encode('utf-8')
-                                                update_req = urllib.request.Request(update_url, data=update_payload, method='PATCH')
-                                                update_req.add_header('apikey', SUPABASE_SERVICE_ROLE_KEY)
-                                                update_req.add_header('Authorization', f'Bearer {SUPABASE_SERVICE_ROLE_KEY}')
-                                                update_req.add_header('Content-Type', 'application/json')
-                                                urllib.request.urlopen(update_req, timeout=5)
-                                                logging.info(f"Stored recording URL for call {call_id}")
-                                            except Exception as store_err:
-                                                logging.warning(f"Could not store recording URL: {store_err}")
-                                        
-                                        # Get transcript from VideoSDK (txt format)
-                                        trans_file_paths = trans_item.get('transcriptionFilePaths', {})
-                                        txt_url = trans_file_paths.get('txt')
-                                        json_url = trans_file_paths.get('json')
-                                        
-                                        if txt_url:
-                                            logging.info(f"✅ VideoSDK transcript found, fetching from {txt_url}")
-                                            try:
-                                                txt_data = urllib.request.urlopen(txt_url, timeout=30).read().decode('utf-8')
-                                                if txt_data:
-                                                    transcript = parse_transcript_text(txt_data, 'Caller', 'Duke')
-                                                    logging.info(f"✅ Parsed VideoSDK transcript into {len(transcript)} turns")
-                                            except Exception as txt_err:
-                                                logging.warning(f"Could not fetch VideoSDK txt transcript: {txt_err}")
-                            except Exception as trans_err:
-                                logging.debug(f"VideoSDK post-transcriptions API returned no data: {trans_err}")
-                        
-                        # Fallback: Try realtime transcriptions API
-                        if (not transcript or len(transcript) == 0) and room_id:
-                            try:
-                                rt_trans_url = f"https://api.videosdk.live/ai/v1/realtime-transcriptions/?roomId={room_id}"
-                                rt_req = urllib.request.Request(rt_trans_url, headers={'Authorization': token})
-                                with urllib.request.urlopen(rt_req, timeout=10) as rt_resp:
-                                    rt_data = json_module.loads(rt_resp.read().decode('utf-8'))
-                                    rt_transcriptions = rt_data.get('transcriptions', [])
-                                    logging.info(f"Found {len(rt_transcriptions)} realtime-transcription(s) from VideoSDK API")
-                                    
-                                    if rt_transcriptions and len(rt_transcriptions) > 0:
-                                        rt_item = rt_transcriptions[0]
-                                        rt_file_paths = rt_item.get('transcriptionFilePaths', {})
-                                        rt_txt_url = rt_file_paths.get('txt')
-                                        
-                                        if rt_txt_url:
-                                            logging.info(f"✅ VideoSDK realtime transcript found, fetching from {rt_txt_url}")
-                                            try:
-                                                rt_txt_data = urllib.request.urlopen(rt_txt_url, timeout=30).read().decode('utf-8')
-                                                if rt_txt_data:
-                                                    transcript = parse_transcript_text(rt_txt_data, 'Caller', 'Duke')
-                                                    logging.info(f"✅ Parsed VideoSDK realtime transcript into {len(transcript)} turns")
-                                            except Exception as rt_txt_err:
-                                                logging.warning(f"Could not fetch VideoSDK realtime txt transcript: {rt_txt_err}")
-                            except Exception as rt_trans_err:
-                                logging.debug(f"VideoSDK realtime-transcriptions API returned no data: {rt_trans_err}")
-                        
-                        # Final fallback: Fetch recording and transcribe with Groq Whisper
-                        if (not transcript or len(transcript) == 0) and session_id:
+                        # Fetch recording and transcribe with Groq Whisper
+                        if session_id:
                             try:
                                 # Use meeting recordings API
                                 rec_url = f"https://api.videosdk.live/v2/recordings?roomId={room_id}"
@@ -846,7 +773,7 @@ def fetch_recording_and_transcribe(call_id, room_id):
                                         else:
                                             logging.warning(f"Recording exists but no file URL available yet")
                                     else:
-                                        logging.warning(f"No meeting recordings available. Check if recording was started via API.")
+                                        logging.warning(f"No meeting recordings available. Recording started via API but may still be processing.")
                             except Exception as rec_err:
                                 logging.warning(f"Could not fetch meeting recording: {rec_err}")
                                 
