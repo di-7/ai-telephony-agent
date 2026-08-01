@@ -356,6 +356,9 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
         "sipCallTo": phone_number
     }
     
+    # Get the agent ID first - either from business config or environment fallback
+    target_agent_id = (agent_cfg.get("video_sdk_agent_id") or os.getenv("VIDEOSDK_AGENT_ID", "")).strip()
+    
     # Priority order for determining caller ID phone number:
     # 1. Business-specific configuration (from agent_cfg)
     # 2. Dynamic lookup via VideoSDK routing rules API
@@ -390,9 +393,7 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     if room_id:
         call_body["destinationRoomId"] = room_id
     
-    # Get the agent ID - either from business config or environment fallback
-    target_agent_id = (agent_cfg.get("video_sdk_agent_id") or os.getenv("VIDEOSDK_AGENT_ID", "")).strip()
-    
+    # Add agent to call body
     if target_agent_id:
         call_body["agentId"] = target_agent_id
         logging.info(f"Routing call to VideoSDK Cloud Agent Builder ID: '{target_agent_id}' for business_id={business_id}")
