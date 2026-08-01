@@ -317,6 +317,12 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
         "gatewayId": gateway_id,
         "sipCallTo": phone_number
     }
+    
+    # Set the from number if configured
+    from_number = os.getenv("FROM_PHONE_NUMBER")
+    if from_number:
+        call_body["sipCallFrom"] = from_number.strip()
+    
     if room_id:
         call_body["destinationRoomId"] = room_id
     
