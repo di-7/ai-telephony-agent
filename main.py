@@ -406,6 +406,16 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
         from_phone = get_phone_number_for_agent(target_agent_id, videosdk_token)
         if from_phone:
             logging.info(f"Using phone number from agent routing rule: {from_phone} for agent {target_agent_id}")
+            
+            # Validate that this phone number is actually provisioned and has correct gateway
+            # If API call fails with gateway error, we'll get a clear error message
+    
+    # If still no phone found, use environment fallback as last resort
+    if not from_phone:
+        from_phone = os.getenv("FROM_PHONE_NUMBER")
+        if from_phone:
+            from_phone = from_phone.strip()
+            logging.info(f"Using fallback phone number from env: {from_phone}")
     
     # Set the caller ID if we found a phone number
     if from_phone:
