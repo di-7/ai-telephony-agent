@@ -63,7 +63,8 @@ CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'agent_co
 
 DEFAULT_AGENT_CONFIG = {
     "provider": "videosdk",
-    "video_sdk_agent_id": ""
+    "video_sdk_agent_id": "",
+    "from_phone_number": ""  # Optional: override the dynamic phone number lookup
 }
 
 def load_agent_config_from_supabase(business_id=None):
@@ -227,6 +228,42 @@ def get_videosdk_token():
         logging.error(f"Failed to generate dynamic VideoSDK token via PyJWT: {e}")
         return os.getenv("VIDEOSDK_AUTH_TOKEN")
 
+def get_phone_number_for_agent(agent_id, videosdk_token):
+    """Dynamically fetch the phone number associated with an agent's routing rule from VideoSDK API."""
+    if not agent_id or not videosdk_token:
+        return None
+    
+    try:
+        # Fetch all routing rules from VideoSDK
+        url = "https://api.videosdk.live/v2/sip/routing-rules"
+        req = urllib.request.Request(url, method="GET")
+        req.add_header("Authorization", str(videosdk_token))
+        
+        with urllib.request.urlopen(req, timeout=5) as response:
+            resp_body = response.read()
+            rules_data = json_module.loads(resp_body.decode('utf-8'))
+            
+            # rules_data structure: {"data": [{"id": "...", "agentId": "...", "phoneNumbers": [...]}]}
+            rules_list = rules_data.get('data', [])
+            
+            # Find the routing rule that matches our agent_id
+            for rule in rules_list:
+                if rule.get('agentId') == agent_id:
+                    phone_numbers = rule.get('phoneNumbers', [])
+                    if phone_numbers and len(phone_numbers) > 0:
+                        # Return the first phone number associated with this agent
+                        phone_number = phone_numbers[0].get('number') or phone_numbers[0].get('phoneNumber')
+                        if phone_number:
+                            logging.info(f"✅ Found phone number {phone_number} for agent {agent_id} via routing rule")
+                            return phone_number
+            
+            logging.warning(f"No phone number found in routing rules for agent {agent_id}")
+            return None
+            
+    except Exception as e:
+        logging.warning(f"Failed to fetch phone number for agent {agent_id}: {e}")
+        return None
+
 def create_videosdk_room_with_transcription(videosdk_token, custom_room_id=None):
     """Create a new VideoSDK room with real-time transcription enabled. Recording will be started via API when call is answered."""
     create_room_url = "https://api.videosdk.live/v2/rooms"
@@ -318,10 +355,36 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
         "sipCallTo": phone_number
     }
     
-    # Set the from number if configured
-    from_number = os.getenv("FROM_PHONE_NUMBER")
-    if from_number:
-        call_body["sipCallFrom"] = from_number.strip()
+    # Priority order for determining caller ID phone number:
+    # 1. Business-specific configuration (from agent_cfg)
+    # 2. Dynamic lookup via VideoSDK routing rules API
+    # 3. Environment variable fallback
+    
+    from_phone = None
+    
+    # Check if business config has a specific from_phone_number
+    if agent_cfg.get("from_phone_number"):
+        from_phone = agent_cfg.get("from_phone_number").strip()
+        logging.info(f"Using business-specific phone number: {from_phone}")
+    
+    # If not, try to fetch dynamically from VideoSDK routing rules
+    elif target_agent_id:
+        from_phone = get_phone_number_for_agent(target_agent_id, videosdk_token)
+        if from_phone:
+            logging.info(f"Using dynamically fetched phone number: {from_phone} for agent {target_agent_id}")
+    
+    # Fallback to environment variable
+    if not from_phone:
+        from_phone = os.getenv("FROM_PHONE_NUMBER")
+        if from_phone:
+            from_phone = from_phone.strip()
+            logging.info(f"Using fallback phone number from env: {from_phone}")
+    
+    # Set the caller ID if we found a phone number
+    if from_phone:
+        call_body["sipCallFrom"] = from_phone
+    else:
+        logging.warning("⚠️  No caller ID phone number configured. Call will use gateway default.")
     
     if room_id:
         call_body["destinationRoomId"] = room_id
