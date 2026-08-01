@@ -393,8 +393,6 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     # Priority order for determining caller ID phone number:
     # 1. Business-specific configuration (from agent_cfg)
     # 2. Dynamic lookup via VideoSDK routing rules API (agent-specific)
-    # 3. Dynamic lookup from gateway phone numbers (gateway default)
-    # 4. Environment variable fallback
     
     from_phone = None
     
@@ -404,23 +402,10 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
         logging.info(f"Using business-specific phone number: {from_phone}")
     
     # If not, try to fetch dynamically from VideoSDK routing rules for this agent
-    if not from_phone and target_agent_id:
+    elif target_agent_id:
         from_phone = get_phone_number_for_agent(target_agent_id, videosdk_token)
         if from_phone:
             logging.info(f"Using phone number from agent routing rule: {from_phone} for agent {target_agent_id}")
-    
-    # If still not found, try to get the gateway's default phone number
-    if not from_phone:
-        from_phone = get_phone_number_for_gateway(gateway_id, videosdk_token)
-        if from_phone:
-            logging.info(f"Using phone number from gateway: {from_phone}")
-    
-    # Final fallback to environment variable
-    if not from_phone:
-        from_phone = os.getenv("FROM_PHONE_NUMBER")
-        if from_phone:
-            from_phone = from_phone.strip()
-            logging.info(f"Using fallback phone number from env: {from_phone}")
     
     # Set the caller ID if we found a phone number
     if from_phone:
@@ -456,6 +441,18 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     except urllib.error.HTTPError as e:
         error_body = e.read().decode('utf-8')
         logging.error(f"VideoSDK API failed with status {e.code}: {error_body}")
+        
+        # Check if it's a gateway phone number mismatch
+        if "sipCallFrom is not in the gateway numbers" in error_body:
+            logging.error(f"❌ CONFIGURATION ERROR: Phone number {from_phone} is not linked to gateway {gateway_id}")
+            logging.error(f"📋 ACTION REQUIRED:")
+            logging.error(f"   1. Go to VideoSDK Dashboard → Phone Numbers")
+            logging.error(f"   2. Find phone number {from_phone}")
+            logging.error(f"   3. Link it to gateway {gateway_id}")
+            logging.error(f"   OR")
+            logging.error(f"   1. Go to VideoSDK Dashboard → SIP Gateways")
+            logging.error(f"   2. Edit gateway {gateway_id}")
+            logging.error(f"   3. Add phone number {from_phone} to this gateway")
         
         # Clear the dedup entry on failure so user can retry
         with RECENT_CALLS_LOCK:
