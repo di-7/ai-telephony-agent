@@ -287,7 +287,14 @@ def get_phone_number_for_agent(agent_id, videosdk_token):
                         phone_number = phone_numbers[0]
                         if phone_number:
                             logging.info(f"✅ Found phone number {phone_number} for agent {agent_id} from routing rule '{rule.get('name')}'")
-                            return phone_number
+                            
+                            # Also return the gateway ID from the rule if available
+                            gateway_id = rule.get('gatewayId')
+                            if gateway_id:
+                                logging.info(f"   Routing rule specifies gateway: {gateway_id}")
+                                return (phone_number, gateway_id)
+                            
+                            return (phone_number, None)
             
             logging.warning(f"No phone number found in routing rules for agent {agent_id}")
             return None
@@ -395,6 +402,7 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     # 2. Dynamic lookup via VideoSDK routing rules API (agent-specific)
     
     from_phone = None
+    routing_rule_gateway = None
     
     # Check if business config has a specific from_phone_number
     if agent_cfg.get("from_phone_number"):
@@ -403,9 +411,14 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     
     # If not, try to fetch dynamically from VideoSDK routing rules for this agent
     elif target_agent_id:
-        from_phone = get_phone_number_for_agent(target_agent_id, videosdk_token)
-        if from_phone:
-            logging.info(f"Using phone number from agent routing rule: {from_phone} for agent {target_agent_id}")
+        result = get_phone_number_for_agent(target_agent_id, videosdk_token)
+        if result:
+            if isinstance(result, tuple):
+                from_phone, routing_rule_gateway = result
+                logging.info(f"Using phone number from agent routing rule: {from_phone} for agent {target_agent_id}")
+            else:
+                from_phone = result
+                logging.info(f"Using phone number from agent routing rule: {from_phone} for agent {target_agent_id}")
             
             # Validate that this phone number is actually provisioned and has correct gateway
             # If API call fails with gateway error, we'll get a clear error message
@@ -416,6 +429,11 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
         if from_phone:
             from_phone = from_phone.strip()
             logging.info(f"Using fallback phone number from env: {from_phone}")
+    
+    # Use the gateway from routing rule if available, otherwise use the configured one
+    if routing_rule_gateway:
+        gateway_id = routing_rule_gateway
+        logging.info(f"Using gateway from routing rule: {gateway_id}")
     
     # Set the caller ID if we found a phone number
     if from_phone:
