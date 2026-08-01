@@ -228,6 +228,37 @@ def get_videosdk_token():
         logging.error(f"Failed to generate dynamic VideoSDK token via PyJWT: {e}")
         return os.getenv("VIDEOSDK_AUTH_TOKEN")
 
+def get_phone_number_for_gateway(gateway_id, videosdk_token):
+    """Dynamically fetch phone numbers associated with a specific SIP gateway from VideoSDK API."""
+    if not gateway_id or not videosdk_token:
+        return None
+    
+    try:
+        # Fetch gateway details including associated phone numbers
+        url = f"https://api.videosdk.live/v2/sip/gateways/{gateway_id}"
+        req = urllib.request.Request(url, method="GET")
+        req.add_header("Authorization", str(videosdk_token))
+        
+        with urllib.request.urlopen(req, timeout=5) as response:
+            resp_body = response.read()
+            gateway_data = json_module.loads(resp_body.decode('utf-8'))
+            
+            # Extract phone numbers from gateway response
+            numbers = gateway_data.get('numbers', []) or gateway_data.get('phoneNumbers', [])
+            if numbers and len(numbers) > 0:
+                # Return the first phone number
+                phone_number = numbers[0] if isinstance(numbers[0], str) else numbers[0].get('number')
+                if phone_number:
+                    logging.info(f"✅ Found phone number {phone_number} from gateway {gateway_id}")
+                    return phone_number
+            
+            logging.warning(f"No phone numbers found for gateway {gateway_id}")
+            return None
+            
+    except Exception as e:
+        logging.warning(f"Failed to fetch phone numbers for gateway {gateway_id}: {e}")
+        return None
+
 def get_phone_number_for_agent(agent_id, videosdk_token):
     """Dynamically fetch the phone number associated with an agent's routing rule from VideoSDK API."""
     if not agent_id or not videosdk_token:
@@ -361,8 +392,9 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     
     # Priority order for determining caller ID phone number:
     # 1. Business-specific configuration (from agent_cfg)
-    # 2. Dynamic lookup via VideoSDK routing rules API
-    # 3. Environment variable fallback
+    # 2. Dynamic lookup via VideoSDK routing rules API (agent-specific)
+    # 3. Dynamic lookup from gateway phone numbers (gateway default)
+    # 4. Environment variable fallback
     
     from_phone = None
     
@@ -371,13 +403,19 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
         from_phone = agent_cfg.get("from_phone_number").strip()
         logging.info(f"Using business-specific phone number: {from_phone}")
     
-    # If not, try to fetch dynamically from VideoSDK routing rules
-    elif target_agent_id:
+    # If not, try to fetch dynamically from VideoSDK routing rules for this agent
+    if not from_phone and target_agent_id:
         from_phone = get_phone_number_for_agent(target_agent_id, videosdk_token)
         if from_phone:
-            logging.info(f"Using dynamically fetched phone number: {from_phone} for agent {target_agent_id}")
+            logging.info(f"Using phone number from agent routing rule: {from_phone} for agent {target_agent_id}")
     
-    # Fallback to environment variable
+    # If still not found, try to get the gateway's default phone number
+    if not from_phone:
+        from_phone = get_phone_number_for_gateway(gateway_id, videosdk_token)
+        if from_phone:
+            logging.info(f"Using phone number from gateway: {from_phone}")
+    
+    # Final fallback to environment variable
     if not from_phone:
         from_phone = os.getenv("FROM_PHONE_NUMBER")
         if from_phone:
