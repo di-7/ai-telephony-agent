@@ -271,6 +271,25 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     if not phone_number.startswith('+'):
         phone_number = '+' + phone_number
 
+    # Deduplication: Check if we recently called this number
+    import time
+    current_time = time.time()
+    with RECENT_CALLS_LOCK:
+        call_key = f"{phone_number}:{business_id or 'default'}"
+        last_call_time = RECENT_CALLS.get(call_key, 0)
+        
+        if current_time - last_call_time < CALL_DEDUP_WINDOW_SECONDS:
+            logging.warning(f"🚫 Duplicate call blocked: {phone_number} was called {int(current_time - last_call_time)}s ago")
+            return {"success": False, "error": "Duplicate call blocked. Please wait before retrying."}
+        
+        RECENT_CALLS[call_key] = current_time
+        
+        # Cleanup old entries (keep last 100)
+        if len(RECENT_CALLS) > 100:
+            sorted_calls = sorted(RECENT_CALLS.items(), key=lambda x: x[1])
+            RECENT_CALLS.clear()
+            RECENT_CALLS.update(dict(sorted_calls[-50:]))
+
     logging.info(f"Triggering outbound call: {phone_number} for {name} ({email}), business_id: {business_id}, custom_vars: {custom_variables}")
 
     videosdk_token = get_videosdk_token()
@@ -328,9 +347,21 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     except urllib.error.HTTPError as e:
         error_body = e.read().decode('utf-8')
         logging.error(f"VideoSDK API failed with status {e.code}: {error_body}")
+        
+        # Clear the dedup entry on failure so user can retry
+        with RECENT_CALLS_LOCK:
+            call_key = f"{phone_number}:{business_id or 'default'}"
+            RECENT_CALLS.pop(call_key, None)
+        
         return {"success": False, "error": error_body}
     except Exception as e:
         logging.error(f"VideoSDK API failed: {e}")
+        
+        # Clear the dedup entry on failure so user can retry
+        with RECENT_CALLS_LOCK:
+            call_key = f"{phone_number}:{business_id or 'default'}"
+            RECENT_CALLS.pop(call_key, None)
+        
         return {"success": False, "error": str(e)}
 
     # Send team alert email
@@ -352,6 +383,11 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
 # Pending calls tracking for pairing sessions with API call requests
 PENDING_CALLS = []
 PENDING_CALLS_LOCK = threading.Lock()
+
+# Call deduplication to prevent multiple calls to same number
+RECENT_CALLS = {}
+RECENT_CALLS_LOCK = threading.Lock()
+CALL_DEDUP_WINDOW_SECONDS = 10  # Prevent duplicate calls within 10 seconds
 
 def queue_pending_call(entry):
     with PENDING_CALLS_LOCK:
