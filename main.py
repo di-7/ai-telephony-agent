@@ -293,8 +293,8 @@ def get_gateway_for_phone_number(phone_number, videosdk_token):
         logging.warning(f"Failed to fetch gateway for phone {phone_number}: {e}")
         return None
 
-def get_phone_number_for_agent(agent_id, videosdk_token):
-    """Dynamically fetch the phone number associated with an agent's routing rule from VideoSDK API."""
+def get_phone_number_and_routing_rule(agent_id, videosdk_token):
+    """Dynamically fetch the phone number and routing rule ID for an agent from VideoSDK API."""
     if not agent_id or not videosdk_token:
         return None
     
@@ -316,18 +316,18 @@ def get_phone_number_for_agent(agent_id, videosdk_token):
                 if rule.get('agentId') == agent_id:
                     # Extract phone numbers from the "numbers" array
                     phone_numbers = rule.get('numbers', [])
+                    rule_id = rule.get('id')
+                    
                     if phone_numbers and len(phone_numbers) > 0:
                         # Return the first phone number associated with this agent
                         phone_number = phone_numbers[0]
-                        if phone_number:
-                            logging.info(f"✅ Found phone number {phone_number} for agent {agent_id} from routing rule '{rule.get('name')}'")
+                        if phone_number and rule_id:
+                            logging.info(f"✅ Found phone number {phone_number} for agent {agent_id} from routing rule '{rule.get('name')}' (ID: {rule_id})")
                             
-                            # Fetch the gateway for this phone number
+                            # Fetch the gateway for this phone number (for logging only)
                             gateway_id = get_gateway_for_phone_number(phone_number, videosdk_token)
-                            if gateway_id:
-                                return (phone_number, gateway_id)
                             
-                            return (phone_number, None)
+                            return (phone_number, rule_id, gateway_id)
             
             logging.warning(f"No phone number found in routing rules for agent {agent_id}")
             return None
@@ -422,19 +422,15 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     custom_meeting_id = f"{phone_number.replace('+', '')}-{int(time.time())}"
     room_id = create_videosdk_room_with_transcription(videosdk_token, custom_meeting_id)
 
-    call_body = {
-        "gatewayId": gateway_id,
-        "sipCallTo": phone_number
-    }
-    
     # Get the agent ID first - either from business config or environment fallback
     target_agent_id = (agent_cfg.get("video_sdk_agent_id") or os.getenv("VIDEOSDK_AGENT_ID", "")).strip()
     
-    # Priority order for determining caller ID phone number:
+    # Priority order for determining caller ID phone number and routing:
     # 1. Business-specific configuration (from agent_cfg)
-    # 2. Dynamic lookup via VideoSDK routing rules API (agent-specific)
+    # 2. Dynamic lookup via VideoSDK routing rules API (agent-specific) - includes routing rule ID
     
     from_phone = None
+    routing_rule_id = None
     routing_rule_gateway = None
     
     # Check if business config has a specific from_phone_number
@@ -444,17 +440,17 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     
     # If not, try to fetch dynamically from VideoSDK routing rules for this agent
     elif target_agent_id:
-        result = get_phone_number_for_agent(target_agent_id, videosdk_token)
+        result = get_phone_number_and_routing_rule(target_agent_id, videosdk_token)
         if result:
-            if isinstance(result, tuple):
+            if isinstance(result, tuple) and len(result) == 3:
+                from_phone, routing_rule_id, routing_rule_gateway = result
+                logging.info(f"Using phone number from agent routing rule: {from_phone} (rule ID: {routing_rule_id})")
+            elif isinstance(result, tuple) and len(result) == 2:
                 from_phone, routing_rule_gateway = result
-                logging.info(f"Using phone number from agent routing rule: {from_phone} for agent {target_agent_id}")
+                logging.info(f"Using phone number from agent routing rule: {from_phone}")
             else:
                 from_phone = result
-                logging.info(f"Using phone number from agent routing rule: {from_phone} for agent {target_agent_id}")
-            
-            # Validate that this phone number is actually provisioned and has correct gateway
-            # If API call fails with gateway error, we'll get a clear error message
+                logging.info(f"Using phone number from agent routing rule: {from_phone}")
     
     # If still no phone found, use environment fallback as last resort
     if not from_phone:
@@ -468,11 +464,23 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
         gateway_id = routing_rule_gateway
         logging.info(f"Using gateway from routing rule: {gateway_id}")
     
-    # Set the caller ID if we found a phone number
-    if from_phone:
-        call_body["sipCallFrom"] = from_phone
+    # Build the call request - use routingRuleId if available (preferred), otherwise gatewayId
+    call_body = {}
+    
+    if routing_rule_id:
+        # Use routing rule ID (preferred method according to VideoSDK docs)
+        call_body["routingRuleId"] = routing_rule_id
+        call_body["callTo"] = phone_number
+        if from_phone:
+            call_body["callFrom"] = from_phone
+        logging.info(f"Using routing rule ID: {routing_rule_id} for call")
     else:
-        logging.warning("⚠️  No caller ID phone number configured. Call will use gateway default.")
+        # Fallback to gateway ID method
+        call_body["gatewayId"] = gateway_id
+        call_body["sipCallTo"] = phone_number
+        if from_phone:
+            call_body["sipCallFrom"] = from_phone
+        logging.info(f"Using gateway ID: {gateway_id} for call")
     
     if room_id:
         call_body["destinationRoomId"] = room_id
