@@ -234,8 +234,8 @@ def get_phone_number_for_agent(agent_id, videosdk_token):
         return None
     
     try:
-        # Fetch all routing rules from VideoSDK
-        url = "https://api.videosdk.live/v2/sip/routing-rules"
+        # Fetch outbound routing rules from VideoSDK (correct endpoint)
+        url = "https://api.videosdk.live/v2/sip/routing-rule?type=outbound&perPage=50"
         req = urllib.request.Request(url, method="GET")
         req.add_header("Authorization", str(videosdk_token))
         
@@ -243,18 +243,19 @@ def get_phone_number_for_agent(agent_id, videosdk_token):
             resp_body = response.read()
             rules_data = json_module.loads(resp_body.decode('utf-8'))
             
-            # rules_data structure: {"data": [{"id": "...", "agentId": "...", "phoneNumbers": [...]}]}
+            # Response structure: {"pageInfo": {...}, "data": [{...}]}
             rules_list = rules_data.get('data', [])
             
             # Find the routing rule that matches our agent_id
             for rule in rules_list:
                 if rule.get('agentId') == agent_id:
-                    phone_numbers = rule.get('phoneNumbers', [])
+                    # Extract phone numbers from the "numbers" array
+                    phone_numbers = rule.get('numbers', [])
                     if phone_numbers and len(phone_numbers) > 0:
                         # Return the first phone number associated with this agent
-                        phone_number = phone_numbers[0].get('number') or phone_numbers[0].get('phoneNumber')
+                        phone_number = phone_numbers[0]
                         if phone_number:
-                            logging.info(f"✅ Found phone number {phone_number} for agent {agent_id} via routing rule")
+                            logging.info(f"✅ Found phone number {phone_number} for agent {agent_id} from routing rule '{rule.get('name')}'")
                             return phone_number
             
             logging.warning(f"No phone number found in routing rules for agent {agent_id}")
