@@ -259,44 +259,38 @@ def get_phone_number_for_gateway(gateway_id, videosdk_token):
         logging.warning(f"Failed to fetch phone numbers for gateway {gateway_id}: {e}")
         return None
 
-def get_phone_number_details(phone_number, videosdk_token):
-    """Fetch phone number details including its gateway from VideoSDK API."""
+def get_gateway_for_phone_number(phone_number, videosdk_token):
+    """Fetch the outbound gateway that has this phone number configured."""
     if not phone_number or not videosdk_token:
         return None
     
     try:
-        # Fetch all phone numbers and find the matching one
-        url = "https://api.videosdk.live/v2/sip/phone-numbers"
+        # Fetch all outbound gateways
+        url = "https://api.videosdk.live/v2/sip/outbound-gateways?perPage=50"
         req = urllib.request.Request(url, method="GET")
         req.add_header("Authorization", str(videosdk_token))
         
         with urllib.request.urlopen(req, timeout=5) as response:
             resp_body = response.read()
-            phone_data = json_module.loads(resp_body.decode('utf-8'))
+            gateways_data = json_module.loads(resp_body.decode('utf-8'))
             
-            # Response could be {"data": [...]} or direct array
-            phones_list = phone_data.get('data', []) if isinstance(phone_data, dict) else phone_data
+            # Response structure: {"pageInfo": {...}, "data": [{...}]}
+            gateways_list = gateways_data.get('data', [])
             
-            # Find the phone number that matches
-            for phone_obj in phones_list:
-                phone_e164 = phone_obj.get('e164') or phone_obj.get('phoneNumber') or phone_obj.get('number')
-                if phone_e164 == phone_number:
-                    # Get the outbound gateway/trunk
-                    outbound = phone_obj.get('outbound') or {}
-                    gateway_id = outbound.get('id') or outbound.get('gatewayId') or outbound.get('trunkId')
-                    
-                    if gateway_id:
-                        logging.info(f"✅ Phone {phone_number} is linked to gateway: {gateway_id}")
-                        return gateway_id
-                    else:
-                        logging.warning(f"⚠️  Phone {phone_number} found but no outbound gateway configured")
-                        return None
+            # Find the gateway that has this phone number in its "numbers" array
+            for gateway in gateways_list:
+                gateway_numbers = gateway.get('numbers', [])
+                if phone_number in gateway_numbers:
+                    gateway_id = gateway.get('id')
+                    gateway_name = gateway.get('name')
+                    logging.info(f"✅ Phone {phone_number} is configured in gateway: {gateway_id} ({gateway_name})")
+                    return gateway_id
             
-            logging.warning(f"Phone {phone_number} not found in provisioned numbers")
+            logging.warning(f"⚠️  Phone {phone_number} not found in any outbound gateway")
             return None
             
     except Exception as e:
-        logging.warning(f"Failed to fetch phone number details for {phone_number}: {e}")
+        logging.warning(f"Failed to fetch gateway for phone {phone_number}: {e}")
         return None
 
 def get_phone_number_for_agent(agent_id, videosdk_token):
@@ -329,7 +323,7 @@ def get_phone_number_for_agent(agent_id, videosdk_token):
                             logging.info(f"✅ Found phone number {phone_number} for agent {agent_id} from routing rule '{rule.get('name')}'")
                             
                             # Fetch the gateway for this phone number
-                            gateway_id = get_phone_number_details(phone_number, videosdk_token)
+                            gateway_id = get_gateway_for_phone_number(phone_number, videosdk_token)
                             if gateway_id:
                                 return (phone_number, gateway_id)
                             
