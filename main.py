@@ -425,62 +425,64 @@ def trigger_outbound_call(phone_number, name="there", email="", company="", busi
     # Get the agent ID first - either from business config or environment fallback
     target_agent_id = (agent_cfg.get("video_sdk_agent_id") or os.getenv("VIDEOSDK_AGENT_ID", "")).strip()
     
-    # Priority order for determining caller ID phone number and routing:
-    # 1. Business-specific configuration (from agent_cfg)
-    # 2. Dynamic lookup via VideoSDK routing rules API (agent-specific) - includes routing rule ID
+    # For outbound calls, we need:
+    # 1. A phone number that exists in an outbound gateway
+    # 2. The gateway ID that has this phone number
+    # 3. The agent ID to connect the call to
     
     from_phone = None
-    routing_rule_id = None
-    routing_rule_gateway = None
+    outbound_gateway_id = None
     
     # Check if business config has a specific from_phone_number
     if agent_cfg.get("from_phone_number"):
         from_phone = agent_cfg.get("from_phone_number").strip()
-        logging.info(f"Using business-specific phone number: {from_phone}")
+        # Find which gateway has this phone number
+        outbound_gateway_id = get_gateway_for_phone_number(from_phone, videosdk_token)
+        if outbound_gateway_id:
+            logging.info(f"Using business-specific phone number: {from_phone} (gateway: {outbound_gateway_id})")
+        else:
+            logging.warning(f"Business phone {from_phone} not found in any gateway, will use default")
+            from_phone = None
     
-    # If not, try to fetch dynamically from VideoSDK routing rules for this agent
-    elif target_agent_id:
+    # If not configured, fetch from routing rule (for display/reference)
+    # But we'll verify it's actually in a gateway
+    if not from_phone and target_agent_id:
         result = get_phone_number_and_routing_rule(target_agent_id, videosdk_token)
-        if result:
-            if isinstance(result, tuple) and len(result) == 3:
-                from_phone, routing_rule_id, routing_rule_gateway = result
-                logging.info(f"Using phone number from agent routing rule: {from_phone} (rule ID: {routing_rule_id})")
-            elif isinstance(result, tuple) and len(result) == 2:
-                from_phone, routing_rule_gateway = result
-                logging.info(f"Using phone number from agent routing rule: {from_phone}")
+        if result and isinstance(result, tuple) and len(result) >= 3:
+            phone_from_rule, rule_id, gateway_from_rule = result
+            # Use the phone and gateway we found
+            if gateway_from_rule:
+                from_phone = phone_from_rule
+                outbound_gateway_id = gateway_from_rule
+                logging.info(f"Using phone number from routing rule: {from_phone} (gateway: {outbound_gateway_id})")
             else:
-                from_phone = result
-                logging.info(f"Using phone number from agent routing rule: {from_phone}")
+                logging.warning(f"Phone {phone_from_rule} from routing rule not found in any outbound gateway")
     
-    # If still no phone found, use environment fallback as last resort
+    # Final fallback to environment variable
     if not from_phone:
         from_phone = os.getenv("FROM_PHONE_NUMBER")
         if from_phone:
             from_phone = from_phone.strip()
+            outbound_gateway_id = get_gateway_for_phone_number(from_phone, videosdk_token) or gateway_id
             logging.info(f"Using fallback phone number from env: {from_phone}")
     
-    # Use the gateway from routing rule if available, otherwise use the configured one
-    if routing_rule_gateway:
-        gateway_id = routing_rule_gateway
-        logging.info(f"Using gateway from routing rule: {gateway_id}")
+    # If we found a phone and its gateway, use them; otherwise use configured defaults
+    if outbound_gateway_id:
+        gateway_id = outbound_gateway_id
     
-    # Build the call request - use routingRuleId if available (preferred), otherwise gatewayId
-    call_body = {}
+    # Build the outbound call request
+    call_body = {
+        "gatewayId": gateway_id,
+        "sipCallTo": phone_number
+    }
     
-    if routing_rule_id:
-        # Use routing rule ID (preferred method according to VideoSDK docs)
-        call_body["routingRuleId"] = routing_rule_id
-        call_body["callTo"] = phone_number
-        if from_phone:
-            call_body["callFrom"] = from_phone
-        logging.info(f"Using routing rule ID: {routing_rule_id} for call")
+    # Set the caller ID if we found a phone number
+    if from_phone:
+        call_body["sipCallFrom"] = from_phone
+        logging.info(f"Outbound call: {from_phone} → {phone_number} via gateway {gateway_id}")
     else:
-        # Fallback to gateway ID method
-        call_body["gatewayId"] = gateway_id
-        call_body["sipCallTo"] = phone_number
-        if from_phone:
-            call_body["sipCallFrom"] = from_phone
-        logging.info(f"Using gateway ID: {gateway_id} for call")
+        logging.warning("⚠️  No caller ID phone number configured. Call will use gateway default.")
+        logging.info(f"Outbound call: (gateway default) → {phone_number} via gateway {gateway_id}")
     
     if room_id:
         call_body["destinationRoomId"] = room_id
